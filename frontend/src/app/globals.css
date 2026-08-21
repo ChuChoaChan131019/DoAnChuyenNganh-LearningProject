@@ -1,26 +1,70 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f8f3;
+  --foreground: #002c3e;
+
+  --card: #ffffff;
+  --border: #dfe6df;
+
+  --primary: #f7444e;
+  --primary-soft: #ffe0df;
+
+  --brand: #78bcc4;
+  --brand-soft: #e0f3f2;
+
+  --secondary: #eaf4f3;
+  --muted: #edf1ed;
+  --muted-foreground: #637981;
+
+  --success: #2fa66a;
+  --warning: #efa94b;
+
+  --sidebar: #002c3e;
+  --sidebar-foreground: #e9f2ef;
+  --sidebar-accent: #17485a;
+  --sidebar-border: rgba(255, 255, 255, 0.12);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-border: var(--border);
+
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
+
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+
+  --color-secondary: var(--secondary);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-border: var(--sidebar-border);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+.sidebar-font {
+  font-family:
+    var(--font-plus-jakarta-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.sidebar-divider {
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
