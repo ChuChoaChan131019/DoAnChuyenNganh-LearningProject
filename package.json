@@ -1,0 +1,31 @@
+{
+  "name": "doanchuyennganh-learningproject",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "npm install --workspace=frontend --workspace=backend"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChuChoaChan131019/DoAnChuyenNganh-LearningProject.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ChuChoaChan131019/DoAnChuyenNganh-LearningProject/issues"
+  },
+  "homepage": "https://github.com/ChuChoaChan131019/DoAnChuyenNganh-LearningProject#readme",
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}
