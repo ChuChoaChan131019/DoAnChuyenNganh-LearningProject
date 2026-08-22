@@ -20,6 +20,26 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+const SIDEBAR_WIDTHS: Record<'collapsed' | 'expanded', string> = {
+  collapsed: 'w-20',
+  expanded: 'w-64',
+};
+
+const NAV_ITEM_STYLES: Record<'active' | 'inactive', string> = {
+  active: 'bg-[#173e4a] text-white shadow-xs',
+  inactive: 'text-slate-400/50 hover:bg-white/10 hover:text-white font-medium',
+};
+
+const NAV_ICON_STYLES: Record<'active' | 'inactive', string> = {
+  active: 'text-red-400',
+  inactive: 'text-slate-400/50 group-hover:text-gray-200',
+};
+
+const NAV_ITEM_ALIGNMENT: Record<'collapsed' | 'expanded', string> = {
+  collapsed: 'justify-center',
+  expanded: 'justify-between',
+};
+
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
@@ -53,7 +73,7 @@ const MENU_DATA: NavGroup[] = [
   {
     group: 'QUESTION BANK',
     items: [
-      { label: 'Questions', href: '/content-manager/questions', icon: HelpCircle },
+      { label: 'Questions', href: '/content-manager/questions/bank', icon: HelpCircle },
       { label: 'Question editor', href: '/content-manager/questions/editor', icon: Edit3 },
       { label: 'Question review', href: '/content-manager/questions/review', icon: CheckSquare, badge: 12 },
     ],
@@ -69,12 +89,11 @@ const MENU_DATA: NavGroup[] = [
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
+  const sidebarState = isCollapsed ? 'collapsed' : 'expanded';
 
   return (
     <aside
-      className={`sidebar-font fixed left-0 top-0 z-40 flex h-screen flex-col bg-[#002C3E] text-gray-300 transition-all duration-300 ${
-        isCollapsed ? 'w-20' : 'w-64'
-      }`}
+      className={`sidebar-font fixed left-0 top-0 z-40 flex h-screen flex-col bg-[#002C3E] text-gray-300 transition-all duration-300 ${SIDEBAR_WIDTHS[sidebarState]}`}
     >
       {/* Brand Header */}
       <div className="sidebar-divider flex h-16 items-center gap-3 border-b px-5">
@@ -82,7 +101,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           <Sparkles className="h-5 w-5 text-white" />
         </div>
         {!isCollapsed && (
-          <div className="truncate text-[15px] font-medium tracking-tight text-slate-400">
+          <div className="truncate text-[15px] font-medium tracking-tight text-slate-400/50">
             Content Studio
           </div>
         )}
@@ -93,7 +112,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         {MENU_DATA.map((section, idx) => (
           <div key={idx} className="space-y-1">
             {!isCollapsed && (
-              <div className="px-3 pb-2 text-[12px] font-bold tracking-wider text-slate-400/80 uppercase">
+              <div className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-400/30 uppercase">
                 {section.group}
               </div>
             )}
@@ -101,26 +120,21 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               {section.items.map((item) => {
                 const isActive = pathname.startsWith(item.href);
                 const Icon = item.icon;
+                const itemState = isActive ? 'active' : 'inactive';
 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     title={isCollapsed ? item.label : undefined}
-                    className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-normal transition-all ${
-                      isActive
-                        ? 'bg-[#173e4a] text-white shadow-xs'
-                        : 'text-slate-400 hover:bg-white/10 hover:text-white font-medium'
-                    } ${isCollapsed ? 'justify-center' : 'justify-between'}`}
+                    className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-normal transition-all ${NAV_ITEM_STYLES[itemState]} ${NAV_ITEM_ALIGNMENT[sidebarState]}`}
                   >
                     {isActive && (
                       <span className="absolute left-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-full bg-red-400" />
                     )}
                     <div className="flex items-center gap-3 truncate">
                       <Icon
-                        className={`h-4 w-4 shrink-0 transition-colors ${
-                          isActive ? 'text-red-400' : 'text-slate-400 group-hover:text-gray-200'
-                        }`}
+                        className={`h-4 w-4 shrink-0 transition-colors ${NAV_ICON_STYLES[itemState]}`}
                       />
                       {!isCollapsed && <span className="truncate">{item.label}</span>}
                     </div>
@@ -143,7 +157,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         <button
           onClick={onToggle}
           type="button"
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-400/50 transition-colors hover:bg-white/5 hover:text-white"
         >
           {isCollapsed ? (
             <ChevronRight className="mx-auto h-4 w-4" />

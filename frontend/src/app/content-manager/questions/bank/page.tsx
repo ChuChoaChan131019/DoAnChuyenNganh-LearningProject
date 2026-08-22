@@ -4,6 +4,31 @@ import React, { useState } from 'react';
 import { Search, Sparkles, Plus, ChevronDown } from 'lucide-react';
 import { QuestionItem, DifficultyLevel, QuestionStatus } from '@/types/question';
 
+const DIFFICULTY_STYLES: Record<DifficultyLevel, string> = {
+  Easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+  Medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
+  Hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
+};
+
+const STATUS_CONFIGS: Record<QuestionStatus, { bg: string; dot: string }> = {
+  Published: {
+    bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+    dot: 'bg-emerald-500',
+  },
+  Approved: {
+    bg: 'bg-sky-50 text-sky-700 border-sky-200/60',
+    dot: 'bg-sky-500',
+  },
+  'In review': {
+    bg: 'bg-amber-50 text-amber-700 border-amber-200/60',
+    dot: 'bg-amber-500',
+  },
+  Draft: {
+    bg: 'bg-gray-100 text-gray-600 border-gray-200',
+    dot: 'bg-gray-400',
+  },
+};
+
 const SAMPLE_QUESTIONS: QuestionItem[] = [
   {
     id: '1',
@@ -78,15 +103,9 @@ const SAMPLE_QUESTIONS: QuestionItem[] = [
 ];
 
 function DifficultyBadge({ level }: { level: DifficultyLevel }) {
-  const styles: Record<DifficultyLevel, string> = {
-    Easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
-    Medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
-    Hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
-  };
-
   return (
     <span
-      className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${styles[level]}`}
+      className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${DIFFICULTY_STYLES[level]}`}
     >
       {level}
     </span>
@@ -94,26 +113,7 @@ function DifficultyBadge({ level }: { level: DifficultyLevel }) {
 }
 
 function StatusBadge({ status }: { status: QuestionStatus }) {
-  const configs: Record<QuestionStatus, { bg: string; dot: string }> = {
-    Published: {
-      bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
-      dot: 'bg-emerald-500',
-    },
-    Approved: {
-      bg: 'bg-sky-50 text-sky-700 border-sky-200/60',
-      dot: 'bg-sky-500',
-    },
-    'In review': {
-      bg: 'bg-amber-50 text-amber-700 border-amber-200/60',
-      dot: 'bg-amber-500',
-    },
-    Draft: {
-      bg: 'bg-gray-100 text-gray-600 border-gray-200',
-      dot: 'bg-gray-400',
-    },
-  };
-
-  const current = configs[status];
+  const current = STATUS_CONFIGS[status];
 
   return (
     <span
@@ -144,14 +144,14 @@ export default function QuestionBankPage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
           >
             <Sparkles className="h-4 w-4 text-purple-600" />
             Generate with AI
           </button>
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#c93f3a]"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#c93f3a]"
           >
             <Plus className="h-4 w-4" />
             Create question
@@ -222,10 +222,10 @@ export default function QuestionBankPage() {
                     <p className="font-medium text-gray-900 line-clamp-1">{q.title}</p>
                     <p className="text-xs text-gray-400">{q.subtopic}</p>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-4 text-gray-600">
+                  <td className="whitespace-nowrap px-4 py-4 text-gray-500">
                     {q.type}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-4 font-mono text-xs text-gray-500">
+                  <td className="whitespace-nowrap px-4 py-4 text-gray-500">
                     {q.lesson}
                   </td>
                   <td className="whitespace-nowrap px-4 py-4">

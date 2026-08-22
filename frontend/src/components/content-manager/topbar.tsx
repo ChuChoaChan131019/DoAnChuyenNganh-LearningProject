@@ -6,14 +6,14 @@ import { Search, Bell, Sun, Sparkles } from 'lucide-react';
 
 export function Topbar() {
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-gray-200/70 bg-white px-6">
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-gray-200/70 bg-[#F7F8F3] px-6">
       {/* Search Bar with Shortcut */}
       <div className="relative w-full max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
           placeholder="Search courses, lessons, questions..."
-          className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-9 pr-14 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-teal-600 focus:bg-white focus:outline-none"
+          className="h-10 w-full rounded-xl border border-gray-200 bg-[#78BCC4]/10 pl-9 pr-14 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-teal-600 focus:bg-white focus:outline-none"
         />
         <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 shadow-xs">
           ⌘K
