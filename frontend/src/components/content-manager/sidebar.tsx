@@ -13,11 +13,18 @@ import {
   HelpCircle,
   Edit3,
   CheckSquare,
-  GraduationCap,
+  ListChecks,
   Hammer,
+  FlaskConical,
+  BarChart2,
+  Wand2,
+  Sparkles,
+  Inbox,
+  Search,
+  Bell,
+  Settings,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
 } from 'lucide-react';
 
 const SIDEBAR_WIDTHS: Record<'collapsed' | 'expanded', string> = {
@@ -81,8 +88,26 @@ const MENU_DATA: NavGroup[] = [
   {
     group: 'TESTS & PRACTICE',
     items: [
-      { label: 'Tests', href: '/content-manager/tests', icon: GraduationCap },
-      { label: 'Test builder', href: '/content-manager/tests/builder', icon: Hammer },
+      { label: 'Tests', href: '/content-manager/testsandpractice/tests', icon: ListChecks },
+      { label: 'Test builder', href: '/content-manager/testsandpractice/builder', icon: Hammer },
+      { label: 'Practice sets', href: '/content-manager/testsandpractice/practicesets', icon: FlaskConical },
+      { label: 'Results', href: '/content-manager/testsandpractice/results', icon: BarChart2 },
+    ],
+  },
+  {
+    group: 'AI',
+    items: [
+      { label: 'AI content generator', href: '/content-manager/ai/content-generator', icon: Wand2 },
+      { label: 'AI question generator', href: '/content-manager/ai/question-generator', icon: Sparkles },
+      { label: 'AI review queue', href: '/content-manager/ai/review-queue', icon: Inbox, badge: 4 },
+    ],
+  },
+  {
+    group: 'SYSTEM',
+    items: [
+      { label: 'Search', href: '/content-manager/search', icon: Search },
+      { label: 'Notifications', href: '/content-manager/notifications', icon: Bell },
+      { label: 'Settings', href: '/content-manager/settings', icon: Settings },
     ],
   },
 ];
@@ -139,7 +164,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                       {!isCollapsed && <span className="truncate">{item.label}</span>}
                     </div>
 
-                    {!isCollapsed && item.badge && (
+                    {!isCollapsed && item.badge !== undefined && (
                       <span className="rounded-full bg-teal-500/20 px-2 py-0.5 text-xs font-semibold text-teal-300">
                         {item.badge}
                       </span>
