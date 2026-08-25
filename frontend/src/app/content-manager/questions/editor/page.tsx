@@ -19,13 +19,13 @@ import {
 // CENTRALIZED STYLES
 // ==========================================
 const STYLES = {
-  sectionCard: 'bg-white border border-gray-200/80 rounded-2xl p-5 shadow-sm',
+  sectionCard: 'bg-[#FFFAFC]/50 border border-gray-200/80 rounded-2xl p-5 shadow-sm',
   sectionTitle: 'text-base font-semibold text-gray-900',
   label: 'block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5',
   select:
-    'w-full text-sm bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition',
+    'w-full text-sm border border-gray-200 rounded-xl px-3.5 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition',
   textarea:
-    'w-full text-sm bg-white border border-gray-200 rounded-xl p-3.5 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition leading-relaxed resize-y',
+    'w-full text-sm  border border-gray-200 rounded-xl p-3.5 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition leading-relaxed resize-y',
 
   optionRow: (isCorrect: boolean) =>
     `flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 ${
@@ -51,7 +51,7 @@ const STYLES = {
     `w-full rounded-xl border p-3 flex items-center gap-3 transition-all cursor-pointer select-none text-left ${
       isSelected
         ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-medium ring-1 ring-emerald-500/20'
-        : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50/80'
+        : 'bg-[#FFFAFC]/50 border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50/80'
     }`,
   previewOptionCircle: (isSelected: boolean) =>
     `w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-semibold transition ${
@@ -255,7 +255,7 @@ export default function QuestionEditorPage() {
             type="button"
             onClick={handleSaveDraft}
             disabled={isSaving}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-60"
           >
             <Save className="h-4 w-4 text-gray-500" />
             <span>{isSaving ? 'Saving...' : 'Save draft'}</span>

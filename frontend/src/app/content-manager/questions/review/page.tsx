@@ -15,7 +15,7 @@ import {
 const STYLES = {
   // Container & Layout
   pageContainer: 'mx-auto max-w-7xl space-y-6',
-  reviewCard: 'bg-white border border-gray-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between transition-all hover:shadow-md',
+  reviewCard: 'bg-[#FFFAFC]/50 border border-gray-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between transition-all hover:shadow-md',
   
   // Navigation Tabs
   tabPillContainer: 'inline-flex items-center gap-1 p-1 bg-gray-200/60 rounded-2xl border border-gray-200/80 text-xs font-semibold',
@@ -57,8 +57,8 @@ const STYLES = {
   optionRow: (isCorrect: boolean) =>
     `flex items-center gap-3 p-3 rounded-xl border text-sm transition-colors ${
       isCorrect
-        ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900 font-medium'
-        : 'bg-white border-gray-200/80 text-slate-700'
+        ? 'bg-emerald-50 border-emerald-200 text-emerald-900 font-medium'
+        : 'border-gray-200/80 text-slate-700'
     }`,
   optionBadge: (isCorrect: boolean) =>
     `w-6 h-6 flex-shrink-0 flex items-center justify-center font-bold text-xs rounded-lg ${
