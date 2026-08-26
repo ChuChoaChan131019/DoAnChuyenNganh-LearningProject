@@ -57,19 +57,21 @@ const STYLES = {
   optionRow: (isCorrect: boolean) =>
     `flex items-center gap-3 p-3 rounded-xl border text-sm transition-colors ${
       isCorrect
-        ? 'bg-emerald-50 border-emerald-200 text-emerald-900 font-medium'
+        ? 'bg-emerald-50/70 border-emerald-300 text-emerald-900 font-medium shadow-sm'
         : 'border-gray-200/80 text-slate-700'
     }`,
   optionBadge: (isCorrect: boolean) =>
-    `w-6 h-6 flex-shrink-0 flex items-center justify-center font-bold text-xs rounded-lg ${
-      isCorrect ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-slate-600'
+    `w-6 h-6 flex-shrink-0 flex items-center justify-center font-bold text-xs rounded-full border ${
+      isCorrect
+        ? 'border-emerald-400 bg-white text-emerald-700'
+        : 'border-gray-300 bg-gray-100 text-slate-600'
     }`,
 
   // Actions
   approveBtn:
     'inline-flex items-center gap-1.5 rounded-xl bg-[#F7444E] px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#E03E47] active:scale-[0.98]',
   rejectBtn:
-    'inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 active:scale-[0.98]'
+    'inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 active:scale-[0.98]'
 };
 
 // ==========================================
