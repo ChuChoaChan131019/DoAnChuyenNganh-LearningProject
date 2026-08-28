@@ -14,7 +14,7 @@ export default function AITutorPage() {
   const [inputValue, setInputValue] = useState('');
 
   return (
-    <div className="mx-auto max-w-[1200px] space-y-[22px]">
+    <div className="mx-auto max-w-[1216px] space-y-[22px]">
       {/* Header */}
       <div>
         <p className="mb-1 text-sm font-medium text-[#145a68]">Learn</p>
