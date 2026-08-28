@@ -26,6 +26,7 @@ const NAV_ITEMS = [
 
 export function LearnerTopbar() {
   const pathname = usePathname();
+  const isSearchActive = pathname.startsWith('/learner/search');
 
   return (
     <header className="sticky top-0 z-30 w-full border-b border-gray-200/70 bg-[#F7F8F3]">
@@ -62,10 +63,17 @@ export function LearnerTopbar() {
             );
           })}
 
-          <button className="flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800">
+          <Link
+            href="/learner/search"
+            className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+              isSearchActive
+                ? 'bg-rose-50 text-[#F7444E]'
+                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+            }`}
+          >
             <Search className="h-4 w-4" />
             Search
-          </button>
+          </Link>
         </nav>
       </div>
 
