@@ -63,6 +63,24 @@ const COURSE_MAP: Record<string, any> = {
       { name: 'C# Language Cheat Sheet', type: 'PDF · 1.2 MB' },
       { name: 'Installing the .NET SDK (walkthrough)', type: 'Video · 84 MB' },
     ],
+    tests: [
+      {
+        id: 'final-assessment',
+        title: 'C# Fundamentals — Final Assessment',
+        description: '6 questions in this attempt',
+        duration: '60 minutes, timed',
+        difficulty: 'Medium',
+        questions: 6,
+      },
+      {
+        id: 'variables-quiz',
+        title: 'Variables & Data Types Quiz',
+        description: '15 questions in this attempt',
+        duration: '20 minutes, timed',
+        difficulty: 'Easy',
+        questions: 15,
+      },
+    ],
   },
   'object-oriented-programming-in-csharp': {
     id: 2,
@@ -121,6 +139,16 @@ const COURSE_MAP: Record<string, any> = {
     resources: [
       { name: 'OOP Practice Sheet', type: 'PDF · 2.1 MB' },
       { name: 'Class Design Checklist', type: 'Document · 68 KB' },
+    ],
+    tests: [
+      {
+        id: 'oop-quick-check',
+        title: 'OOP Quick Check',
+        description: '5 questions in this attempt',
+        duration: '25 minutes, timed',
+        difficulty: 'Medium',
+        questions: 5,
+      },
     ],
   },
   'collections-and-linq': {
@@ -181,6 +209,16 @@ const COURSE_MAP: Record<string, any> = {
       { name: 'LINQ Quick Reference', type: 'PDF · 960 KB' },
       { name: 'Collection Performance Tips', type: 'Video · 42 MB' },
     ],
+    tests: [
+      {
+        id: 'linq-mini-practice',
+        title: 'LINQ Mini Practice',
+        description: '7 questions in this attempt',
+        duration: '30 minutes, timed',
+        difficulty: 'Medium',
+        questions: 7,
+      },
+    ],
   },
   'exception-handling-in-csharp': {
     id: 4,
@@ -228,6 +266,16 @@ const COURSE_MAP: Record<string, any> = {
     instructorRole: 'Content author • C# instructor',
     resources: [
       { name: 'Exception Patterns', type: 'PDF · 780 KB' },
+    ],
+    tests: [
+      {
+        id: 'exception-flows',
+        title: 'Exception Handling Drill',
+        description: '6 questions in this attempt',
+        duration: '20 minutes, timed',
+        difficulty: 'Medium',
+        questions: 6,
+      },
     ],
   },
   'advanced-csharp-delegates-events-async': {
@@ -288,6 +336,16 @@ const COURSE_MAP: Record<string, any> = {
       { name: 'Async Patterns', type: 'PDF · 1.4 MB' },
       { name: 'Threading Notes', type: 'Video · 71 MB' },
     ],
+    tests: [
+      {
+        id: 'async-challenge',
+        title: 'Async & Tasks Challenge',
+        description: '8 questions in this attempt',
+        duration: '35 minutes, timed',
+        difficulty: 'Hard',
+        questions: 8,
+      },
+    ],
   },
   'csharp-oop-interview-preparation': {
     id: 6,
@@ -336,6 +394,16 @@ const COURSE_MAP: Record<string, any> = {
     resources: [
       { name: 'Interview Prep Guide', type: 'PDF · 1.1 MB' },
       { name: 'Mock Interview Checklist', type: 'Document · 53 KB' },
+    ],
+    tests: [
+      {
+        id: 'interview-mock-test',
+        title: 'OOP Interview Mock Test',
+        description: '5 questions in this attempt',
+        duration: '25 minutes, timed',
+        difficulty: 'Hard',
+        questions: 5,
+      },
     ],
   },
 };
@@ -422,10 +490,13 @@ export default function LearnerCourseDetailPage() {
               <span className="min-w-[44px] text-right text-[18px] font-bold text-slate-700">
                 {progressPercent}%
               </span>
-              <button className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#f4b7b7] bg-[#fff3f2] px-4 py-3 text-sm font-bold text-[#f7444e]">
+              <Link
+                href="/learner/practice"
+                className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#f4b7b7] bg-[#fff3f2] px-4 py-3 text-sm font-bold text-[#f7444e] transition hover:bg-[#ffe9e7]"
+              >
                 <CheckCircle2 className="h-4 w-4" />
                 Practice questions
-              </button>
+              </Link>
             </div>
           </div>
         </div>
@@ -504,21 +575,18 @@ export default function LearnerCourseDetailPage() {
               </div>
 
               <div className="space-y-3">
-                <div className="rounded-[12px] border border-slate-200 bg-[#f8f7f5] p-3">
-                  <div className="text-[15px] font-semibold text-slate-800">C# Fundamentals — Final Assessment</div>
-                  <div className="mt-1 text-[13px] text-slate-500">40 questions • 60 min • avg 78%</div>
-                  <button className="mt-3 w-full rounded-[10px] bg-[#F7444E] px-4 py-3 text-sm font-bold text-white">
-                    Start test
-                  </button>
-                </div>
-
-                <div className="rounded-[12px] border border-slate-200 bg-[#f8f7f5] p-3">
-                  <div className="text-[15px] font-semibold text-slate-800">Variables & Data Types Quiz</div>
-                  <div className="mt-1 text-[13px] text-slate-500">15 questions • 20 min • avg 86%</div>
-                  <button className="mt-3 w-full rounded-[10px] bg-[#F7444E] px-4 py-3 text-sm font-bold text-white">
-                    Start test
-                  </button>
-                </div>
+                {course.tests?.map((test: any) => (
+                  <div key={test.id} className="rounded-[12px] border border-slate-200 bg-[#f8f7f5] p-3">
+                    <div className="text-[15px] font-semibold text-slate-800">{test.title}</div>
+                    <div className="mt-1 text-[13px] text-slate-500">{test.description} • {test.duration} • {test.difficulty}</div>
+                    <Link
+                      href={`/learner/courses/${course.slug}/tests/${test.id}`}
+                      className="mt-3 inline-flex w-full items-center justify-center rounded-[10px] bg-[#F7444E] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#e33b3b]"
+                    >
+                      Start test
+                    </Link>
+                  </div>
+                ))}
               </div>
             </div>
 
