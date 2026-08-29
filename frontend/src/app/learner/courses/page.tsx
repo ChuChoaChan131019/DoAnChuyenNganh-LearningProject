@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Search, ChevronDown, BookOpen, Layers, HelpCircle, Clock, ArrowRight } from 'lucide-react';
 
 const FILTERS = [
@@ -15,6 +16,7 @@ const FILTERS = [
 const COURSES = [
   {
     id: 1,
+    slug: 'csharp-fundamentals',
     title: 'C# Fundamentals',
     description: 'Start from zero: install the .NET SDK, write your first program, and master variables, data types, operato...',
     level: 'Beginner',
@@ -27,6 +29,7 @@ const COURSES = [
   },
   {
     id: 2,
+    slug: 'object-oriented-programming-in-csharp',
     title: 'Object-Oriented Programming in C#',
     description: 'Model real problems with classes and objects. Encapsulation, inheritance, polymorphism, abstract...',
     level: 'Intermediate',
@@ -39,6 +42,7 @@ const COURSES = [
   },
   {
     id: 3,
+    slug: 'collections-and-linq',
     title: 'Collections and LINQ',
     description: 'Work with arrays, List<T>, Dictionary<K,V>, generics and query data elegantly using LINQ.',
     level: 'Intermediate',
@@ -51,6 +55,7 @@ const COURSES = [
   },
   {
     id: 4,
+    slug: 'exception-handling-in-csharp',
     title: 'Exception Handling in C#',
     description: 'Write resilient code with try/catch/finally, exception filters and your own exception types.',
     level: 'Intermediate',
@@ -63,6 +68,7 @@ const COURSES = [
   },
   {
     id: 5,
+    slug: 'advanced-csharp-delegates-events-async',
     title: 'Advanced C#: Delegates, Events & Async',
     description: 'Delegates, lambda expressions, events, Task-based asynchronous programming and performance tips.',
     level: 'Advanced',
@@ -75,6 +81,7 @@ const COURSES = [
   },
   {
     id: 6,
+    slug: 'csharp-oop-interview-preparation',
     title: 'C# & OOP Interview Preparation',
     description: 'Curated question sets and ... the most asked C# and ...',
     level: 'Advanced',
@@ -151,9 +158,10 @@ export default function BrowseCoursesPage() {
             (activeFilter === 'Error Handling & Debugging' && course.title.includes('Exception'));
           return matchesSearch && matchesFilter;
         }).map((course) => (
-          <div
+          <Link
+            href={`/learner/courses/${course.slug}`}
             key={course.id}
-            className="flex flex-col overflow-hidden rounded-[16px] border border-[#dfe6df] bg-white shadow-[0_8px_18px_rgba(0,44,62,0.04)] transition-shadow hover:shadow-md"
+            className="block flex flex-col overflow-hidden rounded-[16px] border border-[#dfe6df] bg-white shadow-[0_8px_18px_rgba(0,44,62,0.04)] transition-shadow hover:shadow-md"
           >
             {/* Top Gradient Area */}
             <div className={`relative h-[112px] bg-gradient-to-br ${course.gradient} p-4`}>
@@ -165,7 +173,7 @@ export default function BrowseCoursesPage() {
 
                 {/* Status Badge */}
                 {course.status === 'Completed' && (
-                    <span className="inline-flex rounded-full bg-emerald-100/60 px-2.5 py-1 text-[11px] font-bold text-emerald-600">
+                  <span className="inline-flex rounded-full bg-emerald-100/60 px-2.5 py-1 text-[11px] font-bold text-emerald-600">
                     Completed
                   </span>
                 )}
@@ -227,7 +235,7 @@ export default function BrowseCoursesPage() {
                 )}
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>
