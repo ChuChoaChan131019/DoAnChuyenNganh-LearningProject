@@ -2,125 +2,100 @@
 
 import React, { useState } from 'react';
 import { Search, Sparkles, Plus, ChevronDown } from 'lucide-react';
-import { QuestionItem, DifficultyLevel, QuestionStatus } from '@/types/question';
+import { QuestionItem, DifficultyLevel, QuestionStatus, QuestionType } from '@/types/question';
 
 const DIFFICULTY_STYLES: Record<DifficultyLevel, string> = {
-  Easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
-  Medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
-  Hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
+  easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+  medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
+  hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
 };
 
-const STATUS_CONFIGS: Record<QuestionStatus, { bg: string; dot: string }> = {
-  Published: {
-    bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
-    dot: 'bg-emerald-500',
-  },
-  Approved: {
+const STATUS_CONFIGS: Record<QuestionStatus, { bg: string; dot: string; label: string }> = {
+  approved: {
     bg: 'bg-sky-50 text-sky-700 border-sky-200/60',
     dot: 'bg-sky-500',
+    label: 'Approved',
   },
-  'In review': {
-    bg: 'bg-amber-50 text-amber-700 border-amber-200/60',
-    dot: 'bg-amber-500',
-  },
-  Draft: {
+  draft: {
     bg: 'bg-gray-100 text-gray-600 border-gray-200',
     dot: 'bg-gray-400',
+    label: 'Draft',
   },
+};
+
+const TYPE_LABELS: Record<QuestionType, string> = {
+  single_choice: 'Single Choice',
+  multiple_choice: 'Multiple Choice',
+  true_false: 'True / False',
+  fill_in_blank: 'Fill in the Blank',
 };
 
 const SAMPLE_QUESTIONS: QuestionItem[] = [
   {
-    id: '1',
-    title: 'Which access modifier makes a member visible only inside the declaring..',
+    id: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
+    course_id: 'c1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
+    content: 'Which access modifier makes a member visible only inside the declaring class?',
     subtopic: 'Encapsulation',
-    type: 'Single Choice',
-    lesson: 'Access Modifiers',
-    difficulty: 'Easy',
-    source: 'Human',
-    status: 'Published',
+    question_type: 'single_choice',
+    lesson_title: 'Access Modifiers',
+    difficulty: 'easy',
+    is_ai_generated: false,
+    status: 'approved',
+    created_at: '2026-05-18T10:00:00Z',
   },
   {
-    id: '2',
-    title: 'Select all statements that are true about interfaces in C#.',
+    id: 'a2b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6e',
+    course_id: 'c1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
+    content: 'Select all statements that are true about interfaces in C#.',
     subtopic: 'Inheritance & Polymorphism',
-    type: 'Multiple Choice',
-    lesson: 'Interfaces',
-    difficulty: 'Medium',
-    source: 'AI',
-    status: 'Approved',
+    question_type: 'multiple_choice',
+    lesson_title: 'Interfaces',
+    difficulty: 'medium',
+    is_ai_generated: true,
+    status: 'approved',
+    created_at: '2026-05-19T11:30:00Z',
   },
   {
-    id: '3',
-    title: 'A struct in C# is a reference type.',
+    id: 'a3b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6f',
+    course_id: 'c1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
+    content: 'A struct in C# is a reference type.',
     subtopic: 'Variables and Data Types',
-    type: 'True / False',
-    lesson: 'Data Types',
-    difficulty: 'Easy',
-    source: 'Human',
-    status: 'Published',
+    question_type: 'true_false',
+    lesson_title: 'Data Types',
+    difficulty: 'easy',
+    is_ai_generated: false,
+    status: 'approved',
+    created_at: '2026-05-20T08:15:00Z',
   },
   {
-    id: '4',
-    title: 'Complete the code: the keyword used to prevent further overriding of a virtu...',
+    id: 'a4b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c70',
+    course_id: 'c1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
+    content: 'Complete the code: the keyword used to prevent further overriding of a virtual member is ______.',
     subtopic: 'Inheritance & Polymorphism',
-    type: 'Fill in the Blank',
-    lesson: 'virtual, override, sealed',
-    difficulty: 'Medium',
-    source: 'AI',
-    status: 'Draft',
-  },
-  {
-    id: '5',
-    title: 'Which LINQ operator returns a projection of each element in a sequence?',
-    subtopic: 'Query Operators',
-    type: 'Single Choice',
-    lesson: 'Select and Where',
-    difficulty: 'Easy',
-    source: 'Human',
-    status: 'Published',
-  },
-  {
-    id: '6',
-    title: 'What happens when an exception is thrown inside a finally block?',
-    subtopic: 'try / catch / finally',
-    type: 'Single Choice',
-    lesson: 'The finally Block',
-    difficulty: 'Hard',
-    source: 'AI',
-    status: 'In review',
-  },
-  {
-    id: '7',
-    title: 'Which collection guarantees O(1) average lookup by key?',
-    subtopic: 'Generic Collections',
-    type: 'Single Choice',
-    lesson: 'Dictionary<TKey, TValue>',
-    difficulty: 'Medium',
-    source: 'AI',
-    status: 'Approved',
+    question_type: 'fill_in_blank',
+    lesson_title: 'virtual, override, sealed',
+    difficulty: 'medium',
+    is_ai_generated: true,
+    status: 'draft',
+    created_at: '2026-05-21T14:00:00Z',
   },
 ];
 
 function DifficultyBadge({ level }: { level: DifficultyLevel }) {
+  const formatted = level.charAt(0).toUpperCase() + level.slice(1);
   return (
-    <span
-      className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${DIFFICULTY_STYLES[level]}`}
-    >
-      {level}
+    <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${DIFFICULTY_STYLES[level]}`}>
+      {formatted}
     </span>
   );
 }
 
 function StatusBadge({ status }: { status: QuestionStatus }) {
-  const current = STATUS_CONFIGS[status];
-
+  const current = STATUS_CONFIGS[status] || STATUS_CONFIGS.draft;
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${current.bg}`}
-    >
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${current.bg}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${current.dot}`} />
-      {status}
+      {current.label}
     </span>
   );
 }
@@ -130,7 +105,6 @@ export default function QuestionBankPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      {/* Header & Action Buttons */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
@@ -159,7 +133,6 @@ export default function QuestionBankPage() {
         </div>
       </div>
 
-      {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-100 bg-[#FFFAFC]/50 p-4 shadow-sm">
         <div className="relative min-w-[240px] flex-1">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -187,7 +160,6 @@ export default function QuestionBankPage() {
             <ChevronDown className="h-4 w-4 text-gray-400" />
           </button>
 
-          {/* Active Highlighted Filter */}
           <button
             type="button"
             className="inline-flex h-10 items-center justify-between gap-2 rounded-xl border border-teal-600 bg-teal-50/40 px-3.5 text-sm font-medium text-teal-900 transition"
@@ -198,7 +170,6 @@ export default function QuestionBankPage() {
         </div>
       </div>
 
-      {/* Data Table */}
       <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-[#FFFAFC]/50 shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-gray-600">
@@ -214,25 +185,22 @@ export default function QuestionBankPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {questions.map((q) => (
-                <tr
-                  key={q.id}
-                  className="transition-colors hover:bg-gray-50/80"
-                >
+                <tr key={q.id} className="transition-colors hover:bg-gray-50/80">
                   <td className="max-w-md py-4 pl-6 pr-4">
-                    <p className="font-medium text-gray-900 line-clamp-1">{q.title}</p>
-                    <p className="text-xs text-gray-400">{q.subtopic}</p>
+                    <p className="font-medium text-gray-900 line-clamp-1">{q.content}</p>
+                    <p className="text-xs text-gray-400">{q.subtopic || 'General'}</p>
                   </td>
                   <td className="whitespace-nowrap px-4 py-4 text-gray-500">
-                    {q.type}
+                    {TYPE_LABELS[q.question_type] || q.question_type}
                   </td>
                   <td className="whitespace-nowrap px-4 py-4 text-gray-500">
-                    {q.lesson}
+                    {q.lesson_title || 'N/A'}
                   </td>
                   <td className="whitespace-nowrap px-4 py-4">
                     <DifficultyBadge level={q.difficulty} />
                   </td>
                   <td className="whitespace-nowrap px-4 py-4">
-                    {q.source === 'AI' ? (
+                    {q.is_ai_generated ? (
                       <span className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700">
                         <Sparkles className="h-3 w-3 text-sky-500" />
                         AI

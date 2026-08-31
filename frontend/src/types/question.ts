@@ -1,30 +1,46 @@
+// src/types/question.ts
+
 export type QuestionType =
-  | 'Single Choice'
-  | 'Multiple Choice'
-  | 'True / False'
-  | 'Fill in the Blank'
-  | 'Coding';
+  | 'single_choice'
+  | 'multiple_choice'
+  | 'true_false'
+  | 'fill_in_blank';
 
-export type DifficultyLevel = 'Easy' | 'Medium' | 'Hard';
+export type DifficultyLevel = 'easy' | 'medium' | 'hard';
 
-export type QuestionSource = 'Human' | 'AI';
+export type QuestionStatus = 'draft' | 'approved';
 
-export type QuestionStatus = 'Published' | 'Approved' | 'In review' | 'Draft';
+export interface QuestionOption {
+  id: string;
+  question_id: string;
+  option_text: string;
+  is_correct: boolean;
+  order_index: number;
+}
 
 export interface QuestionItem {
   id: string;
-  title: string;
-  subtopic: string;
-  type: QuestionType;
-  lesson: string;
+  course_id: string;
+  chapter_id?: string | null;
+  lesson_id?: string | null;
+  question_type: QuestionType;
   difficulty: DifficultyLevel;
-  source: QuestionSource;
+  content: string;
+  explanation?: string | null;
   status: QuestionStatus;
+  is_ai_generated: boolean;
+  created_at: string;
+
+  // Các trường DTO/UI phục vụ hiển thị trên page.tsx
+  subtopic?: string;
+  lesson_title?: string;
+  course_title?: string;
+  options?: QuestionOption[];
 }
 
 export interface QuestionFilters {
-  search: string;
-  course: string;
-  difficulty: string;
-  source: string;
+  search?: string;
+  course_id?: string;
+  difficulty?: DifficultyLevel | 'all';
+  is_ai_generated?: boolean | 'all';
 }
