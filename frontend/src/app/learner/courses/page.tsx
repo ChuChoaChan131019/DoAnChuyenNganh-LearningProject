@@ -211,9 +211,9 @@ export default function BrowseCoursesPage() {
 
               <div className="mt-auto border-t border-[#dfe6df] pt-4">
                 {course.status === 'Completed' ? (
-                  <button className="flex items-center gap-1 text-[14px] font-bold text-[#f7444e] hover:text-rose-600 transition-colors">
+                  <span className="flex items-center gap-1 text-[14px] font-bold text-[#f7444e]">
                     Review course <ArrowRight className="h-[14px] w-[14px]" />
-                  </button>
+                  </span>
                 ) : course.progress !== undefined && course.progress > 0 ? (
                   <div className="flex items-center gap-3">
                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-rose-100">
@@ -229,9 +229,9 @@ export default function BrowseCoursesPage() {
                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-rose-100" />
                   </div>
                 ) : (
-                  <button className="flex items-center gap-1 text-[14px] font-bold text-[#f7444e] hover:text-rose-600 transition-colors">
+                  <span className="flex items-center gap-1 text-[14px] font-bold text-[#f7444e]">
                     Start learning <ArrowRight className="h-[14px] w-[14px]" />
-                  </button>
+                  </span>
                 )}
               </div>
             </div>

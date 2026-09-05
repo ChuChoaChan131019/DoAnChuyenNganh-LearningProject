@@ -12,8 +12,8 @@ import {
   Layers,
   Settings2
 } from 'lucide-react';
-import { BankQuestion, DifficultyLevel, TestSettings } from '@/types/test-builder';
-
+import { BankQuestion, TestSettings } from '@/types/test-and-practice';
+import { DifficultyLevel, QuestionType } from '@/types/question';
 
 const STYLES = {
   // Page Container & Cards
@@ -25,11 +25,11 @@ const STYLES = {
   // Form Controls
   label: 'block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5',
   input:
-    'w-full text-sm  border border-gray-200 rounded-xl px-3.5 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition',
+    'w-full text-sm bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition',
   textarea:
-    'w-full text-sm border border-gray-200 rounded-xl p-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition leading-relaxed resize-y',
+    'w-full text-sm bg-white border border-gray-200 rounded-xl p-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition leading-relaxed resize-y',
   select:
-    'w-full text-sm  border border-gray-200 rounded-xl px-3.5 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition',
+    'w-full text-sm bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition',
 
   // Buttons & Actions
   primaryBtn:
@@ -45,13 +45,13 @@ const STYLES = {
   bankItemCard:
     'p-3 rounded-xl border border-gray-100 hover:border-gray-200 bg-gray-50/40 hover:bg-white transition-all space-y-2.5',
   selectedItemCard:
-    'p-3 rounded-xl border border-gray-200 bg-white/50 hover:border-gray-300 transition-all flex items-start gap-2.5 group',
+    'p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 transition-all flex items-start gap-2.5 group',
 
   // Dynamic Badges
   difficultyBadges: {
-    Easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
-    Medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
-    Hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
+    easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+    medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
+    hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
   },
 
   // Toggle Switch
@@ -65,84 +65,92 @@ const STYLES = {
     }`
 };
 
+const TYPE_LABELS: Record<QuestionType, string> = {
+  single_choice: 'Single Choice',
+  multiple_choice: 'Multiple Choice',
+  true_false: 'True / False',
+  fill_in_blank: 'Fill in the Blank',
+};
+
 // ==========================================
-// MOCK DATA
+// MOCK DATA (Chuẩn hóa UUID & check constraints)
 // ==========================================
 const INITIAL_BANK_QUESTIONS: BankQuestion[] = [
   {
-    id: '1',
+    id: 'b1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c01',
     title: 'Which access modifier makes a member visible only inside the declaring class?',
-    type: 'Single Choice',
+    type: 'single_choice',
     lesson: 'Access Modifiers',
-    difficulty: 'Easy',
+    difficulty: 'easy',
   },
   {
-    id: '2',
+    id: 'b1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c02',
     title: 'Select all statements that are true about interfaces in C#.',
-    type: 'Multiple Choice',
+    type: 'multiple_choice',
     lesson: 'Interfaces',
-    difficulty: 'Medium',
+    difficulty: 'medium',
   },
   {
-    id: '3',
+    id: 'b1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c03',
     title: 'A struct in C# is a reference type.',
-    type: 'True / False',
+    type: 'true_false',
     lesson: 'Data Types',
-    difficulty: 'Easy',
+    difficulty: 'easy',
   },
   {
-    id: '4',
+    id: 'b1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c04',
     title: 'Complete the code: the keyword used to prevent further overriding of a virtual member is ______.',
-    type: 'Fill in the Blank',
+    type: 'fill_in_blank',
     lesson: 'virtual, override, sealed',
-    difficulty: 'Medium',
+    difficulty: 'medium',
   },
   {
-    id: '5',
+    id: 'b1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c05',
     title: 'Which LINQ operator returns a projection of each element in a sequence?',
-    type: 'Single Choice',
+    type: 'single_choice',
     lesson: 'Select and Where',
-    difficulty: 'Easy',
+    difficulty: 'easy',
   },
   {
-    id: '6',
+    id: 'b1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c06',
     title: 'What happens when an exception is thrown inside a finally block?',
-    type: 'Single Choice',
+    type: 'single_choice',
     lesson: 'The finally Block',
-    difficulty: 'Hard',
+    difficulty: 'hard',
   },
   {
-    id: '7',
+    id: 'b1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c07',
     title: 'Which collection guarantees O(1) average lookup by key?',
-    type: 'Single Choice',
+    type: 'single_choice',
     lesson: 'Dictionary<TKey, TValue>',
-    difficulty: 'Medium',
+    difficulty: 'medium',
   },
   {
-    id: '8',
+    id: 'b1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c08',
     title: 'async methods should generally return _____ instead of void.',
-    type: 'Fill in the Blank',
+    type: 'fill_in_blank',
     lesson: 'Async / Await',
-    difficulty: 'Hard',
+    difficulty: 'hard',
   },
 ];
 
 const COURSES = [
-  'Object-Oriented Programming in C#',
-  'C# Fundamentals',
-  'Collections and LINQ',
-  'Asynchronous Programming in .NET',
+  { id: 'c1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c10', title: 'Object-Oriented Programming in C#' },
+  { id: 'c1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c11', title: 'C# Fundamentals' },
+  { id: 'c1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c12', title: 'Collections and LINQ' },
+  { id: 'c1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c13', title: 'Asynchronous Programming in .NET' },
 ];
 
 // ==========================================
 // SUB-COMPONENTS
 // ==========================================
 function DifficultyBadge({ level }: { level: DifficultyLevel }) {
+  const formatted = level.charAt(0).toUpperCase() + level.slice(1);
   return (
     <span
       className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${STYLES.difficultyBadges[level]}`}
     >
-      {level}
+      {formatted}
     </span>
   );
 }
@@ -184,7 +192,8 @@ export default function TestBuilderPage() {
   const [settings, setSettings] = useState<TestSettings>({
     title: 'OOP Pillars Checkpoint',
     description: 'Checkpoint covering encapsulation, inheritance and polymorphism concepts.',
-    course: 'Object-Oriented Programming in C#',
+    course_id: COURSES[0].id,
+    course_title: COURSES[0].title,
     timeLimit: 35,
     passingScore: 70,
     randomiseQuestions: true,
@@ -292,7 +301,7 @@ export default function TestBuilderPage() {
                       <div className="flex items-center gap-1.5">
                         <DifficultyBadge level={q.difficulty} />
                         <span className="text-[10px] text-gray-400 truncate max-w-[110px]">
-                          {q.type}
+                          {TYPE_LABELS[q.type]}
                         </span>
                       </div>
                       <button
@@ -346,7 +355,7 @@ export default function TestBuilderPage() {
                       <div className="flex items-center gap-2 mt-1.5">
                         <DifficultyBadge level={q.difficulty} />
                         <span className="text-[11px] text-gray-400 truncate">
-                          {q.type} · {q.lesson}
+                          {TYPE_LABELS[q.type]} · {q.lesson}
                         </span>
                       </div>
                     </div>
@@ -401,7 +410,7 @@ export default function TestBuilderPage() {
               <label className={STYLES.label}>Description</label>
               <textarea
                 rows={2}
-                value={settings.description}
+                value={settings.description || ''}
                 onChange={(e) => setSettings({ ...settings, description: e.target.value })}
                 placeholder="Short description of the test..."
                 className={STYLES.textarea}
@@ -411,13 +420,20 @@ export default function TestBuilderPage() {
             <div>
               <label className={STYLES.label}>Course</label>
               <select
-                value={settings.course}
-                onChange={(e) => setSettings({ ...settings, course: e.target.value })}
+                value={settings.course_id}
+                onChange={(e) => {
+                  const selectedCourse = COURSES.find((c) => c.id === e.target.value);
+                  setSettings({
+                    ...settings,
+                    course_id: e.target.value,
+                    course_title: selectedCourse ? selectedCourse.title : ''
+                  });
+                }}
                 className={STYLES.select}
               >
                 {COURSES.map((course) => (
-                  <option key={course} value={course}>
-                    {course}
+                  <option key={course.id} value={course.id}>
+                    {course.title}
                   </option>
                 ))}
               </select>

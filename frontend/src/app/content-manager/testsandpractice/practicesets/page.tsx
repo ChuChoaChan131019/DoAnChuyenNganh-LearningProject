@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { FlaskConical, Plus } from 'lucide-react';
-import { PracticeSetItem, DifficultyLevel } from '@/types/practice';
+import { PracticeSetItem } from '@/types/test-and-practice';
+import { DifficultyLevel } from '@/types/question';
 
 // ==========================================
 // CENTRALIZED STYLES (Đầu file)
@@ -18,9 +19,9 @@ const STYLES = {
 
   // Dynamic Badges (Pill shape)
   difficultyBadges: {
-    Easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
-    Medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
-    Hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
+    easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+    medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
+    hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
   },
 
   // Icon Container
@@ -32,55 +33,55 @@ const STYLES = {
 };
 
 // ==========================================
-// MOCK DATA
+// MOCK DATA (Chuẩn hóa UUID & CHECK constraints)
 // ==========================================
 const SAMPLE_PRACTICE_SETS: PracticeSetItem[] = [
   {
-    id: '1',
+    id: 'f1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c01',
     title: 'C# Fundamentals — Final Assessment',
     course: 'C# Fundamentals',
     questionCount: 40,
-    difficulty: 'Medium',
+    difficulty: 'medium',
     averageScore: 78,
   },
   {
-    id: '2',
+    id: 'f1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c02',
     title: 'Variables & Data Types Quiz',
     course: 'C# Fundamentals',
     questionCount: 15,
-    difficulty: 'Easy',
+    difficulty: 'easy',
     averageScore: 86,
   },
   {
-    id: '3',
+    id: 'f1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c03',
     title: 'OOP Pillars Checkpoint',
     course: 'OOP in C#',
     questionCount: 25,
-    difficulty: 'Medium',
+    difficulty: 'medium',
     averageScore: 71,
   },
   {
-    id: '4',
+    id: 'f1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c04',
     title: 'Inheritance & Polymorphism Deep Dive',
     course: 'OOP in C#',
     questionCount: 30,
-    difficulty: 'Hard',
+    difficulty: 'hard',
     averageScore: 0,
   },
   {
-    id: '5',
+    id: 'f1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c05',
     title: 'LINQ Practice Set',
     course: 'Collections and LINQ',
     questionCount: 20,
-    difficulty: 'Medium',
+    difficulty: 'medium',
     averageScore: 74,
   },
   {
-    id: '6',
+    id: 'f1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c06',
     title: 'Exception Handling Mock Test',
     course: 'Exception Handling in C#',
     questionCount: 18,
-    difficulty: 'Hard',
+    difficulty: 'hard',
     averageScore: 0,
   },
 ];
@@ -89,11 +90,12 @@ const SAMPLE_PRACTICE_SETS: PracticeSetItem[] = [
 // SUB-COMPONENTS
 // ==========================================
 function DifficultyBadge({ level }: { level: DifficultyLevel }) {
+  const formatted = level.charAt(0).toUpperCase() + level.slice(1);
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold ${STYLES.difficultyBadges[level]}`}
+      className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold capitalize ${STYLES.difficultyBadges[level]}`}
     >
-      {level}
+      {formatted}
     </span>
   );
 }

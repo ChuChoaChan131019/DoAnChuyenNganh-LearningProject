@@ -7,7 +7,7 @@ import {
   TestScoreChartData,
   StruggleTopic,
   RecentAttemptSummary,
-} from '@/types/analytics';
+} from '@/types/test-and-practice';
 
 // ==========================================
 // CENTRALIZED STYLES (Đầu file)
@@ -35,7 +35,8 @@ const STYLES = {
   // Container & Cards
   pageContainer: 'mx-auto max-w-7xl space-y-6 pb-12',
   card: 'bg-[#FFFAFC]/50 border border-gray-200/80 rounded-2xl p-6 shadow-xs',
-  cardHeaderWithDivider: 'border-b border-gray-100 px-6 py-4 -mx-6 -mt-6 mb-5 flex items-center justify-between',
+  cardHeaderWithDivider:
+    'border-b border-gray-100 px-6 py-4 -mx-6 -mt-6 mb-5 flex items-center justify-between',
   cardTitle: 'font-semibold text-gray-900 text-sm sm:text-base tracking-tight',
 
   // Progress Bar
@@ -43,12 +44,13 @@ const STYLES = {
   progressBar: 'h-full bg-[#F7444E] rounded-full transition-all duration-500',
 
   // Table
-  tableThead: 'border-b border-gray-100 bg-transparent text-xs font-semibold uppercase tracking-wider text-gray-500',
+  tableThead:
+    'border-b border-gray-100 bg-transparent text-xs font-semibold uppercase tracking-wider text-gray-500',
   tableTr: 'transition-colors hover:bg-gray-50/70',
 };
 
 // ==========================================
-// MOCK DATA
+// MOCK DATA (Chuẩn hóa UUID)
 // ==========================================
 const METRICS_DATA: MetricOverview = {
   totalAttempts: 1499,
@@ -77,42 +79,42 @@ const STRUGGLE_TOPICS: StruggleTopic[] = [
 
 const RECENT_ATTEMPTS: RecentAttemptSummary[] = [
   {
-    id: '1',
+    id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c11',
     testTitle: 'C# Fundamentals — Final Assessment',
     courseName: 'C# Fundamentals',
     attemptsCount: 412,
     avgScore: 78,
   },
   {
-    id: '2',
+    id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c12',
     testTitle: 'Variables & Data Types Quiz',
     courseName: 'C# Fundamentals',
     attemptsCount: 658,
     avgScore: 86,
   },
   {
-    id: '3',
+    id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c13',
     testTitle: 'OOP Pillars Checkpoint',
     courseName: 'OOP in C#',
     attemptsCount: 240,
     avgScore: 71,
   },
   {
-    id: '4',
+    id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c14',
     testTitle: 'Inheritance & Polymorphism Deep Dive',
     courseName: 'OOP in C#',
     attemptsCount: 0,
     avgScore: 0,
   },
   {
-    id: '5',
+    id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c15',
     testTitle: 'LINQ Practice Set',
     courseName: 'Collections and LINQ',
     attemptsCount: 189,
     avgScore: 74,
   },
   {
-    id: '6',
+    id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c16',
     testTitle: 'Exception Handling Mock Test',
     courseName: 'Exception Handling in C#',
     attemptsCount: 0,
@@ -142,13 +144,15 @@ export default function ResultsAnalyticsPage() {
         <div className={STYLES.card}>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500">Total attempts</span>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.attempts.bg}`}>
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.attempts.bg}`}
+            >
               <Users className={`h-4 w-4 ${STAT_CARD_VARIANTS.attempts.iconColor}`} />
             </div>
           </div>
           <div className="mt-2">
             <span className="text-3xl font-bold tracking-tight text-gray-900">
-              {METRICS_DATA.totalAttempts.toLocaleString()}
+              {METRICS_DATA.totalAttempts.toLocaleString('en-US')}
             </span>
           </div>
           <p className="text-xs font-medium text-emerald-600 mt-1">
@@ -160,7 +164,9 @@ export default function ResultsAnalyticsPage() {
         <div className={STYLES.card}>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500">Average score</span>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.score.bg}`}>
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.score.bg}`}
+            >
               <TrendingUp className={`h-4 w-4 ${STAT_CARD_VARIANTS.score.iconColor}`} />
             </div>
           </div>
@@ -178,7 +184,9 @@ export default function ResultsAnalyticsPage() {
         <div className={STYLES.card}>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500">Pass rate</span>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.passRate.bg}`}>
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.passRate.bg}`}
+            >
               <Award className={`h-4 w-4 ${STAT_CARD_VARIANTS.passRate.iconColor}`} />
             </div>
           </div>
@@ -193,7 +201,9 @@ export default function ResultsAnalyticsPage() {
         <div className={STYLES.card}>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500">Weakest topic</span>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.weakest.bg}`}>
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.weakest.bg}`}
+            >
               <Target className={`h-4 w-4 ${STAT_CARD_VARIANTS.weakest.iconColor}`} />
             </div>
           </div>
@@ -207,19 +217,15 @@ export default function ResultsAnalyticsPage() {
 
       {/* Analytics Row: 2 Cột có chiều cao bằng nhau */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
         {/* Cột trái: Average score by test (Bar Chart) */}
         <div className={`lg:col-span-7 ${STYLES.card} flex flex-col justify-between`}>
           <div>
-            {/* Header có gạch ngăn cách */}
             <div className={STYLES.cardHeaderWithDivider}>
               <h2 className={STYLES.cardTitle}>Average score by test</h2>
             </div>
 
             <div className="space-y-4 pt-1">
-              {/* Khung vẽ biểu đồ */}
               <div className="relative h-56 w-full">
-                {/* Các đường kẻ ngang tuyệt đối (100, 75, 50, 25, 0) */}
                 {[
                   { val: 100, top: '0%' },
                   { val: 75, top: '25%' },
@@ -239,7 +245,6 @@ export default function ResultsAnalyticsPage() {
                   </div>
                 ))}
 
-                {/* Các cột Bar: Chạm chuẩn xác 100% vào vạch 0 */}
                 <div className="absolute inset-0 left-7 right-0 flex items-end justify-between gap-2 sm:gap-4 px-3">
                   {CHART_DATA.map((item, index) => (
                     <div key={index} className="flex-1 flex justify-center items-end h-full">
@@ -254,7 +259,6 @@ export default function ResultsAnalyticsPage() {
                 </div>
               </div>
 
-              {/* Nhãn trục X */}
               <div className="flex justify-between pl-7 gap-2 sm:gap-4 px-3 pt-1">
                 {CHART_DATA.map((item, index) => (
                   <div key={index} className="flex-1 text-center">
@@ -271,7 +275,6 @@ export default function ResultsAnalyticsPage() {
         {/* Cột phải: Topics students struggle with */}
         <div className={`lg:col-span-5 ${STYLES.card} flex flex-col justify-between`}>
           <div>
-            {/* Header có gạch ngăn cách */}
             <div className={STYLES.cardHeaderWithDivider}>
               <h2 className={STYLES.cardTitle}>Topics students struggle with</h2>
             </div>
@@ -280,8 +283,12 @@ export default function ResultsAnalyticsPage() {
               {STRUGGLE_TOPICS.map((topicItem, index) => (
                 <div key={index}>
                   <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-semibold text-gray-900 text-sm">{topicItem.topic}</span>
-                    <span className="text-gray-500 font-medium text-xs">{topicItem.accuracy}%</span>
+                    <span className="font-semibold text-gray-900 text-sm">
+                      {topicItem.topic}
+                    </span>
+                    <span className="text-gray-500 font-medium text-xs">
+                      {topicItem.accuracy}%
+                    </span>
                   </div>
                   <div className={STYLES.progressTrack}>
                     <div
@@ -294,12 +301,10 @@ export default function ResultsAnalyticsPage() {
             </div>
           </div>
         </div>
-
       </div>
 
       {/* Bottom Section: Recent attempts Table */}
       <div className={STYLES.card}>
-        {/* Header có gạch ngăn cách */}
         <div className={STYLES.cardHeaderWithDivider}>
           <h2 className={STYLES.cardTitle}>Recent attempts</h2>
         </div>

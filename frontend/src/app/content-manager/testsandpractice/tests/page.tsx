@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { Plus, Clock, Users } from 'lucide-react';
-import { TestItem, DifficultyLevel, TestStatus } from '@/types/test';
+import { TestItem, TestStatus } from '@/types/test-and-practice';
+import { DifficultyLevel } from '@/types/question';
 
 // ==========================================
 // CENTRALIZED STYLES (Đầu file)
@@ -22,99 +23,122 @@ const STYLES = {
 
   // Dynamic Badges
   difficultyBadges: {
-    Easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
-    Medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
-    Hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
+    easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+    medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
+    hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
   },
   statusBadges: {
-    Published: {
+    published: {
       bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
       dot: 'bg-emerald-500',
+      label: 'Published',
     },
-    Approved: {
+    approved: {
       bg: 'bg-sky-50 text-sky-700 border-sky-200/60',
       dot: 'bg-sky-500',
+      label: 'Approved',
     },
-    'In review': {
-      bg: 'bg-amber-50 text-amber-700 border-amber-200/60',
-      dot: 'bg-amber-500',
-    },
-    Draft: {
+    draft: {
       bg: 'bg-gray-100 text-gray-600 border-gray-200',
       dot: 'bg-gray-400',
+      label: 'Draft',
     },
   },
 };
 
 // ==========================================
-// MOCK DATA (6 mẫu ban đầu)
+// MOCK DATA (Chuẩn hóa UUID & CHECK constraints)
 // ==========================================
 const SAMPLE_TESTS: TestItem[] = [
   {
-    id: '1',
+    id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c11',
     title: 'C# Fundamentals — Final Assessment',
-    createdAt: '2026-05-18',
-    course: 'C# Fundamentals',
-    questionsCount: 40,
-    durationMinutes: 60,
-    difficulty: 'Medium',
-    status: 'Published',
-    attemptsCount: 412,
+    created_at: '2026-05-18',
+    course_title: 'C# Fundamentals',
+    questions_count: 40,
+    duration_minutes: 60,
+    pass_score: 5.0,
+    shuffle_questions: true,
+    shuffle_options: true,
+    is_active: true,
+    difficulty: 'medium',
+    status: 'published',
+    attempts_count: 412,
   },
   {
-    id: '2',
+    id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c12',
     title: 'Variables & Data Types Quiz',
-    createdAt: '2026-05-22',
-    course: 'C# Fundamentals',
-    questionsCount: 15,
-    durationMinutes: 20,
-    difficulty: 'Easy',
-    status: 'Published',
-    attemptsCount: 658,
+    created_at: '2026-05-22',
+    course_title: 'C# Fundamentals',
+    questions_count: 15,
+    duration_minutes: 20,
+    pass_score: 5.0,
+    shuffle_questions: true,
+    shuffle_options: true,
+    is_active: true,
+    difficulty: 'easy',
+    status: 'published',
+    attempts_count: 658,
   },
   {
-    id: '3',
+    id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c13',
     title: 'OOP Pillars Checkpoint',
-    createdAt: '2026-06-09',
-    course: 'OOP in C#',
-    questionsCount: 25,
-    durationMinutes: 35,
-    difficulty: 'Medium',
-    status: 'Approved',
-    attemptsCount: 240,
+    created_at: '2026-06-09',
+    course_title: 'OOP in C#',
+    questions_count: 25,
+    duration_minutes: 35,
+    pass_score: 6.0,
+    shuffle_questions: true,
+    shuffle_options: true,
+    is_active: true,
+    difficulty: 'medium',
+    status: 'approved',
+    attempts_count: 240,
   },
   {
-    id: '4',
+    id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c14',
     title: 'Inheritance & Polymorphism Deep Dive',
-    createdAt: '2026-07-02',
-    course: 'OOP in C#',
-    questionsCount: 30,
-    durationMinutes: 45,
-    difficulty: 'Hard',
-    status: 'Draft',
-    attemptsCount: 0,
+    created_at: '2026-07-02',
+    course_title: 'OOP in C#',
+    questions_count: 30,
+    duration_minutes: 45,
+    pass_score: 7.0,
+    shuffle_questions: true,
+    shuffle_options: true,
+    is_active: false,
+    difficulty: 'hard',
+    status: 'draft',
+    attempts_count: 0,
   },
   {
-    id: '5',
+    id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c15',
     title: 'LINQ Practice Set',
-    createdAt: '2026-07-15',
-    course: 'Collections and LINQ',
-    questionsCount: 20,
-    durationMinutes: 25,
-    difficulty: 'Medium',
-    status: 'Published',
-    attemptsCount: 189,
+    created_at: '2026-07-15',
+    course_title: 'Collections and LINQ',
+    questions_count: 20,
+    duration_minutes: 25,
+    pass_score: 5.0,
+    shuffle_questions: true,
+    shuffle_options: true,
+    is_active: true,
+    difficulty: 'medium',
+    status: 'published',
+    attempts_count: 189,
   },
   {
-    id: '6',
+    id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c16',
     title: 'Exception Handling Mock Test',
-    createdAt: '2026-08-03',
-    course: 'Exception Handling in C#',
-    questionsCount: 18,
-    durationMinutes: 30,
-    difficulty: 'Hard',
-    status: 'In review',
-    attemptsCount: 0,
+    created_at: '2026-08-03',
+    course_title: 'Exception Handling in C#',
+    questions_count: 18,
+    duration_minutes: 30,
+    pass_score: 6.0,
+    shuffle_questions: true,
+    shuffle_options: true,
+    is_active: false,
+    difficulty: 'hard',
+    status: 'draft',
+    attempts_count: 0,
   },
 ];
 
@@ -122,24 +146,25 @@ const SAMPLE_TESTS: TestItem[] = [
 // SUB-COMPONENTS
 // ==========================================
 function DifficultyBadge({ level }: { level: DifficultyLevel }) {
+  const formatted = level.charAt(0).toUpperCase() + level.slice(1);
   return (
     <span
       className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${STYLES.difficultyBadges[level]}`}
     >
-      {level}
+      {formatted}
     </span>
   );
 }
 
 function StatusBadge({ status }: { status: TestStatus }) {
-  const current = STYLES.statusBadges[status] || STYLES.statusBadges.Draft;
+  const current = STYLES.statusBadges[status] || STYLES.statusBadges.draft;
 
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${current.bg}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${current.dot}`} />
-      {status}
+      {current.label}
     </span>
   );
 }
@@ -202,22 +227,22 @@ export default function TestsPage() {
                       {test.title}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      Created {test.createdAt}
+                      Created {test.created_at}
                     </p>
                   </td>
 
                   <td className="whitespace-nowrap px-4 py-4 text-gray-700 font-medium text-xs sm:text-sm">
-                    {test.course}
+                    {test.course_title}
                   </td>
 
                   <td className="whitespace-nowrap px-4 py-4 text-gray-600 font-medium">
-                    {test.questionsCount}
+                    {test.questions_count}
                   </td>
 
                   <td className="whitespace-nowrap px-4 py-4 text-gray-600">
                     <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm">
                       <Clock className="h-3.5 w-3.5 text-gray-400" />
-                      {test.durationMinutes} min
+                      {test.duration_minutes} min
                     </span>
                   </td>
 
@@ -232,7 +257,7 @@ export default function TestsPage() {
                   <td className="whitespace-nowrap py-4 pl-4 pr-6 text-gray-600">
                     <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm">
                       <Users className="h-3.5 w-3.5 text-gray-400" />
-                      {test.attemptsCount}
+                      {test.attempts_count}
                     </span>
                   </td>
                 </tr>
