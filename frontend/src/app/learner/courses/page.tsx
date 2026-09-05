@@ -29,7 +29,7 @@ const COURSES = [
   },
   {
     id: 2,
-    slug: 'oop-in-csharp',
+    slug: 'object-oriented-programming-in-csharp',
     title: 'Object-Oriented Programming in C#',
     description: 'Model real problems with classes and objects. Encapsulation, inheritance, polymorphism, abstract...',
     level: 'Intermediate',
@@ -68,7 +68,7 @@ const COURSES = [
   },
   {
     id: 5,
-    slug: 'advanced-csharp',
+    slug: 'advanced-csharp-delegates-events-async',
     title: 'Advanced C#: Delegates, Events & Async',
     description: 'Delegates, lambda expressions, events, Task-based asynchronous programming and performance tips.',
     level: 'Advanced',
@@ -81,7 +81,7 @@ const COURSES = [
   },
   {
     id: 6,
-    slug: 'csharp-oop-interview-prep',
+    slug: 'csharp-oop-interview-preparation',
     title: 'C# & OOP Interview Preparation',
     description: 'Curated question sets and ... the most asked C# and ...',
     level: 'Advanced',
@@ -158,17 +158,11 @@ export default function BrowseCoursesPage() {
             (activeFilter === 'Error Handling & Debugging' && course.title.includes('Exception'));
           return matchesSearch && matchesFilter;
         }).map((course) => (
-          <div
+          <Link
+            href={`/learner/courses/${course.slug}`}
             key={course.id}
-            className="relative flex flex-col overflow-hidden rounded-[16px] border border-[#dfe6df] bg-white shadow-[0_8px_18px_rgba(0,44,62,0.04)] transition-shadow hover:shadow-md cursor-pointer"
+            className="block flex flex-col overflow-hidden rounded-[16px] border border-[#dfe6df] bg-white shadow-[0_8px_18px_rgba(0,44,62,0.04)] transition-shadow hover:shadow-md"
           >
-            {/* Invisible overlay Link phủ toàn bộ bề mặt card */}
-            <Link
-              href={`/learner/courses/${course.slug}`}
-              className="absolute inset-0 z-10"
-              aria-label={course.title}
-            />
-
             {/* Top Gradient Area */}
             <div className={`relative h-[112px] bg-gradient-to-br ${course.gradient} p-4`}>
               <div className="flex items-start justify-between">
@@ -241,7 +235,7 @@ export default function BrowseCoursesPage() {
                 )}
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

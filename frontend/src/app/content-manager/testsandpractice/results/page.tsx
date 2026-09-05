@@ -1,5 +1,3 @@
-<<<<<<< Updated upstream
-=======
 'use client';
 
 import React from 'react';
@@ -345,4 +343,3 @@ export default function ResultsAnalyticsPage() {
     </div>
   );
 }
->>>>>>> Stashed changes

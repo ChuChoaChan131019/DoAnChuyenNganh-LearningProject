@@ -30,12 +30,14 @@ const STYLES = {
   optionRow: (isCorrect: boolean) =>
     `flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 ${
       isCorrect
-        ? 'border-emerald-400 bg-emerald-50/40 ring-1 ring-emerald-400/20'
+        ? 'border-emerald-300 bg-emerald-50/70 text-emerald-900 font-medium shadow-sm'
         : 'border-gray-200 bg-white hover:border-gray-300'
     }`,
   optionBadge: (isCorrect: boolean) =>
-    `w-7 h-7 flex-shrink-0 flex items-center justify-center font-bold text-xs rounded-lg transition-colors ${
-      isCorrect ? 'bg-emerald-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600'
+    `w-7 h-7 flex-shrink-0 flex items-center justify-center font-bold text-xs rounded-full border transition-colors ${
+      isCorrect
+        ? 'border-emerald-400 bg-white text-emerald-700'
+        : 'border-gray-300 bg-gray-100 text-gray-600'
     }`,
   markBtn: (isCorrect: boolean) =>
     isCorrect
@@ -55,7 +57,7 @@ const STYLES = {
     }`,
   previewOptionCircle: (isSelected: boolean) =>
     `w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-semibold transition ${
-      isSelected ? 'bg-emerald-600 text-white' : 'border border-gray-300 text-gray-500'
+      isSelected ? 'bg-white text-gray-500' : 'border border-gray-300 text-gray-500'
     }`
 };
 

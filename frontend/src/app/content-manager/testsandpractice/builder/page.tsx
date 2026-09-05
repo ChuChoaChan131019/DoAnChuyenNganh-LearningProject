@@ -25,19 +25,11 @@ const STYLES = {
   // Form Controls
   label: 'block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5',
   input:
-<<<<<<< Updated upstream
     'w-full text-sm bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition',
-=======
-    'w-full text-sm border border-gray-200 rounded-xl px-3.5 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition',
->>>>>>> Stashed changes
   textarea:
     'w-full text-sm bg-white border border-gray-200 rounded-xl p-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition leading-relaxed resize-y',
   select:
-<<<<<<< Updated upstream
     'w-full text-sm bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition',
-=======
-    'w-full text-sm border border-gray-200 rounded-xl px-3.5 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 focus:border-[#F7444E] transition',
->>>>>>> Stashed changes
 
   // Buttons & Actions
   primaryBtn:

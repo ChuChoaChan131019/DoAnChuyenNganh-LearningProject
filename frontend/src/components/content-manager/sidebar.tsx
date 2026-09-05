@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   FolderTree,
@@ -25,26 +25,26 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-} from 'lucide-react';
+} from "lucide-react";
 
-const SIDEBAR_WIDTHS: Record<'collapsed' | 'expanded', string> = {
-  collapsed: 'w-20',
-  expanded: 'w-64',
+const SIDEBAR_WIDTHS: Record<"collapsed" | "expanded", string> = {
+  collapsed: "w-20",
+  expanded: "w-64",
 };
 
-const NAV_ITEM_STYLES: Record<'active' | 'inactive', string> = {
-  active: 'bg-[#173e4a] text-white shadow-xs',
-  inactive: 'text-slate-400/50 hover:bg-white/10 hover:text-white font-medium',
+const NAV_ITEM_STYLES: Record<"active" | "inactive", string> = {
+  active: "bg-[#173e4a] text-white shadow-xs",
+  inactive: "text-slate-400/50 hover:bg-white/10 hover:text-white font-medium",
 };
 
-const NAV_ICON_STYLES: Record<'active' | 'inactive', string> = {
-  active: 'text-red-400',
-  inactive: 'text-slate-400/50 group-hover:text-gray-200',
+const NAV_ICON_STYLES: Record<"active" | "inactive", string> = {
+  active: "text-red-400",
+  inactive: "text-slate-400/50 group-hover:text-gray-200",
 };
 
-const NAV_ITEM_ALIGNMENT: Record<'collapsed' | 'expanded', string> = {
-  collapsed: 'justify-center',
-  expanded: 'justify-between',
+const NAV_ITEM_ALIGNMENT: Record<"collapsed" | "expanded", string> = {
+  collapsed: "justify-center",
+  expanded: "justify-between",
 };
 
 interface SidebarProps {
@@ -64,57 +64,129 @@ interface NavGroup {
 
 const MENU_DATA: NavGroup[] = [
   {
-    group: 'OVERVIEW',
-    items: [{ label: 'Dashboard', href: '/content-manager/dashboard', icon: LayoutDashboard }],
-  },
-  {
-    group: 'LEARNING CONTENT',
+    group: "OVERVIEW",
     items: [
-      { label: 'Categories', href: '/content-manager/categories', icon: FolderTree },
-      { label: 'Courses', href: '/content-manager/courses', icon: BookOpen },
-      { label: 'Chapters', href: '/content-manager/chapters', icon: Bookmark },
-      { label: 'Lessons', href: '/content-manager/lessons', icon: FileText },
-      { label: 'Learning resources', href: '/content-manager/resources', icon: Boxes },
+      {
+        label: "Dashboard",
+        href: "/content-manager/dashboard",
+        icon: LayoutDashboard,
+      },
     ],
   },
   {
-    group: 'QUESTION BANK',
+    group: "LEARNING CONTENT",
     items: [
-      { label: 'Questions', href: '/content-manager/questions/bank', icon: HelpCircle },
-      { label: 'Question editor', href: '/content-manager/questions/editor', icon: Edit3 },
-      { label: 'Question review', href: '/content-manager/questions/review', icon: CheckSquare, badge: 12 },
+      {
+        label: "Categories",
+        href: "/content-manager/learning-content/categories",
+        icon: FolderTree,
+      },
+      {
+        label: "Courses",
+        href: "/content-manager/learning-content/courses",
+        icon: BookOpen,
+      },
+      {
+        label: "Chapters",
+        href: "/content-manager/learning-content/chapters",
+        icon: Bookmark,
+      },
+      {
+        label: "Lessons",
+        href: "/content-manager/learning-content/lessons",
+        icon: FileText,
+      },
+      {
+        label: "Learning resources",
+        href: "/content-manager/learning-content/resources",
+        icon: Boxes,
+      },
     ],
   },
   {
-    group: 'TESTS & PRACTICE',
+    group: "QUESTION BANK",
     items: [
-      { label: 'Tests', href: '/content-manager/testsandpractice/tests', icon: ListChecks },
-      { label: 'Test builder', href: '/content-manager/testsandpractice/builder', icon: Hammer },
-      { label: 'Practice sets', href: '/content-manager/testsandpractice/practicesets', icon: FlaskConical },
-      { label: 'Results', href: '/content-manager/testsandpractice/results', icon: BarChart2 },
+      {
+        label: "Questions",
+        href: "/content-manager/questions/bank",
+        icon: HelpCircle,
+      },
+      {
+        label: "Question editor",
+        href: "/content-manager/questions/editor",
+        icon: Edit3,
+      },
+      {
+        label: "Question review",
+        href: "/content-manager/questions/review",
+        icon: CheckSquare,
+        badge: 12,
+      },
     ],
   },
   {
-    group: 'AI',
+    group: "TESTS & PRACTICE",
     items: [
-      { label: 'AI content generator', href: '/content-manager/ai/content-generator', icon: Wand2 },
-      { label: 'AI question generator', href: '/content-manager/ai/question-generator', icon: Sparkles },
-      { label: 'AI review queue', href: '/content-manager/ai/review-queue', icon: Inbox, badge: 4 },
+      {
+        label: "Tests",
+        href: "/content-manager/testsandpractice/tests",
+        icon: ListChecks,
+      },
+      {
+        label: "Test builder",
+        href: "/content-manager/testsandpractice/builder",
+        icon: Hammer,
+      },
+      {
+        label: "Practice sets",
+        href: "/content-manager/testsandpractice/practicesets",
+        icon: FlaskConical,
+      },
+      {
+        label: "Results",
+        href: "/content-manager/testsandpractice/results",
+        icon: BarChart2,
+      },
     ],
   },
   {
-    group: 'SYSTEM',
+    group: "AI",
     items: [
-      { label: 'Search', href: '/content-manager/search', icon: Search },
-      { label: 'Notifications', href: '/content-manager/notifications', icon: Bell },
-      { label: 'Settings', href: '/content-manager/settings', icon: Settings },
+      {
+        label: "AI content generator",
+        href: "/content-manager/ai/content-generator",
+        icon: Wand2,
+      },
+      {
+        label: "AI question generator",
+        href: "/content-manager/ai/question-generator",
+        icon: Sparkles,
+      },
+      {
+        label: "AI review queue",
+        href: "/content-manager/ai/review-queue",
+        icon: Inbox,
+        badge: 4,
+      },
+    ],
+  },
+  {
+    group: "SYSTEM",
+    items: [
+      { label: "Search", href: "/content-manager/search", icon: Search },
+      {
+        label: "Notifications",
+        href: "/content-manager/notifications",
+        icon: Bell,
+      },
+      { label: "Settings", href: "/content-manager/settings", icon: Settings },
     ],
   },
 ];
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
-  const sidebarState = isCollapsed ? 'collapsed' : 'expanded';
+  const sidebarState = isCollapsed ? "collapsed" : "expanded";
 
   return (
     <aside
@@ -145,7 +217,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               {section.items.map((item) => {
                 const isActive = pathname.startsWith(item.href);
                 const Icon = item.icon;
-                const itemState = isActive ? 'active' : 'inactive';
+                const itemState = isActive ? "active" : "inactive";
 
                 return (
                   <Link
@@ -161,7 +233,9 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                       <Icon
                         className={`h-4 w-4 shrink-0 transition-colors ${NAV_ICON_STYLES[itemState]}`}
                       />
-                      {!isCollapsed && <span className="truncate">{item.label}</span>}
+                      {!isCollapsed && (
+                        <span className="truncate">{item.label}</span>
+                      )}
                     </div>
 
                     {!isCollapsed && item.badge !== undefined && (

@@ -1,5 +1,3 @@
-<<<<<<< Updated upstream
-=======
 'use client';
 
 import React, { useState } from 'react';
@@ -180,4 +178,3 @@ export default function PracticeSetsPage() {
     </div>
   );
 }
->>>>>>> Stashed changes

@@ -23,7 +23,7 @@ export function Topbar() {
       {/* Action Controls & Profile */}
       <div className="flex items-center gap-4">
         <Link
-          href="/student"
+          href="/learner/ai-tutor"
           className="text-sm font-medium text-gray-600 transition-colors hover:text-teal-700"
         >
           Student view
