@@ -7,47 +7,95 @@ export class AuthService {
 
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async register(email: string, password: string, role: string): Promise<any> {
+  async register(
+    email: string,
+    password: string,
+    role: string,
+    fullName?: string,
+  ): Promise<{ user: { id: string; email: string; role: string; fullName?: string } }> {
     // Chặn đăng ký admin qua API
     if (role === 'admin') {
-      throw new HttpException('Cannot register as admin', HttpStatus.FORBIDDEN);
+      throw new HttpException(
+        { error: { code: 'FORBIDDEN', message: 'Cannot register as admin' } },
+        HttpStatus.FORBIDDEN,
+      );
     }
 
     if (!['learner', 'content_manager'].includes(role)) {
-      throw new HttpException('Invalid role', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        { error: { code: 'INVALID_ROLE', message: 'Invalid role' } },
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const supabase = this.supabaseService.getClient();
 
-    // Tạo user trên Supabase Auth
+    // Tạo user trên Supabase Auth (truyền role vào user_metadata để trigger handle_new_user nhận diện đúng)
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
+      user_metadata: {
+        role,
+        ...(fullName ? { full_name: fullName } : {}),
+      },
     });
 
-    if (authError) {
-      this.logger.error(`Registration failed: ${authError.message}`);
-      throw new HttpException(authError.message, HttpStatus.BAD_REQUEST);
+    if (authError || !authData?.user) {
+      const errorMessage = authError?.message || 'Registration failed';
+      this.logger.error(`Registration failed: ${errorMessage}`);
+
+      const isDuplicate =
+        errorMessage.toLowerCase().includes('already') ||
+        (authError as any)?.status === 422;
+
+      if (isDuplicate) {
+        throw new HttpException(
+          { error: { code: 'USER_ALREADY_EXISTS', message: 'Email already registered' } },
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      throw new HttpException(
+        { error: { code: 'REGISTRATION_FAILED', message: errorMessage } },
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
-    // Tạo profile trong bảng profiles
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
+    // Đồng bộ profile trong bảng profiles (dùng upsert để tương thích an toàn cả khi có trigger tự động insert)
+    const { error: profileError } = await supabase.from('profiles').upsert(
+      {
         id: authData.user.id,
         role,
         failed_login_attempts: 0,
-      });
+      },
+      { onConflict: 'id' },
+    );
 
     if (profileError) {
       this.logger.error(`Profile creation failed: ${profileError.message}`);
-      // Rollback: xóa user vừa tạo
-      await supabase.auth.admin.deleteUser(authData.user.id);
-      throw new HttpException('Failed to create profile', HttpStatus.INTERNAL_SERVER_ERROR);
+      // Rollback: xóa profile và user vừa tạo
+      try {
+        await supabase.from('profiles').delete().eq('id', authData.user.id);
+        await supabase.auth.admin.deleteUser(authData.user.id);
+      } catch (rollbackErr: any) {
+        this.logger.warn(`Failed to rollback user ${authData.user.id}: ${rollbackErr?.message}`);
+      }
+
+      throw new HttpException(
+        { error: { code: 'FAILED_TO_CREATE_PROFILE', message: 'Failed to create profile' } },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
-    return { id: authData.user.id, email, role };
+    return {
+      user: {
+        id: authData.user.id,
+        email: authData.user.email ?? email,
+        role,
+        ...(fullName ? { fullName } : {}),
+      },
+    };
   }
 
   async login(email: string, password: string): Promise<any> {
