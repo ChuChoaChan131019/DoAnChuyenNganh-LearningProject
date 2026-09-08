@@ -2,6 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { authApi, ApiClientError } from '@/lib/api';
 import {
   Sparkles,
   Mail,
@@ -24,11 +27,12 @@ const BENEFITS = [
 ];
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<'manager' | 'student'>('student');
+  const [role, setRole] = useState<'learner' | 'content_manager'>('learner');
   const [agreed, setAgreed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -42,7 +46,7 @@ export default function RegisterPage() {
     return newErrors;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors = validate();
     if (Object.keys(newErrors).length > 0) {
@@ -51,11 +55,34 @@ export default function RegisterPage() {
     }
     setErrors({});
     setIsLoading(true);
-    // TODO: connect to backend register
-    setTimeout(() => {
+
+    try {
+      await authApi.register({
+        fullName: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        role,
+      });
+
+      toast.success('Đăng ký tài khoản thành công! Đang chuyển hướng...');
+      setTimeout(() => {
+        router.push(`/login?email=${encodeURIComponent(email.trim().toLowerCase())}`);
+      }, 1200);
+    } catch (err: unknown) {
       setIsLoading(false);
-      window.location.href = role === 'manager' ? '/content-manager/dashboard' : '/learner';
-    }, 1200);
+      if (err instanceof ApiClientError) {
+        if (err.code === 'USER_ALREADY_EXISTS') {
+          setErrors({
+            email: 'Email này đã được sử dụng. Vui lòng đăng nhập hoặc dùng email khác.',
+          });
+          toast.error('Email này đã được sử dụng. Vui lòng thử email khác.');
+          return;
+        }
+        toast.error(err.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+      } else {
+        toast.error('Có lỗi xảy ra trong quá trình đăng ký. Vui lòng thử lại.');
+      }
+    }
   };
 
   return (
@@ -85,10 +112,11 @@ export default function RegisterPage() {
         <div className="mt-6 flex rounded-xl border border-white/10 bg-white/5 p-1 gap-1">
           <button
             type="button"
-            id="register-role-student"
-            onClick={() => setRole('student')}
+            id="register-role-learner"
+            disabled={isLoading}
+            onClick={() => setRole('learner')}
             className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all ${
-              role === 'student'
+              role === 'learner'
                 ? 'bg-rose-500 text-white shadow-md shadow-rose-900/30'
                 : 'text-slate-400 hover:text-white'
             }`}
@@ -99,9 +127,10 @@ export default function RegisterPage() {
           <button
             type="button"
             id="register-role-manager"
-            onClick={() => setRole('manager')}
+            disabled={isLoading}
+            onClick={() => setRole('content_manager')}
             className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all ${
-              role === 'manager'
+              role === 'content_manager'
                 ? 'bg-rose-500 text-white shadow-md shadow-rose-900/30'
                 : 'text-slate-400 hover:text-white'
             }`}
@@ -124,10 +153,11 @@ export default function RegisterPage() {
               <input
                 id="register-fullname"
                 type="text"
+                disabled={isLoading}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Nguyễn Văn A"
-                className={`w-full rounded-xl border bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 backdrop-blur-sm transition focus:outline-none focus:ring-2 ${
+                className={`w-full rounded-xl border bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 backdrop-blur-sm transition focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                   errors.fullName
                     ? 'border-rose-500/60 focus:ring-rose-500/20'
                     : 'border-white/10 focus:border-rose-500/60 focus:ring-rose-500/20'
@@ -147,10 +177,11 @@ export default function RegisterPage() {
               <input
                 id="register-email"
                 type="email"
+                disabled={isLoading}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@university.edu"
-                className={`w-full rounded-xl border bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 backdrop-blur-sm transition focus:outline-none focus:ring-2 ${
+                className={`w-full rounded-xl border bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 backdrop-blur-sm transition focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                   errors.email
                     ? 'border-rose-500/60 focus:ring-rose-500/20'
                     : 'border-white/10 focus:border-rose-500/60 focus:ring-rose-500/20'
@@ -170,10 +201,11 @@ export default function RegisterPage() {
               <input
                 id="register-password"
                 type={showPassword ? 'text' : 'password'}
+                disabled={isLoading}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Min. 8 characters"
-                className={`w-full rounded-xl border bg-white/5 py-2.5 pl-10 pr-10 text-sm text-white placeholder-slate-500 backdrop-blur-sm transition focus:outline-none focus:ring-2 ${
+                className={`w-full rounded-xl border bg-white/5 py-2.5 pl-10 pr-10 text-sm text-white placeholder-slate-500 backdrop-blur-sm transition focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                   errors.password
                     ? 'border-rose-500/60 focus:ring-rose-500/20'
                     : 'border-white/10 focus:border-rose-500/60 focus:ring-rose-500/20'
@@ -181,8 +213,9 @@ export default function RegisterPage() {
               />
               <button
                 type="button"
+                disabled={isLoading}
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors disabled:opacity-50"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
