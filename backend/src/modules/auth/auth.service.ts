@@ -101,12 +101,28 @@ export class AuthService {
   async login(email: string, password: string): Promise<any> {
     const supabase = this.supabaseService.getClient();
 
-    // Kiểm tra tài khoản bị khóa
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('email', email)
-      .single();
+    // Tìm user_id theo email để kiểm tra trạng thái khóa và số lần đăng nhập thất bại
+    let profile: any = null;
+
+    try {
+      const { data: userListData } = await supabase.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
+      const foundUser = userListData?.users?.find(
+        (u) => u.email?.toLowerCase() === email.trim().toLowerCase(),
+      );
+      if (foundUser) {
+        const { data: p } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', foundUser.id)
+          .single();
+        profile = p;
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to pre-fetch profile for ${email}: ${err?.message}`);
+    }
 
     if (profile?.locked_until && new Date(profile.locked_until) > new Date()) {
       throw new HttpException(
@@ -116,11 +132,11 @@ export class AuthService {
     }
 
     // Đăng nhập qua Supabase Auth
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
 
     if (error) {
       // Tăng failed_login_attempts
-      if (profile) {
+      if (profile && profile.id) {
         const attempts = (profile.failed_login_attempts || 0) + 1;
         const updateData: any = { failed_login_attempts: attempts };
 
@@ -148,10 +164,25 @@ export class AuthService {
         .eq('id', data.user.id);
     }
 
+    // Lấy profile mới nhất nếu chưa có
+    if (!profile && data.user) {
+      const { data: p } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+      profile = p;
+    }
+
     return {
       access_token: data.session?.access_token,
       refresh_token: data.session?.refresh_token,
-      user: { id: data.user?.id, email: data.user?.email },
+      user: {
+        id: data.user?.id,
+        email: data.user?.email,
+        role: profile?.role ?? data.user?.user_metadata?.role ?? 'learner',
+        fullName: data.user?.user_metadata?.full_name ?? '',
+      },
     };
   }
 

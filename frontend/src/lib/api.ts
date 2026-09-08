@@ -1,4 +1,12 @@
-import { RegisterRequest, RegisterResponse, ApiSuccessResponse, ApiErrorResponse } from '../types/auth';
+import {
+  RegisterRequest,
+  RegisterResponse,
+  LoginRequest,
+  LoginResponse,
+  ApiSuccessResponse,
+  ApiErrorResponse,
+} from '../types/auth';
+import { getStoredToken } from './auth/session';
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 
@@ -21,6 +29,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
+
+  // Tự động gắn Bearer Token nếu có và chưa được chỉ định tường minh
+  const token = getStoredToken();
+  if (token && !headers['Authorization'] && !headers['authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   let response: Response;
   try {
@@ -63,6 +77,17 @@ export const authApi = {
     return request<RegisterResponse>('/api/v1/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload),
+    });
+  },
+  login: (payload: LoginRequest): Promise<LoginResponse> => {
+    return request<LoginResponse>('/api/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  logout: (): Promise<{ message: string }> => {
+    return request<{ message: string }>('/api/v1/auth/logout', {
+      method: 'POST',
     });
   },
 };
