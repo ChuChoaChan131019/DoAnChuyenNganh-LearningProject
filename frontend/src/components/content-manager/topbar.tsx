@@ -1,10 +1,19 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
-import { Search, Bell, Sun, Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Bell, LogOut, Search, Sun } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
 
 export function Topbar() {
+  const router = useRouter();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
+
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-gray-200/70 bg-[#F7F8F3] px-6">
       {/* Search Bar with Shortcut */}
@@ -22,12 +31,14 @@ export function Topbar() {
 
       {/* Action Controls & Profile */}
       <div className="flex items-center gap-4">
-        <Link
-          href="/learner/ai-tutor"
-          className="text-sm font-medium text-gray-600 transition-colors hover:text-teal-700"
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center gap-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-rose-600"
         >
-          Student view
-        </Link>
+          <LogOut className="h-4 w-4" />
+          Log out
+        </button>
 
         <div className="h-4 w-px bg-gray-200" />
 
