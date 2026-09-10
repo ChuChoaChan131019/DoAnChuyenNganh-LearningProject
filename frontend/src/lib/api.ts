@@ -6,6 +6,7 @@ import {
   ApiSuccessResponse,
   ApiErrorResponse,
 } from '../types/auth';
+import type { Category, CategoryCourse } from '../types/learning-content';
 import { getStoredToken } from './auth/session';
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
@@ -88,6 +89,64 @@ export const authApi = {
   logout: (): Promise<{ message: string }> => {
     return request<{ message: string }>('/api/v1/auth/logout', {
       method: 'POST',
+    });
+  },
+};
+
+export const categoryApi = {
+  list: (): Promise<Category[]> => {
+    return request<Category[]>('/api/v1/categories');
+  },
+  create: (payload: {
+    name: string;
+    slug: string;
+    description?: string;
+  }): Promise<Category> => {
+    return request<Category>('/api/v1/categories', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  detail: (slug: string): Promise<{
+    category: Category;
+    courses: CategoryCourse[];
+  }> => {
+    return request(`/api/v1/categories/${encodeURIComponent(slug)}`);
+  },
+  update: (
+    id: string,
+    payload: { name: string; slug: string; description?: string },
+  ): Promise<Category> => {
+    return request<Category>(`/api/v1/categories/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+  remove: (id: string): Promise<{ id: string; message: string }> => {
+    return request<{ id: string; message: string }>(
+      `/api/v1/categories/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+    );
+  },
+};
+
+export const courseApi = {
+  create: (payload: {
+    title: string;
+    slug: string;
+    description?: string;
+    level: 'Beginner' | 'Intermediate' | 'Advanced';
+    category_id: string;
+    thumbnail_url?: string;
+  }) => {
+    return request<{
+      id: string;
+      title: string;
+      slug: string;
+      status: string;
+    }>('/api/v1/courses', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   },
 };

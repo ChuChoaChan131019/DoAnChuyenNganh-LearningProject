@@ -18,6 +18,8 @@ import { MessagesModule } from './modules/messages/messages.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { EventsModule } from './modules/events/events.module.js';
 import { AiModule } from './modules/ai/ai.module.js';
+import { CategoriesModule } from './modules/categories/categories.module.js';
+import { CoursesModule } from './modules/courses/courses.module.js';
 
 @Module({
   imports: [
@@ -41,6 +43,8 @@ import { AiModule } from './modules/ai/ai.module.js';
     NotificationsModule,
     EventsModule,
     AiModule,
+    CategoriesModule,
+    CoursesModule,
   ],
 
   controllers: [AppController],

@@ -3,7 +3,7 @@ export type ContentStatus = "Published" | "Draft" | "Approved" | "In review";
 export type CourseLevel = "Beginner" | "Intermediate" | "Advanced";
 
 export interface Category {
-  id: number;
+  id: string | number;
   name: string;
   slug: string;
   description: string;
@@ -24,6 +24,10 @@ export interface Course {
   lessons: number;
   updated: string;
   gradient: string;
+}
+
+export interface CategoryCourse extends Omit<Course, "id"> {
+  id: string;
 }
 
 export interface Lesson {
