@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Footer } from './footer';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 
@@ -23,6 +24,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <div className={`flex min-w-0 flex-1 flex-col transition-all duration-300 ${CONTENT_PADDING[contentState]}`}>
         <Topbar />
         <main className="flex-1 overflow-y-auto p-6 lg:p-8">{children}</main>
+        <Footer />
       </div>
     </div>
   );

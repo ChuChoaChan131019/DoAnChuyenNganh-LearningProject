@@ -1,4 +1,5 @@
 import React from 'react';
+import { LearnerFooter } from '@/components/learner/footer';
 import { LearnerTopbar } from '@/components/learner/topbar';
 
 export default function LearnerLayout({
@@ -15,6 +16,8 @@ export default function LearnerLayout({
       <main className="mx-auto max-w-7xl p-6 lg:p-8">
         {children}
       </main>
+
+      <LearnerFooter />
     </div>
   );
 }
