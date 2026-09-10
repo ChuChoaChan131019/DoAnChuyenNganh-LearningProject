@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   BookOpen,
@@ -11,99 +12,15 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
+  X,
 } from "lucide-react";
 import type {
+  Category,
   ContentStatus,
   Course,
   CourseLevel,
 } from "@/types/learning-content";
-
-const courses: Course[] = [
-  {
-    id: 1,
-    title: "Advanced C#: Delegates, Events & Async",
-    slug: "advanced-csharp",
-    category: "Advanced C#",
-    description:
-      "Delegates, lambda expressions, events, Task-based asynchronous programming and performance tips.",
-    level: "Advanced",
-    status: "In review",
-    chapters: 7,
-    lessons: 26,
-    updated: "2026-08-10",
-    gradient: "from-[#d9eef0] to-[#fbe8e4]",
-  },
-  {
-    id: 2,
-    title: "Object-Oriented Programming in C#",
-    slug: "oop-in-csharp",
-    category: "Object-Oriented Programming",
-    description:
-      "Model real problems with classes and objects. Encapsulation, inheritance, polymorphism, abstraction and interfaces.",
-    level: "Intermediate",
-    status: "Published",
-    chapters: 8,
-    lessons: 31,
-    updated: "2026-08-09",
-    gradient: "from-[#d6eff0] to-[#e5f2ef]",
-  },
-  {
-    id: 3,
-    title: "C# & OOP Interview Preparation",
-    slug: "csharp-interview-prep",
-    category: "Object-Oriented Programming",
-    description:
-      "Curated question sets and practice tests covering the most asked C# and OOP interview topics.",
-    level: "Advanced",
-    status: "Published",
-    chapters: 5,
-    lessons: 15,
-    updated: "2026-08-08",
-    gradient: "from-[#d8eee9] to-[#e5f2ed]",
-  },
-  {
-    id: 4,
-    title: "Exception Handling in C#",
-    slug: "exception-handling",
-    category: "Error Handling & Debugging",
-    description:
-      "Write resilient code with try/catch/finally, exception filters and custom exception types.",
-    level: "Intermediate",
-    status: "Draft",
-    chapters: 4,
-    lessons: 12,
-    updated: "2026-08-05",
-    gradient: "from-[#fbe4d4] to-[#f7eee0]",
-  },
-  {
-    id: 5,
-    title: "C# Fundamentals",
-    slug: "csharp-fundamentals",
-    category: "C# Fundamentals",
-    description:
-      "Start from zero and master syntax, variables, data types, operators and control flow.",
-    level: "Beginner",
-    status: "Published",
-    chapters: 6,
-    lessons: 24,
-    updated: "2026-08-02",
-    gradient: "from-[#f6dfe0] to-[#e7f1ed]",
-  },
-  {
-    id: 6,
-    title: "Collections and LINQ",
-    slug: "collections-and-linq",
-    category: "Collections & LINQ",
-    description:
-      "Work with arrays, lists, dictionaries, generics and query data elegantly using LINQ.",
-    level: "Intermediate",
-    status: "Approved",
-    chapters: 5,
-    lessons: 18,
-    updated: "2026-07-27",
-    gradient: "from-[#e2e9e7] to-[#f5e4df]",
-  },
-];
+import { ApiClientError, categoryApi, courseApi } from "@/lib/api";
 
 const statusStyles: Record<ContentStatus, string> = {
   Published: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -116,6 +33,33 @@ const levelStyles: Record<CourseLevel, string> = {
   Intermediate: "bg-cyan-50 text-cyan-700",
   Advanced: "bg-sky-50 text-sky-700",
 };
+
+const courseGradients = [
+  "from-[#d9eef0] to-[#fbe8e4]",
+  "from-[#d6eff0] to-[#e5f2ef]",
+  "from-[#d8eee9] to-[#e5f2ed]",
+  "from-[#fbe4d4] to-[#f7eee0]",
+  "from-[#f6dfe0] to-[#e7f1ed]",
+  "from-[#e2e9e7] to-[#f5e4df]",
+];
+
+const courseGradientBySlug: Record<string, string> = {
+  "advanced-csharp": "from-[#d9eef0] to-[#fbe8e4]",
+  "advanced-c-delegates-events-async": "from-[#d9eef0] to-[#fbe8e4]",
+  "oop-in-csharp": "from-[#d6eff0] to-[#e5f2ef]",
+  "csharp-interview-prep": "from-[#d8eee9] to-[#e5f2ed]",
+  "exception-handling": "from-[#fbe4d4] to-[#f7eee0]",
+  "csharp-fundamentals": "from-[#f6dfe0] to-[#e7f1ed]",
+  "collections-and-linq": "from-[#e2e9e7] to-[#f5e4df]",
+};
+
+function getCourseGradient(course: Course) {
+  if (courseGradientBySlug[course.slug]) return courseGradientBySlug[course.slug];
+  const hash = String(course.id)
+    .split("")
+    .reduce((total, character) => total + character.charCodeAt(0), 0);
+  return courseGradients[hash % courseGradients.length];
+}
 
 function StatusBadge({ status }: { status: ContentStatus }) {
   return (
@@ -132,37 +76,55 @@ function CourseActions({
   course,
   openMenu,
   onToggle,
+  onEdit,
+  onDelete,
 }: {
   course: Course;
-  openMenu: number | null;
+  openMenu: string | number | null;
   onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+  const handleToggle = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (openMenu !== course.id) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + 4,
+        left: Math.max(8, rect.right - 112),
+      });
+    }
+    onToggle();
+  };
+
   return (
-    <div className="relative">
+    <div>
       <button
         type="button"
         aria-label={`Actions for ${course.title}`}
-        onClick={onToggle}
+        data-course-menu-trigger
+        onClick={handleToggle}
         className="rounded-lg p-1.5 text-[#526f78] hover:bg-[#eaf4f3]"
       >
         <MoreHorizontal className="h-4 w-4" />
       </button>
-      {openMenu === course.id && (
-        <div className="absolute right-0 top-8 z-10 w-28 rounded-lg border border-[#dfe6df] bg-white p-1 text-xs shadow-lg">
-          <button
-            type="button"
-            className="w-full rounded px-2 py-1.5 text-left hover:bg-[#eaf4f3]"
+      {openMenu === course.id && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            data-course-menu
+            className="fixed z-[100] w-28 rounded-lg border border-[#dfe6df] bg-white p-1 text-xs shadow-lg"
+            style={menuPosition}
           >
-            Edit
-          </button>
-          <button
-            type="button"
-            className="w-full rounded px-2 py-1.5 text-left text-[#F7444E] hover:bg-[#fff1f0]"
-          >
-            Archive
-          </button>
-        </div>
-      )}
+            <button type="button" onClick={onEdit} className="w-full rounded px-2 py-1.5 text-left hover:bg-[#eaf4f3]">
+              Edit
+            </button>
+            <button type="button" onClick={onDelete} className="w-full rounded px-2 py-1.5 text-left text-[#F7444E] hover:bg-[#fff1f0]">
+              Delete
+            </button>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -199,10 +161,14 @@ function CourseGrid({
   items,
   openMenu,
   setOpenMenu,
+  onEdit,
+  onDelete,
 }: {
   items: Course[];
-  openMenu: number | null;
-  setOpenMenu: (id: number | null) => void;
+  openMenu: string | number | null;
+  setOpenMenu: (id: string | number | null) => void;
+  onEdit: (course: Course) => void;
+  onDelete: (course: Course) => void;
 }) {
   return (
     <div className="grid grid-cols-1 gap-[18px] md:grid-cols-2 xl:grid-cols-3">
@@ -213,7 +179,7 @@ function CourseGrid({
         >
           <Link
             href={`/content-manager/learning-content/courses/${course.slug}`}
-            className={`relative h-[132px] bg-gradient-to-br ${course.gradient} p-4`}
+            className={`relative h-[132px] bg-gradient-to-br ${getCourseGradient(course)} p-4`}
           >
             <span
               className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${levelStyles[course.level]}`}
@@ -237,6 +203,8 @@ function CourseGrid({
                 onToggle={() =>
                   setOpenMenu(openMenu === course.id ? null : course.id)
                 }
+                onEdit={() => onEdit(course)}
+                onDelete={() => onDelete(course)}
               />
             </div>
             <Link
@@ -265,13 +233,17 @@ function CourseList({
   items,
   openMenu,
   setOpenMenu,
+  onEdit,
+  onDelete,
 }: {
   items: Course[];
-  openMenu: number | null;
-  setOpenMenu: (id: number | null) => void;
+  openMenu: string | number | null;
+  setOpenMenu: (id: string | number | null) => void;
+  onEdit: (course: Course) => void;
+  onDelete: (course: Course) => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-[#dfe6df] bg-white shadow-[0_8px_18px_rgba(0,44,62,0.04)]">
+    <div className="h-[390px] overflow-auto rounded-2xl border border-[#dfe6df] bg-white shadow-[0_8px_18px_rgba(0,44,62,0.04)]">
       <table className="w-full min-w-[1120px] table-fixed border-collapse text-left">
         <colgroup>
           <col className="w-[30%]" />
@@ -283,7 +255,7 @@ function CourseList({
           <col className="w-[12%]" />
           <col className="w-10" />
         </colgroup>
-        <thead>
+        <thead className="sticky top-0 z-10 bg-white">
           <tr className="border-b border-[#dfe6df] text-sm text-[#526f78]">
             <th className="px-3 py-3 font-medium">Course</th>
             <th className="px-3 py-3 font-medium">Category</th>
@@ -307,7 +279,7 @@ function CourseList({
                   className="flex items-center gap-3"
                 >
                   <span
-                    className={`h-11 w-[60px] shrink-0 rounded-xl bg-gradient-to-br ${course.gradient}`}
+                    className={`h-11 w-[60px] shrink-0 rounded-xl bg-gradient-to-br ${getCourseGradient(course)}`}
                   />
                   <span className="min-w-0">
                     <span className="block truncate text-[15px] font-semibold text-[#002C3E] hover:text-[#F7444E]">
@@ -348,6 +320,8 @@ function CourseList({
                   onToggle={() =>
                     setOpenMenu(openMenu === course.id ? null : course.id)
                   }
+                  onEdit={() => onEdit(course)}
+                  onDelete={() => onDelete(course)}
                 />
               </td>
             </tr>
@@ -359,13 +333,78 @@ function CourseList({
 }
 
 export default function CoursesPage() {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All categories");
   const [level, setLevel] = useState("All levels");
   const [status, setStatus] = useState("All statuses");
   const [sort, setSort] = useState("Last updated");
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [openMenu, setOpenMenu] = useState<number | null>(null);
+  const [openMenu, setOpenMenu] = useState<string | number | null>(null);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSlug, setEditSlug] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editLevel, setEditLevel] = useState<CourseLevel>("Beginner");
+  const [editError, setEditError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    courseApi
+      .list()
+      .then((loadedCourses) => {
+        if (isMounted) setCourses(loadedCourses);
+      })
+      .catch(() => {
+        if (isMounted) setLoadError("Unable to load courses. Please try again.");
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    categoryApi
+      .list()
+      .then(setCategories)
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (openMenu === null) return;
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        (target.closest("[data-course-menu]") ||
+          target.closest("[data-course-menu-trigger]"))
+      ) {
+        return;
+      }
+      setOpenMenu(null);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenMenu(null);
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [openMenu]);
+
   const filteredCourses = useMemo(
     () =>
       courses.filter((course) => {
@@ -383,8 +422,54 @@ export default function CoursesPage() {
           (status === "All statuses" || course.status === status)
         );
       }),
-    [category, level, query, status],
+    [category, courses, level, query, status],
   );
+
+  const openEditCourse = (course: Course) => {
+    setEditingCourse(course);
+    setEditName(course.title);
+    setEditSlug(course.slug);
+    setEditDescription(course.description);
+    setEditLevel(course.level);
+    setEditError("");
+    setOpenMenu(null);
+  };
+
+  const handleDeleteCourse = async (course: Course) => {
+    if (!window.confirm(`Delete course "${course.title}"?`)) return;
+    setOpenMenu(null);
+    try {
+      await courseApi.remove(String(course.id));
+      setCourses((currentCourses) => currentCourses.filter((item) => item.id !== course.id));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Unable to delete course.");
+    }
+  };
+
+  const handleUpdateCourse = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingCourse) return;
+    if (editName.trim().length < 3 || !editSlug.trim()) {
+      setEditError("Course title must be at least 3 characters and slug is required.");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const updatedCourse = await courseApi.update(String(editingCourse.id), {
+        title: editName.trim(),
+        slug: editSlug.trim(),
+        description: editDescription.trim(),
+        level: editLevel,
+        category_id: editingCourse.categoryId,
+      });
+      setCourses((currentCourses) => currentCourses.map((course) => course.id === editingCourse.id ? { ...course, ...updatedCourse, level: editLevel, status: course.status, category: course.category } : course));
+      setEditingCourse(null);
+    } catch (error) {
+      setEditError(error instanceof ApiClientError ? error.message : "Unable to update course.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-[1240px] space-y-6 pb-12">
@@ -446,7 +531,7 @@ export default function CoursesPage() {
           value={category}
           options={[
             "All categories",
-            ...Array.from(new Set(courses.map((course) => course.category))),
+            ...categories.map((category) => category.name),
           ]}
           onChange={setCategory}
         />
@@ -475,23 +560,50 @@ export default function CoursesPage() {
           onChange={setSort}
         />
       </section>
-      {view === "grid" ? (
+      {loadError ? (
+        <p className="rounded-2xl border border-[#F7444E]/30 bg-[#fff1f0] px-5 py-14 text-center text-sm text-[#F7444E]">
+          {loadError}
+        </p>
+      ) : isLoading ? (
+        <p className="rounded-2xl border border-[#dfe6df] bg-white px-5 py-14 text-center text-sm text-[#637981]">
+          Loading courses...
+        </p>
+      ) : view === "grid" ? (
         <CourseGrid
           items={filteredCourses}
           openMenu={openMenu}
           setOpenMenu={setOpenMenu}
+          onEdit={openEditCourse}
+          onDelete={handleDeleteCourse}
         />
       ) : (
         <CourseList
           items={filteredCourses}
           openMenu={openMenu}
           setOpenMenu={setOpenMenu}
+          onEdit={openEditCourse}
+          onDelete={handleDeleteCourse}
         />
       )}
       {filteredCourses.length === 0 && (
         <p className="rounded-2xl border border-dashed border-[#dfe6df] px-5 py-14 text-center text-sm text-[#637981]">
           No courses match these filters.
         </p>
+      )}
+      {editingCourse && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[#00151d]/75 px-4 py-8" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSaving) setEditingCourse(null); }}>
+          <form onSubmit={handleUpdateCourse} className="max-h-full w-full max-w-[640px] overflow-y-auto rounded-2xl border border-[#dfe6df] bg-[#fffefb] p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4"><div><h2 className="text-2xl font-semibold text-[#002C3E]">Edit course</h2><p className="mt-1 text-sm text-[#637981]">Update the course information.</p></div><button type="button" onClick={() => setEditingCourse(null)} disabled={isSaving} aria-label="Close edit course"><X className="h-5 w-5 text-[#526f78]" /></button></div>
+            <div className="mt-6 space-y-4">
+              <label className="block text-sm font-medium text-[#002C3E]">Course title<input value={editName} onChange={(event) => { setEditName(event.target.value); setEditSlug(event.target.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")); }} className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none focus:border-[#78BCC4]" /></label>
+              <label className="block text-sm font-medium text-[#002C3E]">Slug<input value={editSlug} onChange={(event) => setEditSlug(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 font-mono text-sm outline-none focus:border-[#78BCC4]" /></label>
+              <label className="block text-sm font-medium text-[#002C3E]">Description<textarea value={editDescription} onChange={(event) => setEditDescription(event.target.value)} rows={4} className="mt-2 w-full rounded-xl border border-[#dfe6df] px-3 py-2 text-sm outline-none focus:border-[#78BCC4]" /></label>
+              <label className="block text-sm font-medium text-[#002C3E]">Level<select value={editLevel} onChange={(event) => setEditLevel(event.target.value as CourseLevel)} className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none">{["Beginner", "Intermediate", "Advanced"].map((level) => <option key={level}>{level}</option>)}</select></label>
+            </div>
+            {editError && <p className="mt-3 text-sm text-[#F7444E]" role="alert">{editError}</p>}
+            <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setEditingCourse(null)} disabled={isSaving} className="h-11 rounded-xl border border-[#dfe6df] px-5 text-sm font-semibold text-[#002C3E]">Cancel</button><button type="submit" disabled={isSaving} className="h-11 rounded-xl bg-[#F7444E] px-5 text-sm font-semibold text-white disabled:opacity-60">{isSaving ? "Saving..." : "Save changes"}</button></div>
+          </form>
+        </div>
       )}
     </div>
   );

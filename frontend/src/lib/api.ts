@@ -131,6 +131,14 @@ export const categoryApi = {
 };
 
 export const courseApi = {
+  list: (): Promise<import('../types/learning-content').Course[]> => {
+    return request('/api/v1/courses');
+  },
+  detail: (slug: string) => {
+    return request<import('../types/learning-content').CourseDetail>(
+      `/api/v1/courses/${encodeURIComponent(slug)}`,
+    );
+  },
   create: (payload: {
     title: string;
     slug: string;
@@ -149,4 +157,18 @@ export const courseApi = {
       body: JSON.stringify(payload),
     });
   },
+  update: (id: string, payload: {
+    title: string;
+    slug: string;
+    description?: string;
+    level: 'Beginner' | 'Intermediate' | 'Advanced';
+    category_id?: string;
+  }): Promise<import('../types/learning-content').Course> => request('/api/v1/courses/' + encodeURIComponent(id), {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  }),
+  remove: (id: string) => request<{ id: string; message: string }>(
+    '/api/v1/courses/' + encodeURIComponent(id),
+    { method: 'DELETE' },
+  ),
 };

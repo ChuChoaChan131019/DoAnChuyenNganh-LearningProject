@@ -6,10 +6,86 @@ import {
 } from '@nestjs/common';
 import { SupabaseService } from '../../config/supabase.service.js';
 import { CreateCourseDto } from './dto/create-course.dto.js';
+import { UpdateCourseDto } from './dto/update-course.dto.js';
 
 @Injectable()
 export class CoursesService {
   constructor(private readonly supabaseService: SupabaseService) {}
+
+  async findAll() {
+    const supabase = this.supabaseService.getClient();
+    const { data: courses, error: coursesError } = await supabase
+      .from('courses')
+      .select('id, title, slug, description, level, status, category_id, updated_at')
+      .order('updated_at', { ascending: false });
+
+    if (coursesError) {
+      throw new InternalServerErrorException('Unable to load courses');
+    }
+
+    const rows = courses ?? [];
+    const categoryIds = rows.map((course) => course.category_id).filter(Boolean);
+    const { data: categories, error: categoriesError } = categoryIds.length
+      ? await supabase.from('categories').select('id, name').in('id', categoryIds)
+      : { data: [], error: null };
+
+    if (categoriesError) {
+      throw new InternalServerErrorException('Unable to load course categories');
+    }
+
+    const categoryNames = new Map((categories ?? []).map((category) => [category.id, category.name]));
+    const courseIds = rows.map((course) => course.id);
+    const { data: chapters, error: chaptersError } = courseIds.length
+      ? await supabase.from('chapters').select('id, course_id').in('course_id', courseIds)
+      : { data: [], error: null };
+
+    if (chaptersError) {
+      throw new InternalServerErrorException('Unable to load course chapters');
+    }
+
+    const chapterRows = chapters ?? [];
+    const chapterIds = chapterRows.map((chapter) => chapter.id);
+    const { data: lessons, error: lessonsError } = chapterIds.length
+      ? await supabase.from('lessons').select('chapter_id').in('chapter_id', chapterIds)
+      : { data: [], error: null };
+
+    if (lessonsError) {
+      throw new InternalServerErrorException('Unable to load course lessons');
+    }
+
+    const chapterCounts = new Map<string, number>();
+    for (const chapter of chapterRows) {
+      chapterCounts.set(chapter.course_id, (chapterCounts.get(chapter.course_id) ?? 0) + 1);
+    }
+    const courseByChapter = new Map(chapterRows.map((chapter) => [chapter.id, chapter.course_id]));
+    const lessonCounts = new Map<string, number>();
+    for (const lesson of lessons ?? []) {
+      const courseId = courseByChapter.get(lesson.chapter_id);
+      if (courseId) lessonCounts.set(courseId, (lessonCounts.get(courseId) ?? 0) + 1);
+    }
+
+    const statusLabels: Record<string, string> = {
+      draft: 'Draft',
+      in_review: 'In review',
+      approved: 'Approved',
+      published: 'Published',
+    };
+
+    return rows.map((course) => ({
+      id: course.id,
+      title: course.title,
+      slug: course.slug,
+      category: categoryNames.get(course.category_id) ?? 'Uncategorized',
+      categoryId: course.category_id,
+      description: course.description ?? '',
+      level: course.level ?? 'Beginner',
+      status: statusLabels[course.status] ?? 'Draft',
+      chapters: chapterCounts.get(course.id) ?? 0,
+      lessons: lessonCounts.get(course.id) ?? 0,
+      updated: course.updated_at.slice(0, 10),
+      gradient: 'from-[#d9eef0] to-[#fbe8e4]',
+    }));
+  }
 
   async create(createCourseDto: CreateCourseDto, creatorId: string) {
     const { category_id: categoryId, ...courseFields } = createCourseDto;
@@ -36,7 +112,7 @@ export class CoursesService {
         title: courseFields.title.trim(),
         slug: courseFields.slug.trim(),
         description: courseFields.description?.trim() || null,
-        level: courseFields.level ?? 'Beginner',
+        level: courseFields.level?.toLowerCase() ?? 'beginner',
         thumbnail_url: courseFields.thumbnail_url?.trim() || null,
         category_id: categoryId,
         created_by: creatorId,
@@ -54,5 +130,126 @@ export class CoursesService {
     }
 
     return data;
+  }
+
+  async findBySlug(slug: string) {
+    const supabase = this.supabaseService.getClient();
+    const { data: course, error: courseError } = await supabase
+      .from('courses')
+      .select('id, title, slug, description, level, status, category_id, created_by, thumbnail_url, created_at, updated_at')
+      .eq('slug', slug)
+      .single();
+
+    if (courseError?.code === 'PGRST116' || !course) {
+      throw new NotFoundException('Course not found');
+    }
+    if (courseError) {
+      throw new InternalServerErrorException('Unable to load course');
+    }
+
+    const [categoryResult, chaptersResult, questionsResult, authorResult] = await Promise.all([
+      supabase.from('categories').select('name').eq('id', course.category_id).single(),
+      supabase.from('chapters').select('id, title, order_index, status').eq('course_id', course.id).order('order_index'),
+      supabase.from('questions').select('id').eq('course_id', course.id),
+      supabase.auth.admin.getUserById(course.created_by),
+    ]);
+
+    if (categoryResult.error || chaptersResult.error || questionsResult.error) {
+      throw new InternalServerErrorException('Unable to load course details');
+    }
+
+    const chapterRows = chaptersResult.data ?? [];
+    const chapterIds = chapterRows.map((chapter) => chapter.id);
+    const { data: lessons, error: lessonsError } = chapterIds.length
+      ? await supabase.from('lessons').select('chapter_id').in('chapter_id', chapterIds)
+      : { data: [], error: null };
+
+    if (lessonsError) {
+      throw new InternalServerErrorException('Unable to load course lessons');
+    }
+
+    const lessonsByChapter = new Map<string, number>();
+    for (const lesson of lessons ?? []) {
+      lessonsByChapter.set(lesson.chapter_id, (lessonsByChapter.get(lesson.chapter_id) ?? 0) + 1);
+    }
+
+    const statusLabels: Record<string, string> = {
+      draft: 'Draft',
+      in_review: 'In review',
+      approved: 'Approved',
+      published: 'Published',
+    };
+    const levelLabels: Record<string, string> = {
+      beginner: 'Beginner',
+      intermediate: 'Intermediate',
+      advanced: 'Advanced',
+    };
+
+    return {
+      id: course.id,
+      title: course.title,
+      slug: course.slug,
+      category: categoryResult.data?.name ?? 'Uncategorized',
+      description: course.description ?? '',
+      level: levelLabels[course.level] ?? 'Beginner',
+      status: statusLabels[course.status] ?? 'Draft',
+      chapters: chapterRows.length,
+      lessons: (lessons ?? []).length,
+      questions: (questionsResult.data ?? []).length,
+      author: authorResult.data.user?.email ?? 'Unknown author',
+      created: course.created_at.slice(0, 10),
+      updated: course.updated_at.slice(0, 10),
+      thumbnailUrl: course.thumbnail_url,
+      gradient: 'from-[#d9eef0] to-[#fbe8e4]',
+      chapterList: chapterRows.map((chapter) => ({
+        id: chapter.id,
+        title: chapter.title,
+        lessons: lessonsByChapter.get(chapter.id) ?? 0,
+        status: statusLabels[chapter.status] ?? 'Draft',
+      })),
+    };
+  }
+
+  async update(id: string, updateCourseDto: UpdateCourseDto) {
+    const payload = Object.fromEntries(
+      Object.entries(updateCourseDto)
+        .filter(([, value]) => value !== undefined)
+        .map(([key, value]) => [
+          key,
+          typeof value === 'string' ? value.trim() : value,
+        ]),
+    );
+    if (payload.level) payload.level = String(payload.level).toLowerCase();
+    if (payload.description === '') payload.description = null;
+
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from('courses')
+      .update(payload)
+      .eq('id', id)
+      .select('id, title, slug, description, level, status, category_id, updated_at')
+      .single();
+
+    if (error?.code === '23505') throw new ConflictException('A course with this slug already exists');
+    if (error?.code === 'PGRST116' || !data) throw new NotFoundException('Course not found');
+    if (error) throw new InternalServerErrorException('Unable to update course');
+
+    return data;
+  }
+
+  async remove(id: string) {
+    const supabase = this.supabaseService.getClient();
+    const [{ count: chapters }, { count: lessons }, { count: questions }] = await Promise.all([
+      supabase.from('chapters').select('id', { count: 'exact', head: true }).eq('course_id', id),
+      supabase.from('lessons').select('id', { count: 'exact', head: true }).eq('chapter_id', id),
+      supabase.from('questions').select('id', { count: 'exact', head: true }).eq('course_id', id),
+    ]);
+    if ((chapters ?? 0) > 0 || (lessons ?? 0) > 0 || (questions ?? 0) > 0) {
+      throw new ConflictException('Cannot delete a course that has related content');
+    }
+
+    const { error } = await supabase.from('courses').delete().eq('id', id);
+    if (error) throw new InternalServerErrorException('Unable to delete course');
+    return { id, message: 'Course deleted successfully' };
   }
 }

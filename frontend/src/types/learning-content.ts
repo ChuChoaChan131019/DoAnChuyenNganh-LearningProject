@@ -13,7 +13,8 @@ export interface Category {
 }
 
 export interface Course {
-  id: number;
+  id: string | number;
+  categoryId?: string;
   title: string;
   slug: string;
   category: string;
@@ -24,6 +25,19 @@ export interface Course {
   lessons: number;
   updated: string;
   gradient: string;
+}
+
+export interface CourseDetail extends Course {
+  questions: number;
+  author: string;
+  created: string;
+  thumbnailUrl: string | null;
+  chapterList: Array<{
+    id: string;
+    title: string;
+    lessons: number;
+    status: ContentStatus;
+  }>;
 }
 
 export interface CategoryCourse extends Omit<Course, "id"> {

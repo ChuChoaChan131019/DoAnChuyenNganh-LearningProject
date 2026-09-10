@@ -86,8 +86,12 @@ export default function CreateCoursePage() {
     } catch (requestError) {
       setError(
         requestError instanceof ApiClientError
-          ? requestError.message
-          : "Unable to create course. Please try again.",
+          ? requestError.status === 401
+            ? "Your session has expired. Please log out and sign in again before saving the course."
+            : requestError.message
+          : requestError instanceof Error
+            ? requestError.message
+            : "Unable to create course. Please try again.",
       );
     } finally {
       setIsSaving(false);
