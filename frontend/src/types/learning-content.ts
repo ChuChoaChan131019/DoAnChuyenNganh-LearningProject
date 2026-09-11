@@ -3,7 +3,7 @@ export type ContentStatus = "Published" | "Draft" | "Approved" | "In review";
 export type CourseLevel = "Beginner" | "Intermediate" | "Advanced";
 
 export interface Category {
-  id: number;
+  id: string | number;
   name: string;
   slug: string;
   description: string;
@@ -13,7 +13,8 @@ export interface Category {
 }
 
 export interface Course {
-  id: number;
+  id: string | number;
+  categoryId?: string;
   title: string;
   slug: string;
   category: string;
@@ -26,7 +27,25 @@ export interface Course {
   gradient: string;
 }
 
+export interface CourseDetail extends Course {
+  questions: number;
+  author: string;
+  created: string;
+  thumbnailUrl: string | null;
+  chapterList: Array<{
+    id: string;
+    title: string;
+    lessons: number;
+    status: ContentStatus;
+  }>;
+}
+
+export interface CategoryCourse extends Omit<Course, "id"> {
+  id: string;
+}
+
 export interface Lesson {
+  id?: string;
   code: string;
   title: string;
   duration: string;
@@ -37,7 +56,7 @@ export interface Lesson {
 }
 
 export interface Chapter {
-  id: number;
+  id: string | number;
   title: string;
   summary: string;
   lessons: Lesson[];

@@ -11,7 +11,7 @@ export function Topbar() {
 
   const handleLogout = async () => {
     await logout();
-    router.push('/login');
+    window.setTimeout(() => router.push('/login'), 0);
   };
 
   return (

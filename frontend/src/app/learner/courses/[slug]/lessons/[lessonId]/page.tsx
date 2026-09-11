@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { courseApi } from '@/lib/api';
 import {
   ArrowLeft,
   ArrowRight,
@@ -150,6 +151,19 @@ interface LessonDetail {
   defaultOutput: string;
   proTipTitle: string;
   proTipContent: string;
+}
+
+interface LearnerLessonChapter {
+  id: string;
+  title: string;
+  lessons: Array<{
+    id: string;
+    title: string;
+    duration: number;
+    status: string;
+    content: string | null;
+    codeExample: string | null;
+  }>;
 }
 
 const LESSON_DATABASE: Record<string, LessonDetail> = {
@@ -450,7 +464,47 @@ export default function LearnerLessonPage() {
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug || 'csharp-fundamentals';
   const lessonIdParam = Array.isArray(params?.lessonId) ? params.lessonId[0] : params?.lessonId;
 
-  const currentCourse = COURSE_MAP[slug] || COURSE_MAP['csharp-fundamentals'];
+  const [databaseCourseTitle, setDatabaseCourseTitle] = useState<string | null>(null);
+  const [databaseChapters, setDatabaseChapters] = useState<LearnerLessonChapter[] | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    courseApi.learnerLessons(slug)
+      .then((response) => {
+        if (isActive) {
+          setDatabaseCourseTitle(response.course.title);
+          setDatabaseChapters(response.chapters);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setDatabaseCourseTitle(null);
+          setDatabaseChapters(null);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [slug]);
+
+  const fallbackCourse = COURSE_MAP[slug] || COURSE_MAP['csharp-fundamentals'];
+  const currentCourse = databaseChapters
+    ? {
+        ...fallbackCourse,
+      title: databaseCourseTitle ?? fallbackCourse.title,
+        chapters: databaseChapters.map((chapter) => ({
+          title: chapter.title,
+          lessons: chapter.lessons.map((lesson) => ({
+            id: lesson.id,
+            title: lesson.title,
+            duration: `${lesson.duration} min`,
+            completed: false,
+          })),
+        })),
+      }
+    : fallbackCourse;
   const courseHref = `/learner/courses/${slug}`;
 
   // Thu thập danh sách phẳng tất cả bài học trong khóa

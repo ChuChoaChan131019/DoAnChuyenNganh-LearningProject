@@ -78,6 +78,30 @@ npm install
 npm run install:all
 ```
 
+### 2. Cấu hình biến môi trường
+
+Các file `.env` không được commit lên Git. Sau khi clone, tạo file từ mẫu:
+
+```bash
+copy backend\.env.example backend\.env
+copy frontend\.env.example frontend\.env.local
+```
+
+Trong `backend/.env`, điền thông tin Supabase của project:
+
+```env
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_PUBLISHABLE_KEY=<publishable-key>
+SUPABASE_SECRET_KEY=<secret-key>
+SUPABASE_JWKS_URL=https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json
+```
+
+Không commit `SUPABASE_SECRET_KEY` hoặc chia sẻ file `backend/.env`.
+
+Database Supabase là database dùng chung của project, vì vậy người clone cần
+được cấp tài khoản đăng nhập hợp lệ và dùng đúng Supabase project. Các trang
+Categories và Courses sẽ gọi API backend tại `http://localhost:3001`.
+
 ## Cách chạy dự án 
 
 1. Mở terminal tại thư mục gốc của dự án.
