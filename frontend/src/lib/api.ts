@@ -91,3 +91,31 @@ export const authApi = {
     });
   },
 };
+
+export interface CreateNotificationPayload {
+  title: string;
+  content: string;
+  scopeType: 'course' | 'individual';
+  courseId: string;
+  recipientIds?: string[];
+}
+
+export const notificationsApi = {
+  getSent: (): Promise<any[]> => {
+    return request<any[]>('/api/v1/notifications/sent', {
+      method: 'GET',
+    });
+  },
+  getCourseLearners: (courseId: string): Promise<any[]> => {
+    return request<any[]>(`/api/v1/notifications/courses/${encodeURIComponent(courseId)}/learners`, {
+      method: 'GET',
+    });
+  },
+  send: (payload: CreateNotificationPayload): Promise<{ notification: any; recipientCount: number }> => {
+    return request<{ notification: any; recipientCount: number }>('/api/v1/notifications', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+};
+

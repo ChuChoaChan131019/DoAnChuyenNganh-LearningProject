@@ -84,4 +84,20 @@ export class SupabaseService {
   getJwksUrl(): string {
     return this.jwksUrl;
   }
+
+  /** Tạo fresh admin client với service_role key gắn cứng vào Authorization header
+   *  — đảm bảo bypass RLS dù shared client bị contaminate bởi user token */
+  getAdminClient(): SupabaseClient {
+    return createClient(this.supabaseUrl, this.secretKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${this.secretKey}`,
+        },
+      },
+    });
+  }
 }
