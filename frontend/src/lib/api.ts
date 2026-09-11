@@ -139,12 +139,68 @@ export const courseApi = {
       `/api/v1/courses/${encodeURIComponent(slug)}`,
     );
   },
+  lesson: (lessonId: string): Promise<{
+    id: string;
+    chapter_id: string;
+    title: string;
+    content: string | null;
+    code_example: string | null;
+    estimated_duration_minutes: number;
+    order_index: number;
+    status: string;
+    is_ai_generated: boolean;
+    chapter: { id: string; title: string };
+    course: { id: string; title: string; slug: string };
+    exercises: Array<{
+      id: string;
+      content: string;
+      type: string;
+      difficulty: string;
+      status: string;
+    }>;
+  }> => {
+    return request(`/api/v1/courses/lessons/${encodeURIComponent(lessonId)}`);
+  },
+  updateLesson: (lessonId: string, payload: {
+    title?: string;
+    estimated_duration_minutes?: number;
+    content?: string;
+    code_example?: string;
+    status?: 'draft' | 'in_review' | 'approved' | 'published';
+  }) => request(`/api/v1/courses/lessons/${encodeURIComponent(lessonId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  }),
+  removeLesson: (lessonId: string) => request<{ id: string; message: string }>(
+    `/api/v1/courses/lessons/${encodeURIComponent(lessonId)}`,
+    { method: 'DELETE' },
+  ),
+  learnerLessons: (slug: string): Promise<{
+    course: { id: string; title: string; slug: string };
+    chapters: Array<{
+      id: string;
+      title: string;
+      lessons: Array<{
+        id: string;
+        title: string;
+        duration: number;
+        status: string;
+        content: string | null;
+        codeExample: string | null;
+      }>;
+    }>;
+  }> => {
+    return request(`/api/v1/learner/courses/${encodeURIComponent(slug)}/lessons`);
+  },
   chapters: (courseId: string): Promise<import('../types/learning-content').Chapter[]> => {
     return request(`/api/v1/courses/${encodeURIComponent(courseId)}/chapters`);
   },
   createLesson: (courseId: string, chapterId: string, payload: {
     title: string;
     estimated_duration_minutes?: number;
+    content?: string;
+    code_example?: string;
+    status?: 'draft' | 'in_review' | 'approved' | 'published';
   }) => {
     return request<import('../types/learning-content').Lesson>(
       `/api/v1/courses/${encodeURIComponent(courseId)}/chapters/${encodeURIComponent(chapterId)}/lessons`,

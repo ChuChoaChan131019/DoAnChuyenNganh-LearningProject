@@ -9,6 +9,7 @@ import { CreateChapterDto } from './dto/create-chapter.dto.js';
 import { CreateLessonDto } from './dto/create-lesson.dto.js';
 import { UpdateChapterDto } from './dto/update-chapter.dto.js';
 import { ReorderChaptersDto } from './dto/reorder-chapters.dto.js';
+import { UpdateLessonDto } from './dto/update-lesson.dto.js';
 
 @Controller('api/v1/courses')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -80,6 +81,24 @@ export class CoursesController {
     @Param('chapterId') chapterId: string,
   ) {
     return this.coursesService.removeChapter(courseId, chapterId);
+  }
+
+  @Get('lessons/:lessonId')
+  findLesson(@Param('lessonId') lessonId: string) {
+    return this.coursesService.findLesson(lessonId);
+  }
+
+  @Patch('lessons/:lessonId')
+  updateLesson(
+    @Param('lessonId') lessonId: string,
+    @Body() updateLessonDto: UpdateLessonDto,
+  ) {
+    return this.coursesService.updateLesson(lessonId, updateLessonDto);
+  }
+
+  @Delete('lessons/:lessonId')
+  removeLesson(@Param('lessonId') lessonId: string) {
+    return this.coursesService.removeLesson(lessonId);
   }
 
   @Get(':slug')

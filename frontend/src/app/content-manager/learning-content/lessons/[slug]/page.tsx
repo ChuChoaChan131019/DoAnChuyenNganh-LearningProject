@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Eye,
@@ -16,7 +16,9 @@ import {
   WandSparkles,
   Quote,
   Code2,
+  Trash2,
 } from "lucide-react";
+import { courseApi } from "@/lib/api";
 
 type EditorLesson = {
   title: string;
@@ -25,97 +27,139 @@ type EditorLesson = {
   content: string;
 };
 
-const lessons: EditorLesson[] = [
-  {
-    title: "What is C#?",
-    slug: "what-is-csharp",
-    chapter: "Introduction to C#",
-    content:
-      "C# is a modern, object-oriented programming language created by Microsoft. It runs on .NET and is used to build web, desktop, cloud and game applications.",
-  },
-  {
-    title: "Installing .NET",
-    slug: "installing-dotnet",
-    chapter: "Introduction to C#",
-    content:
-      "The .NET SDK includes the compiler, runtime and command-line tools needed to create and run C# applications. Install the latest SDK before starting your first project.",
-  },
-  {
-    title: "Your First C# Program",
-    slug: "first-csharp-program",
-    chapter: "Introduction to C#",
-    content:
-      "Encapsulation is the OOP principle of hiding internal state and exposing behaviour through a controlled public surface. In C# you achieve it with access modifiers, properties and validation inside methods.",
-  },
-  {
-    title: "Variables",
-    slug: "variables",
-    chapter: "Variables and Data Types",
-    content:
-      "Variables store values that a program can read and change. Every variable has a type, a name and an initial value.",
-  },
-  {
-    title: "Data Types",
-    slug: "data-types",
-    chapter: "Variables and Data Types",
-    content:
-      "C# provides value types such as int and bool, reference types such as string and class, and a type system that helps catch mistakes early.",
-  },
-  {
-    title: "Type Conversion",
-    slug: "type-conversion",
-    chapter: "Variables and Data Types",
-    content:
-      "Type conversion changes a value from one data type to another. Use implicit conversion when it is safe and explicit casting when precision may be lost.",
-  },
-  {
-    title: "if / else and switch",
-    slug: "if-else-switch",
-    chapter: "Control Flow",
-    content:
-      "Conditional statements let a program choose which block of code to execute based on a boolean expression.",
-  },
-  {
-    title: "for, while and foreach",
-    slug: "loops",
-    chapter: "Control Flow",
-    content:
-      "Loops repeat a block of code while a condition is true or for each item in a collection.",
-  },
-  {
-    title: "break, continue and goto",
-    slug: "jump-statements",
-    chapter: "Control Flow",
-    content:
-      "Jump statements change the normal flow of a loop or method. Use them carefully to keep control flow easy to follow.",
-  },
-  {
-    title: "Declaring Methods",
-    slug: "declaring-methods",
-    chapter: "Methods",
-    content:
-      "Methods package reusable behaviour behind a name. A method can accept parameters, return a value and expose a clear contract.",
-  },
-];
-
 export default function LessonEditorPage() {
   const params = useParams<{ slug: string }>();
-  const routeLesson =
-    lessons.find((lesson) => lesson.slug === params.slug) ?? lessons[0];
-  const [selectedSlug, setSelectedSlug] = useState(routeLesson.slug);
-  const selectedLesson =
-    lessons.find((lesson) => lesson.slug === selectedSlug) ?? lessons[0];
-  const [title, setTitle] = useState(selectedLesson.title);
-  const [slug, setSlug] = useState(selectedLesson.slug);
-  const [content, setContent] = useState(selectedLesson.content);
+  const router = useRouter();
+  const [lessons, setLessons] = useState<EditorLesson[]>([]);
+  const [selectedSlug, setSelectedSlug] = useState("");
+  const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
+  const [content, setContent] = useState("");
+  const [codeExample, setCodeExample] = useState("");
+  const [exercises, setExercises] = useState<Array<{
+    id: string;
+    content: string;
+    type: string;
+    difficulty: string;
+    status: string;
+  }>>([]);
+  const [chapterTitle, setChapterTitle] = useState("");
+  const [status, setStatus] = useState("Draft");
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [showPlayground, setShowPlayground] = useState(true);
 
-  const selectLesson = (lesson: EditorLesson) => {
-    setSelectedSlug(lesson.slug);
-    setTitle(lesson.title);
-    setSlug(lesson.slug);
-    setContent(lesson.content);
+  const saveLesson = async (nextStatus?: "draft" | "in_review" | "published") => {
+    if (!selectedSlug) return;
+
+    setIsSaving(true);
+    setSaveMessage(null);
+    setLoadError(null);
+    const statusValue = nextStatus ?? (
+      status === "Published"
+        ? "published"
+        : status === "Approved"
+          ? "approved"
+          : status === "In review"
+            ? "in_review"
+            : "draft"
+    );
+
+    try {
+      await courseApi.updateLesson(selectedSlug, {
+        title: title.trim(),
+        content,
+        code_example: codeExample,
+        status: statusValue,
+      });
+      setStatus(
+        statusValue === "published"
+          ? "Published"
+          : statusValue === "in_review"
+            ? "In review"
+            : statusValue === "approved"
+              ? "Approved"
+              : "Draft",
+      );
+      setSaveMessage("Lesson saved successfully.");
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Unable to save lesson.");
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const deleteLesson = async () => {
+    if (!selectedSlug) return;
+    if (!window.confirm("Delete this lesson? This cannot be undone.")) return;
+
+    setIsSaving(true);
+    setSaveMessage(null);
+    setLoadError(null);
+    try {
+      await courseApi.removeLesson(selectedSlug);
+      router.push("/content-manager/learning-content/lessons");
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Unable to delete lesson.");
+      setIsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    let isActive = true;
+
+    courseApi.lesson(params.slug)
+      .then((lesson) => {
+        if (!isActive) return;
+
+        setSelectedSlug(lesson.id);
+        setTitle(lesson.title);
+        setSlug(lesson.id);
+        setContent(lesson.content ?? "");
+        setCodeExample(lesson.code_example ?? "");
+        setExercises(lesson.exercises);
+        setChapterTitle(lesson.chapter.title);
+        courseApi.chapters(lesson.course.id)
+          .then((chapters) => {
+            if (!isActive) return;
+
+            setLessons(
+              chapters.flatMap((chapter) =>
+                chapter.lessons.map((chapterLesson) => ({
+                  title: chapterLesson.title,
+                  slug: chapterLesson.id ?? chapterLesson.title,
+                  chapter: chapter.title,
+                  content: "",
+                })),
+              ),
+            );
+          })
+          .catch(() => {
+            if (isActive) setLessons([]);
+          });
+        setStatus(
+          lesson.status === "published"
+            ? "Published"
+            : lesson.status === "approved"
+              ? "Approved"
+              : lesson.status === "in_review"
+                ? "In review"
+                : "Draft",
+        );
+        setIsLoading(false);
+      })
+      .catch(() => {
+        if (!isActive) return;
+        setLoadError("Unable to load this lesson from Supabase.");
+        setIsLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [params.slug]);
 
   return (
     <div className="mx-auto max-w-[1240px] space-y-5 pb-12">
@@ -137,6 +181,8 @@ export default function LessonEditorPage() {
           </button>
           <button
             type="button"
+            onClick={() => saveLesson("draft")}
+            disabled={isLoading || isSaving}
             className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#002C3E] shadow-sm hover:bg-[#f8fbf9]"
           >
             <Save className="h-4 w-4" />
@@ -151,6 +197,8 @@ export default function LessonEditorPage() {
           </button>
           <button
             type="button"
+            onClick={() => saveLesson("in_review")}
+            disabled={isLoading || isSaving}
             className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#df3540]"
           >
             <Send className="h-4 w-4" />
@@ -160,15 +208,30 @@ export default function LessonEditorPage() {
       </div>
       <header>
         <div className="flex items-center gap-2 text-xs text-[#637981]">
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">
-            Published
+          <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
+            {status}
           </span>
-          <span>{selectedLesson.chapter}</span>
+          <span>{chapterTitle}</span>
         </div>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#002C3E]">
           {title}
         </h1>
       </header>
+      {isLoading && (
+        <p className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-800">
+          Loading lesson data...
+        </p>
+      )}
+      {loadError && (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {loadError}
+        </p>
+      )}
+      {saveMessage && (
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {saveMessage}
+        </p>
+      )}
       <div className="grid items-start gap-4 xl:grid-cols-[250px_minmax(0,1fr)_290px]">
         <aside className="rounded-2xl border border-[#dfe6df] bg-white p-3 shadow-sm">
           <p className="px-2 py-2 text-xs font-bold uppercase tracking-wider text-[#637981]">
@@ -176,14 +239,13 @@ export default function LessonEditorPage() {
           </p>
           <nav className="space-y-1">
             {lessons.map((lesson) => (
-              <button
+              <Link
                 key={lesson.slug}
-                type="button"
-                onClick={() => selectLesson(lesson)}
-                className={`w-full rounded-xl px-3 py-2.5 text-left text-sm ${selectedSlug === lesson.slug ? "border border-[#002C3E] bg-[#ffe0df] font-semibold text-[#F7444E]" : "text-[#526f78] hover:bg-[#f8fbf9]"}`}
+                href={`/content-manager/learning-content/lessons/${lesson.slug}`}
+                className={`block w-full rounded-xl px-3 py-2.5 text-left text-sm ${selectedSlug === lesson.slug ? "border border-[#002C3E] bg-[#ffe0df] font-semibold text-[#F7444E]" : "text-[#526f78] hover:bg-[#f8fbf9]"}`}
               >
                 {lesson.title}
-              </button>
+              </Link>
             ))}
           </nav>
         </aside>
@@ -213,31 +275,41 @@ export default function LessonEditorPage() {
                 Rendered with syntax highlighting for students
               </p>
             </div>
-            <pre className="mx-4 my-4 overflow-x-auto rounded-xl bg-[#061d26] p-5 text-sm leading-7 text-[#d8e9e8]">
-              <code>{`public class Student\n{\n    public string Name { get; }\n\n    public Student(string name) => Name = name;\n\n    public void Introduce()\n    {\n        Console.WriteLine($"Hello, {Name}");\n    }\n}`}</code>
-            </pre>
+            <textarea
+              value={codeExample}
+              onChange={(event) => setCodeExample(event.target.value)}
+              placeholder="Add a C# code example..."
+              className="mx-4 my-4 min-h-[180px] w-[calc(100%-2rem)] resize-y rounded-xl bg-[#061d26] p-5 font-mono text-sm leading-7 text-[#d8e9e8] outline-none focus:ring-2 focus:ring-[#78BCC4]/40"
+            />
           </section>
           <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">
             <div className="border-b border-[#dfe6df] px-5 py-4">
               <h2 className="font-semibold text-[#002C3E]">Exercises</h2>
             </div>
-            <div className="space-y-3 p-4">
-              {[
-                "Convert the public fields of BankAccount into validated properties.",
-                "Add a Withdraw method that throws when the balance is insufficient.",
-                "Explain why Credits has a private setter.",
-              ].map((exercise, index) => (
-                <div
-                  key={exercise}
-                  className="flex items-center gap-3 rounded-xl bg-[#f4f5f0] px-3 py-3 text-sm text-[#16485a]"
-                >
-                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#F7444E] text-[11px] font-bold text-white">
-                    {index + 1}
-                  </span>
-                  {exercise}
-                </div>
-              ))}
-            </div>
+            {exercises.length > 0 ? (
+              <div className="space-y-3 p-4">
+                {exercises.map((exercise, index) => (
+                  <div
+                    key={exercise.id}
+                    className="flex items-start gap-3 rounded-xl bg-[#f4f5f0] px-3 py-3 text-sm text-[#16485a]"
+                  >
+                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#F7444E] text-[11px] font-bold text-white">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p>{exercise.content}</p>
+                      <p className="mt-1 text-xs text-[#637981]">
+                        {exercise.type} · {exercise.difficulty} · {exercise.status}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="px-5 py-8 text-sm text-[#637981]">
+                No exercises have been added to this lesson yet.
+              </p>
+            )}
           </section>
         </main>
         <aside className="space-y-4">
@@ -254,24 +326,24 @@ export default function LessonEditorPage() {
               />
             </label>
             <label className="mt-4 block text-xs font-semibold text-[#526f78]">
-              Slug
+              Lesson ID
               <input
                 value={slug}
-                onChange={(event) => setSlug(event.target.value)}
-                className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] px-3 font-mono text-sm text-[#002C3E] outline-none focus:border-[#78BCC4]"
+                readOnly
+                className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] bg-slate-50 px-3 font-mono text-sm text-[#637981] outline-none"
               />
             </label>
             <label className="mt-4 block text-xs font-semibold text-[#526f78]">
               Chapter
-              <select className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E]">
-                <option>Introduction to C#</option>
-                <option>Variables and Data Types</option>
+              <select value={chapterTitle} onChange={(event) => setChapterTitle(event.target.value)} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E]">
+                <option>{chapterTitle}</option>
               </select>
             </label>
             <label className="mt-4 block text-xs font-semibold text-[#526f78]">
               Status
-              <select className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E]">
+              <select value={status} onChange={(event) => setStatus(event.target.value)} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E]">
                 <option>Published</option>
+                <option>Approved</option>
                 <option>Draft</option>
                 <option>In review</option>
               </select>
@@ -291,15 +363,32 @@ export default function LessonEditorPage() {
               </button>
             </label>
           </section>
+          <section className="rounded-2xl border border-rose-200 bg-white p-5 shadow-sm">
+            <h2 className="font-semibold text-rose-700">Danger zone</h2>
+            <p className="mt-2 text-xs leading-5 text-[#637981]">
+              A lesson with related learning data cannot be deleted.
+            </p>
+            <button
+              type="button"
+              onClick={deleteLesson}
+              disabled={isLoading || isSaving}
+              className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete lesson
+            </button>
+          </section>
           <section className="rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-sm">
             <h2 className="font-semibold text-[#002C3E]">Publishing</h2>
             <p className="mt-2 text-xs text-[#637981]">Last saved just now</p>
             <button
               type="button"
+              onClick={() => saveLesson("published")}
+              disabled={isLoading || isSaving}
               className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#F7444E] text-sm font-semibold text-white hover:bg-[#df3540]"
             >
               <Play className="h-4 w-4" />
-              Publish
+              {isSaving ? "Saving..." : "Publish"}
             </button>
           </section>
         </aside>

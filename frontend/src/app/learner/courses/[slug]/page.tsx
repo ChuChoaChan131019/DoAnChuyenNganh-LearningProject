@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, CheckCircle2, Clock3, FileText } from 'lucide-react';
 import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { courseApi } from '@/lib/api';
 
 const COURSE_MAP: Record<string, any> = {
   'csharp-fundamentals': {
@@ -161,7 +163,71 @@ const COURSE_MAP: Record<string, any> = {
 export default function LearnerCourseDetailPage() {
   const params = useParams();
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
-  const course = slug ? COURSE_MAP[slug] : null;
+  const [databaseCourse, setDatabaseCourse] = useState<{
+    id: string;
+    title: string;
+    slug: string;
+  } | null>(null);
+  const [databaseChapters, setDatabaseChapters] = useState<Array<{
+    id: string;
+    title: string;
+    lessons: Array<{ id: string; title: string; duration: number }>;
+  }> | null>(null);
+
+  useEffect(() => {
+    if (!slug) return;
+
+    courseApi.learnerLessons(slug)
+      .then((response) => {
+        setDatabaseCourse(response.course);
+        setDatabaseChapters(response.chapters);
+      })
+      .catch(() => {
+        setDatabaseCourse(null);
+        setDatabaseChapters(null);
+      });
+  }, [slug]);
+
+  const fallbackCourse = slug ? COURSE_MAP[slug] : null;
+  const baseCourse = fallbackCourse ?? (databaseCourse ? {
+    id: databaseCourse.id,
+    slug: databaseCourse.slug,
+    title: databaseCourse.title,
+    level: 'Beginner',
+    description: 'Learning content loaded from Supabase.',
+    lastUpdated: 'Updated today',
+    lessons: 0,
+    questions: 0,
+    hours: 0,
+    chapters: [],
+    instructor: 'Learning team',
+    instructorRole: 'Course instructor',
+    resources: [],
+    tests: [],
+  } : null);
+  const course = baseCourse && databaseChapters
+    ? {
+        ...baseCourse,
+        lessons: databaseChapters.reduce((sum, chapter) => sum + chapter.lessons.length, 0),
+        chapters: databaseChapters.map((chapter) => {
+          const fallbackChapter = baseCourse.chapters.find(
+            (item: any) => item.title === chapter.title,
+          );
+
+          return {
+            title: chapter.title,
+            description: fallbackChapter?.description ?? '',
+            completed: false,
+            lessons: chapter.lessons.map((lesson) => ({
+              id: lesson.id,
+              title: lesson.title,
+              duration: `${lesson.duration} min`,
+              completed: false,
+            })),
+          };
+        }),
+      }
+    : fallbackCourse;
 
   if (!course) {
     return (

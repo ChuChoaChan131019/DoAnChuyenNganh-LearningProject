@@ -10,6 +10,7 @@ import { UpdateCourseDto } from './dto/update-course.dto.js';
 import { CreateChapterDto } from './dto/create-chapter.dto.js';
 import { CreateLessonDto } from './dto/create-lesson.dto.js';
 import { UpdateChapterDto } from './dto/update-chapter.dto.js';
+import { UpdateLessonDto } from './dto/update-lesson.dto.js';
 
 type ContentStatusLabel = 'Draft' | 'In review' | 'Approved' | 'Published';
 
@@ -108,7 +109,9 @@ export class CoursesService {
         title: createLessonDto.title.trim(),
         estimated_duration_minutes: createLessonDto.estimated_duration_minutes ?? 0,
         order_index: (lastLesson?.order_index ?? 0) + 1,
-        status: 'draft',
+        status: createLessonDto.status ?? 'draft',
+        content: createLessonDto.content?.trim() || null,
+        code_example: createLessonDto.code_example?.trim() || null,
       })
       .select('id, title, estimated_duration_minutes, order_index, status, is_ai_generated')
       .single();
@@ -124,6 +127,39 @@ export class CoursesService {
       duration: `${data.estimated_duration_minutes ?? 0}m`,
       status: statusLabels[data.status] ?? 'Draft',
       ai: data.is_ai_generated ?? false,
+    };
+  }
+
+  async updateLesson(lessonId: string, updateLessonDto: UpdateLessonDto) {
+    const payload = Object.fromEntries(
+      Object.entries(updateLessonDto)
+        .filter(([, value]) => value !== undefined)
+        .map(([key, value]) => [
+          key,
+          typeof value === 'string' && !['content', 'code_example'].includes(key)
+            ? value.trim()
+            : value,
+        ]),
+    );
+
+    if ('content' in payload && payload.content === '') payload.content = null;
+    if ('code_example' in payload && payload.code_example === '') payload.code_example = null;
+
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from('lessons')
+      .update(payload)
+      .eq('id', lessonId)
+      .select('id, title, content, code_example, estimated_duration_minutes, status, order_index, is_ai_generated')
+      .single();
+
+    if (error?.code === 'PGRST116' || !data) throw new NotFoundException('Lesson not found');
+    if (error) throw new InternalServerErrorException('Unable to update lesson');
+
+    return {
+      ...data,
+      duration: `${data.estimated_duration_minutes ?? 0}m`,
+      status: statusLabels[data.status] ?? 'Draft',
     };
   }
 
@@ -495,6 +531,175 @@ export class CoursesService {
         status: statusLabels[chapter.status] ?? 'Draft',
       })),
     };
+  }
+
+  async findLearnerLessons(slug: string) {
+    const supabase = this.supabaseService.getClient();
+    const { data: course, error: courseError } = await supabase
+      .from('courses')
+      .select('id, title, slug')
+      .eq('slug', slug)
+      .single();
+
+    if (courseError?.code === 'PGRST116' || !course) {
+      throw new NotFoundException('Course not found');
+    }
+    if (courseError) {
+      throw new InternalServerErrorException('Unable to load course');
+    }
+
+    const { data: chapters, error: chaptersError } = await supabase
+      .from('chapters')
+      .select('id, title, order_index')
+      .eq('course_id', course.id)
+      .order('order_index', { ascending: true });
+
+    if (chaptersError) {
+      throw new InternalServerErrorException('Unable to load course chapters');
+    }
+
+    const chapterIds = (chapters ?? []).map((chapter) => chapter.id);
+    const { data: lessons, error: lessonsError } = chapterIds.length
+      ? await supabase
+          .from('lessons')
+          .select('id, chapter_id, title, estimated_duration_minutes, order_index, status, content, code_example')
+          .in('chapter_id', chapterIds)
+          .order('order_index', { ascending: true })
+      : { data: [], error: null };
+
+    if (lessonsError) {
+      throw new InternalServerErrorException('Unable to load course lessons');
+    }
+
+    const lessonsByChapter = new Map<string, typeof lessons>();
+    for (const lesson of lessons ?? []) {
+      const chapterLessons = lessonsByChapter.get(lesson.chapter_id) ?? [];
+      chapterLessons.push(lesson);
+      lessonsByChapter.set(lesson.chapter_id, chapterLessons);
+    }
+
+    return {
+      course,
+      chapters: (chapters ?? []).map((chapter) => ({
+        id: chapter.id,
+        title: chapter.title,
+        lessons: (lessonsByChapter.get(chapter.id) ?? []).map((lesson) => ({
+          id: lesson.id,
+          title: lesson.title,
+          duration: lesson.estimated_duration_minutes ?? 0,
+          status: lesson.status,
+          content: lesson.content,
+          codeExample: lesson.code_example,
+        })),
+      })),
+    };
+  }
+
+  async findLesson(lessonId: string) {
+    const supabase = this.supabaseService.getClient();
+    const { data: lesson, error: lessonError } = await supabase
+      .from('lessons')
+      .select('id, chapter_id, title, content, code_example, estimated_duration_minutes, order_index, status, is_ai_generated')
+      .eq('id', lessonId)
+      .single();
+
+    if (lessonError?.code === 'PGRST116' || !lesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+    if (lessonError) {
+      throw new InternalServerErrorException('Unable to load lesson');
+    }
+
+    const { data: chapter, error: chapterError } = await supabase
+      .from('chapters')
+      .select('id, title, course_id')
+      .eq('id', lesson.chapter_id)
+      .single();
+
+    if (chapterError || !chapter) {
+      throw new InternalServerErrorException('Unable to load lesson chapter');
+    }
+
+    const { data: course, error: courseError } = await supabase
+      .from('courses')
+      .select('id, title, slug')
+      .eq('id', chapter.course_id)
+      .single();
+
+    if (courseError || !course) {
+      throw new InternalServerErrorException('Unable to load lesson course');
+    }
+
+    const { data: questions, error: questionsError } = await supabase
+      .from('questions')
+      .select('id, content, question_type, difficulty, status')
+      .eq('lesson_id', lesson.id)
+      .order('created_at', { ascending: true });
+
+    if (questionsError) {
+      throw new InternalServerErrorException('Unable to load lesson exercises');
+    }
+
+    return {
+      ...lesson,
+      chapter: {
+        id: chapter.id,
+        title: chapter.title,
+      },
+      course,
+      exercises: (questions ?? []).map((question) => ({
+        id: question.id,
+        content: question.content,
+        type: question.question_type,
+        difficulty: question.difficulty,
+        status: question.status,
+      })),
+    };
+  }
+
+  async removeLesson(lessonId: string) {
+    const supabase = this.supabaseService.getClient();
+    const { data: lesson, error: lessonError } = await supabase
+      .from('lessons')
+      .select('id')
+      .eq('id', lessonId)
+      .maybeSingle();
+
+    if (lessonError) throw new InternalServerErrorException('Unable to find lesson');
+    if (!lesson) throw new NotFoundException('Lesson not found');
+
+    const relatedTables = [
+      'lesson_progress',
+      'lesson_topics',
+      'materials',
+      'notes',
+      'questions',
+      'study_plan_items',
+    ] as const;
+    const relatedResults = await Promise.all(
+      relatedTables.map((table) =>
+        supabase.from(table).select('*', { count: 'exact', head: true }).eq('lesson_id', lessonId),
+      ),
+    );
+
+    const relatedError = relatedResults.find((result) => result.error);
+    if (relatedError?.error) {
+      throw new InternalServerErrorException('Unable to check lesson dependencies');
+    }
+
+    const blockingTable = relatedTables.find((_, index) => (relatedResults[index].count ?? 0) > 0);
+    if (blockingTable) {
+      throw new ConflictException(`Lesson cannot be deleted because it has related ${blockingTable.replaceAll('_', ' ')} data`);
+    }
+
+    const { error: deleteError } = await supabase
+      .from('lessons')
+      .delete()
+      .eq('id', lessonId);
+
+    if (deleteError) throw new InternalServerErrorException('Unable to delete lesson');
+
+    return { id: lessonId, message: 'Lesson deleted successfully' };
   }
 
   async update(id: string, updateCourseDto: UpdateCourseDto) {

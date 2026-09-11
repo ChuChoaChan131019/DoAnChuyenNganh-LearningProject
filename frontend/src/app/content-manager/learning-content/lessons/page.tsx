@@ -1,78 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Clock3, FileText, Plus, Search } from "lucide-react";
 import type { ContentStatus, Lesson } from "@/types/learning-content";
+import { courseApi } from "@/lib/api";
 
 type LessonRow = Lesson & { course: string; chapter: string; slug: string };
-
-const lessons: LessonRow[] = [
-  {
-    code: "L01",
-    title: "What is C#?",
-    slug: "what-is-csharp",
-    chapter: "Introduction to C#",
-    course: "C# Fundamentals",
-    duration: "8m",
-    status: "Published",
-  },
-  {
-    code: "L02",
-    title: "Installing .NET",
-    slug: "installing-dotnet",
-    chapter: "Introduction to C#",
-    course: "C# Fundamentals",
-    duration: "10m",
-    status: "Published",
-  },
-  {
-    code: "L03",
-    title: "Your First C# Program",
-    slug: "first-csharp-program",
-    chapter: "Introduction to C#",
-    course: "C# Fundamentals",
-    duration: "12m",
-    status: "Published",
-  },
-  {
-    code: "L01",
-    title: "Variables",
-    slug: "variables",
-    chapter: "Variables and Data Types",
-    course: "C# Fundamentals",
-    duration: "11m",
-    status: "Published",
-  },
-  {
-    code: "L02",
-    title: "Data Types",
-    slug: "data-types",
-    chapter: "Variables and Data Types",
-    course: "C# Fundamentals",
-    duration: "14m",
-    status: "Published",
-  },
-  {
-    code: "L03",
-    title: "Type Conversion",
-    slug: "type-conversion",
-    chapter: "Variables and Data Types",
-    course: "C# Fundamentals",
-    duration: "9m",
-    status: "Approved",
-    ai: true,
-  },
-  {
-    code: "L01",
-    title: "if / else and switch",
-    slug: "if-else-switch",
-    chapter: "Control Flow",
-    course: "C# Fundamentals",
-    duration: "13m",
-    status: "Published",
-  },
-];
 
 const statusStyles: Record<ContentStatus, string> = {
   Published: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -94,6 +28,46 @@ function StatusBadge({ status }: { status: ContentStatus }) {
 
 export default function LessonsPage() {
   const [query, setQuery] = useState("");
+  const [lessons, setLessons] = useState<LessonRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    courseApi.list()
+      .then(async (courses) => {
+        const lessonGroups = await Promise.all(
+          courses.map(async (course) => {
+            const chapters = await courseApi.chapters(String(course.id));
+            return chapters.flatMap((chapter) =>
+              chapter.lessons.map((lesson) => ({
+                ...lesson,
+                slug: lesson.id ?? lesson.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+                course: course.title,
+                chapter: chapter.title,
+              })),
+            );
+          }),
+        );
+
+        if (isActive) {
+          setLessons(lessonGroups.flat());
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setLoadError("Unable to load lessons.");
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   const filteredLessons = useMemo(() => {
     const term = query.trim().toLowerCase();
     return term
@@ -103,7 +77,7 @@ export default function LessonsPage() {
           ),
         )
       : lessons;
-  }, [query]);
+  }, [lessons, query]);
 
   return (
     <div className="mx-auto max-w-[1240px] space-y-6 pb-12">
@@ -116,13 +90,13 @@ export default function LessonsPage() {
             All C# lesson content, from “What is C#?” to “async / await”.
           </p>
         </div>
-        <button
-          type="button"
+        <Link
+          href="/content-manager/learning-content/lessons/new"
           className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#F7444E] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#df3540]"
         >
           <Plus className="h-4 w-4" />
           New lesson
-        </button>
+        </Link>
       </header>
       <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-[0_8px_24px_rgba(0,44,62,0.06)]">
         <div className="border-b border-[#dfe6df] px-4 py-4 sm:px-5">
@@ -138,6 +112,16 @@ export default function LessonsPage() {
           </label>
         </div>
         <div>
+          {isLoading && (
+            <p className="px-5 py-12 text-center text-sm text-[#637981]">
+              Loading lessons...
+            </p>
+          )}
+          {!isLoading && loadError && (
+            <p className="px-5 py-12 text-center text-sm text-rose-600">
+              {loadError}
+            </p>
+          )}
           {filteredLessons.map((lesson) => (
             <Link
               key={lesson.slug}
@@ -168,7 +152,7 @@ export default function LessonsPage() {
             </Link>
           ))}
         </div>
-        {filteredLessons.length === 0 && (
+        {!isLoading && !loadError && filteredLessons.length === 0 && (
           <p className="px-5 py-12 text-center text-sm text-[#637981]">
             No lessons found.
           </p>
