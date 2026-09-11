@@ -5,6 +5,10 @@ import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { CreateCourseDto } from './dto/create-course.dto.js';
 import { CoursesService } from './courses.service.js';
 import { UpdateCourseDto } from './dto/update-course.dto.js';
+import { CreateChapterDto } from './dto/create-chapter.dto.js';
+import { CreateLessonDto } from './dto/create-lesson.dto.js';
+import { UpdateChapterDto } from './dto/update-chapter.dto.js';
+import { ReorderChaptersDto } from './dto/reorder-chapters.dto.js';
 
 @Controller('api/v1/courses')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -20,6 +24,62 @@ export class CoursesController {
   @Post()
   create(@Body() createCourseDto: CreateCourseDto, @Req() request: any) {
     return this.coursesService.create(createCourseDto, request.user.id);
+  }
+
+  @Post(':courseId/chapters')
+  createChapter(
+    @Param('courseId') courseId: string,
+    @Body() createChapterDto: CreateChapterDto,
+  ) {
+    return this.coursesService.createChapter(courseId, createChapterDto);
+  }
+
+  @Get(':courseId/chapters')
+  findChapters(@Param('courseId') courseId: string) {
+    return this.coursesService.findChapters(courseId);
+  }
+
+  @Patch(':courseId/chapters/reorder')
+  reorderChapters(
+    @Param('courseId') courseId: string,
+    @Body() reorderChaptersDto: ReorderChaptersDto,
+  ) {
+    return this.coursesService.reorderChapters(courseId, reorderChaptersDto.chapter_ids);
+  }
+
+  @Patch(':courseId/chapters/:chapterId/lessons/reorder')
+  reorderLessons(
+    @Param('courseId') courseId: string,
+    @Param('chapterId') chapterId: string,
+    @Body() reorderLessonsDto: ReorderChaptersDto,
+  ) {
+    return this.coursesService.reorderLessons(courseId, chapterId, reorderLessonsDto.chapter_ids);
+  }
+
+  @Post(':courseId/chapters/:chapterId/lessons')
+  createLesson(
+    @Param('courseId') courseId: string,
+    @Param('chapterId') chapterId: string,
+    @Body() createLessonDto: CreateLessonDto,
+  ) {
+    return this.coursesService.createLesson(courseId, chapterId, createLessonDto);
+  }
+
+  @Patch(':courseId/chapters/:chapterId')
+  updateChapter(
+    @Param('courseId') courseId: string,
+    @Param('chapterId') chapterId: string,
+    @Body() updateChapterDto: UpdateChapterDto,
+  ) {
+    return this.coursesService.updateChapter(courseId, chapterId, updateChapterDto);
+  }
+
+  @Delete(':courseId/chapters/:chapterId')
+  removeChapter(
+    @Param('courseId') courseId: string,
+    @Param('chapterId') chapterId: string,
+  ) {
+    return this.coursesService.removeChapter(courseId, chapterId);
   }
 
   @Get(':slug')

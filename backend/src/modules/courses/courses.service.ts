@@ -7,10 +7,297 @@ import {
 import { SupabaseService } from '../../config/supabase.service.js';
 import { CreateCourseDto } from './dto/create-course.dto.js';
 import { UpdateCourseDto } from './dto/update-course.dto.js';
+import { CreateChapterDto } from './dto/create-chapter.dto.js';
+import { CreateLessonDto } from './dto/create-lesson.dto.js';
+import { UpdateChapterDto } from './dto/update-chapter.dto.js';
+
+type ContentStatusLabel = 'Draft' | 'In review' | 'Approved' | 'Published';
+
+const statusLabels: Record<string, ContentStatusLabel> = {
+  draft: 'Draft',
+  approved: 'Approved',
+  published: 'Published',
+  in_review: 'In review',
+};
 
 @Injectable()
 export class CoursesService {
   constructor(private readonly supabaseService: SupabaseService) {}
+
+  async findChapters(courseId: string) {
+    const supabase = this.supabaseService.getClient();
+    const { data: chapters, error: chaptersError } = await supabase
+      .from('chapters')
+      .select('id, title, description, order_index, status')
+      .eq('course_id', courseId)
+      .order('order_index', { ascending: true });
+
+    if (chaptersError) {
+      throw new InternalServerErrorException('Unable to load chapters');
+    }
+
+    const chapterRows = chapters ?? [];
+    const chapterIds = chapterRows.map((chapter) => chapter.id);
+    const { data: lessons, error: lessonsError } = chapterIds.length
+      ? await supabase
+          .from('lessons')
+          .select('id, chapter_id, title, estimated_duration_minutes, order_index, status, is_ai_generated')
+          .in('chapter_id', chapterIds)
+          .order('order_index', { ascending: true })
+      : { data: [], error: null };
+
+    if (lessonsError) {
+      throw new InternalServerErrorException('Unable to load chapter lessons');
+    }
+
+    const lessonsByChapter = new Map<string, typeof lessons>();
+    for (const lesson of lessons ?? []) {
+      const chapterLessons = lessonsByChapter.get(lesson.chapter_id) ?? [];
+      chapterLessons.push(lesson);
+      lessonsByChapter.set(lesson.chapter_id, chapterLessons);
+    }
+
+    return chapterRows.map((chapter) => ({
+      id: chapter.id,
+      title: chapter.title,
+      summary: chapter.description ?? '',
+      status: statusLabels[chapter.status] ?? 'Draft',
+      lessons: (lessonsByChapter.get(chapter.id) ?? []).map((lesson) => ({
+        id: lesson.id,
+        code: `L${String(lesson.order_index).padStart(2, '0')}`,
+        title: lesson.title,
+        duration: `${lesson.estimated_duration_minutes ?? 0}m`,
+        status: statusLabels[lesson.status] ?? 'Draft',
+        ai: lesson.is_ai_generated ?? false,
+      })),
+    }));
+  }
+
+  async createLesson(courseId: string, chapterId: string, createLessonDto: CreateLessonDto) {
+    const supabase = this.supabaseService.getClient();
+    const { data: chapter, error: chapterError } = await supabase
+      .from('chapters')
+      .select('id')
+      .eq('id', chapterId)
+      .eq('course_id', courseId)
+      .single();
+
+    if (chapterError?.code === 'PGRST116' || !chapter) {
+      throw new NotFoundException('Chapter not found');
+    }
+    if (chapterError) {
+      throw new InternalServerErrorException('Unable to validate chapter');
+    }
+
+    const { data: lastLesson, error: lastLessonError } = await supabase
+      .from('lessons')
+      .select('order_index')
+      .eq('chapter_id', chapterId)
+      .order('order_index', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lastLessonError) {
+      throw new InternalServerErrorException('Unable to determine lesson order');
+    }
+
+    const { data, error } = await supabase
+      .from('lessons')
+      .insert({
+        chapter_id: chapterId,
+        title: createLessonDto.title.trim(),
+        estimated_duration_minutes: createLessonDto.estimated_duration_minutes ?? 0,
+        order_index: (lastLesson?.order_index ?? 0) + 1,
+        status: 'draft',
+      })
+      .select('id, title, estimated_duration_minutes, order_index, status, is_ai_generated')
+      .single();
+
+    if (error) {
+      throw new InternalServerErrorException('Unable to create lesson');
+    }
+
+    return {
+      id: data.id,
+      code: `L${String(data.order_index).padStart(2, '0')}`,
+      title: data.title,
+      duration: `${data.estimated_duration_minutes ?? 0}m`,
+      status: statusLabels[data.status] ?? 'Draft',
+      ai: data.is_ai_generated ?? false,
+    };
+  }
+
+  async updateChapter(courseId: string, chapterId: string, updateChapterDto: UpdateChapterDto) {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from('chapters')
+      .update({
+        title: updateChapterDto.title.trim(),
+        description: updateChapterDto.description?.trim() || null,
+      })
+      .eq('id', chapterId)
+      .eq('course_id', courseId)
+      .select('id, title, description, order_index, status, course_id')
+      .single();
+
+    if (error?.code === 'PGRST116' || !data) {
+      throw new NotFoundException('Chapter not found');
+    }
+    if (error) {
+      throw new InternalServerErrorException('Unable to update chapter');
+    }
+
+    return data;
+  }
+
+  async removeChapter(courseId: string, chapterId: string) {
+    const supabase = this.supabaseService.getClient();
+    const { data: chapter, error: chapterError } = await supabase
+      .from('chapters')
+      .select('id')
+      .eq('id', chapterId)
+      .eq('course_id', courseId)
+      .single();
+
+    if (chapterError?.code === 'PGRST116' || !chapter) {
+      throw new NotFoundException('Chapter not found');
+    }
+    if (chapterError) {
+      throw new InternalServerErrorException('Unable to validate chapter');
+    }
+
+    const { count, error: lessonsError } = await supabase
+      .from('lessons')
+      .select('id', { count: 'exact', head: true })
+      .eq('chapter_id', chapterId);
+
+    if (lessonsError) {
+      throw new InternalServerErrorException('Unable to check chapter lessons');
+    }
+    if ((count ?? 0) > 0) {
+      throw new ConflictException('Cannot delete a chapter that has lessons');
+    }
+
+    const { error } = await supabase.from('chapters').delete().eq('id', chapterId).eq('course_id', courseId);
+    if (error) {
+      throw new InternalServerErrorException('Unable to delete chapter');
+    }
+
+    return { id: chapterId, message: 'Chapter deleted successfully' };
+  }
+
+  async reorderChapters(courseId: string, chapterIds: string[]) {
+    const supabase = this.supabaseService.getClient();
+    const { data: chapters, error } = await supabase
+      .from('chapters')
+      .select('id')
+      .eq('course_id', courseId)
+      .in('id', chapterIds);
+
+    if (error) {
+      throw new InternalServerErrorException('Unable to validate chapter order');
+    }
+    if ((chapters ?? []).length !== chapterIds.length) {
+      throw new NotFoundException('One or more chapters were not found');
+    }
+
+    const updates = await Promise.all(
+      chapterIds.map((chapterId, index) =>
+        supabase.from('chapters').update({ order_index: index + 1 }).eq('id', chapterId).eq('course_id', courseId),
+      ),
+    );
+    if (updates.some((result) => result.error)) {
+      throw new InternalServerErrorException('Unable to save chapter order');
+    }
+
+    return { message: 'Chapter order updated successfully' };
+  }
+
+  async reorderLessons(courseId: string, chapterId: string, lessonIds: string[]) {
+    const supabase = this.supabaseService.getClient();
+    const { data: lessons, error } = await supabase
+      .from('lessons')
+      .select('id')
+      .eq('chapter_id', chapterId)
+      .in('id', lessonIds);
+
+    if (error) {
+      throw new InternalServerErrorException('Unable to validate lesson order');
+    }
+    if ((lessons ?? []).length !== lessonIds.length) {
+      throw new NotFoundException('One or more lessons were not found');
+    }
+
+    const { data: chapter, error: chapterError } = await supabase
+      .from('chapters')
+      .select('id')
+      .eq('id', chapterId)
+      .eq('course_id', courseId)
+      .single();
+    if (chapterError?.code === 'PGRST116' || !chapter) {
+      throw new NotFoundException('Chapter not found');
+    }
+    if (chapterError) {
+      throw new InternalServerErrorException('Unable to validate chapter');
+    }
+
+    const updates = await Promise.all(
+      lessonIds.map((lessonId, index) =>
+        supabase.from('lessons').update({ order_index: index + 1 }).eq('id', lessonId).eq('chapter_id', chapterId),
+      ),
+    );
+    if (updates.some((result) => result.error)) {
+      throw new InternalServerErrorException('Unable to save lesson order');
+    }
+
+    return { message: 'Lesson order updated successfully' };
+  }
+
+  async createChapter(courseId: string, createChapterDto: CreateChapterDto) {
+    const supabase = this.supabaseService.getClient();
+    const { data: course, error: courseError } = await supabase
+      .from('courses')
+      .select('id')
+      .eq('id', courseId)
+      .single();
+
+    if (courseError?.code === 'PGRST116' || !course) {
+      throw new NotFoundException('Course not found');
+    }
+    if (courseError) {
+      throw new InternalServerErrorException('Unable to validate course');
+    }
+
+    const { data: lastChapter, error: lastChapterError } = await supabase
+      .from('chapters')
+      .select('order_index')
+      .eq('course_id', courseId)
+      .order('order_index', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lastChapterError) {
+      throw new InternalServerErrorException('Unable to determine chapter order');
+    }
+
+    const { data, error } = await supabase
+      .from('chapters')
+      .insert({
+        course_id: courseId,
+        title: createChapterDto.title.trim(),
+        description: createChapterDto.description?.trim() || null,
+        order_index: (lastChapter?.order_index ?? 0) + 1,
+        status: 'draft',
+      })
+      .select('id, title, description, order_index, status, course_id, created_at')
+      .single();
+
+    if (error) {
+      throw new InternalServerErrorException('Unable to create chapter');
+    }
+
+    return data;
+  }
 
   async findAll() {
     const supabase = this.supabaseService.getClient();

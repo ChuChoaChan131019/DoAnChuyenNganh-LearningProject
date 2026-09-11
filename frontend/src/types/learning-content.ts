@@ -45,6 +45,7 @@ export interface CategoryCourse extends Omit<Course, "id"> {
 }
 
 export interface Lesson {
+  id?: string;
   code: string;
   title: string;
   duration: string;
@@ -55,7 +56,7 @@ export interface Lesson {
 }
 
 export interface Chapter {
-  id: number;
+  id: string | number;
   title: string;
   summary: string;
   lessons: Lesson[];

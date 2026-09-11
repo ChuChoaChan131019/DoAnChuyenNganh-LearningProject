@@ -139,6 +139,71 @@ export const courseApi = {
       `/api/v1/courses/${encodeURIComponent(slug)}`,
     );
   },
+  chapters: (courseId: string): Promise<import('../types/learning-content').Chapter[]> => {
+    return request(`/api/v1/courses/${encodeURIComponent(courseId)}/chapters`);
+  },
+  createLesson: (courseId: string, chapterId: string, payload: {
+    title: string;
+    estimated_duration_minutes?: number;
+  }) => {
+    return request<import('../types/learning-content').Lesson>(
+      `/api/v1/courses/${encodeURIComponent(courseId)}/chapters/${encodeURIComponent(chapterId)}/lessons`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+  createChapter: (courseId: string, payload: { title: string; description?: string }) => {
+    return request<{
+      id: string;
+      title: string;
+      description: string | null;
+      order_index: number;
+      status: string;
+      course_id: string;
+    }>(`/api/v1/courses/${encodeURIComponent(courseId)}/chapters`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  updateChapter: (courseId: string, chapterId: string, payload: { title: string; description?: string }) => {
+    return request<{
+      id: string;
+      title: string;
+      description: string | null;
+      order_index: number;
+      status: string;
+      course_id: string;
+    }>(`/api/v1/courses/${encodeURIComponent(courseId)}/chapters/${encodeURIComponent(chapterId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+  removeChapter: (courseId: string, chapterId: string) => {
+    return request<{ id: string; message: string }>(
+      `/api/v1/courses/${encodeURIComponent(courseId)}/chapters/${encodeURIComponent(chapterId)}`,
+      { method: 'DELETE' },
+    );
+  },
+  reorderChapters: (courseId: string, chapterIds: string[]) => {
+    return request<{ message: string }>(
+      `/api/v1/courses/${encodeURIComponent(courseId)}/chapters/reorder`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ chapter_ids: chapterIds }),
+      },
+    );
+  },
+  reorderLessons: (courseId: string, chapterId: string, lessonIds: string[]) => {
+    return request<{ message: string }>(
+      `/api/v1/courses/${encodeURIComponent(courseId)}/chapters/${encodeURIComponent(chapterId)}/lessons/reorder`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ chapter_ids: lessonIds }),
+      },
+    );
+  },
   create: (payload: {
     title: string;
     slug: string;
