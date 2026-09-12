@@ -213,6 +213,8 @@ export const courseApi = {
   }> => {
     return request(`/api/v1/learner/courses/${encodeURIComponent(slug)}/lessons`);
   },
+  learnerList: (): Promise<import('../types/learning-content').Course[]> =>
+    request('/api/v1/learner/courses'),
   chapters: (courseId: string): Promise<import('../types/learning-content').Chapter[]> => {
     return request(`/api/v1/courses/${encodeURIComponent(courseId)}/chapters`);
   },
@@ -407,5 +409,32 @@ export const topicApi = {
     request<{ id: string; name: string; slug: string }>('/api/v1/topics', {
       method: 'POST',
       body: JSON.stringify({ name, description }),
+    }),
+};
+
+export const practiceApi = {
+  overview: (): Promise<import('../types/practice').PracticeOverview> =>
+    request('/api/v1/practice/overview'),
+  questions: (
+    mode: 'quick' | 'weak' | 'course',
+    courseId?: string,
+  ): Promise<{ mode: string; questions: import('../types/practice').PracticeQuestion[] }> => {
+    const params = new URLSearchParams({ mode });
+    if (courseId) params.set('course_id', courseId);
+    return request(`/api/v1/practice/questions?${params.toString()}`);
+  },
+  ai: (courseId?: string, count = 10): Promise<{
+    mode: string;
+    difficulty: string;
+    rationale: string;
+    questions: { mode: string; questions: import('../types/practice').PracticeQuestion[] };
+  }> => request('/api/v1/practice/ai', {
+    method: 'POST',
+    body: JSON.stringify({ course_id: courseId, count }),
+  }),
+  check: (payload: { question_id: string; option_ids?: string[]; answer_text?: string }) =>
+    request<{ is_correct: boolean; explanation: string | null }>('/api/v1/practice/check', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     }),
 };

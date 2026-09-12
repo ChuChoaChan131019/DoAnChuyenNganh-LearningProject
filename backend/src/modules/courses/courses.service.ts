@@ -425,6 +425,11 @@ export class CoursesService {
     }));
   }
 
+  async findLearnerCourses() {
+    const courses = await this.findAll();
+    return courses.filter((course) => course.status === 'Published');
+  }
+
   async create(createCourseDto: CreateCourseDto, creatorId: string) {
     const { category_id: categoryId, ...courseFields } = createCourseDto;
     const supabase = this.supabaseService.getClient();

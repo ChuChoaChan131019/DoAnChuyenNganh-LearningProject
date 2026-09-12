@@ -21,6 +21,7 @@ import { AiModule } from './modules/ai/ai.module.js';
 import { CategoriesModule } from './modules/categories/categories.module.js';
 import { CoursesModule } from './modules/courses/courses.module.js';
 import { QuestionsModule } from './modules/questions/questions.module.js';
+import { PracticeModule } from './modules/practice/practice.module.js';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { QuestionsModule } from './modules/questions/questions.module.js';
     CategoriesModule,
     CoursesModule,
     QuestionsModule,
+    PracticeModule,
   ],
 
   controllers: [AppController],
