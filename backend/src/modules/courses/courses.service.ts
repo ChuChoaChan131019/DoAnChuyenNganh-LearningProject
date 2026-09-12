@@ -74,6 +74,21 @@ export class CoursesService {
     }));
   }
 
+  async findLessonsByChapter(chapterId: string) {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from('lessons')
+      .select('id, title, order_index')
+      .eq('chapter_id', chapterId)
+      .order('order_index', { ascending: true });
+
+    if (error) {
+      throw new InternalServerErrorException('Unable to load chapter lessons');
+    }
+
+    return data ?? [];
+  }
+
   async createLesson(courseId: string, chapterId: string, createLessonDto: CreateLessonDto) {
     const supabase = this.supabaseService.getClient();
     const { data: chapter, error: chapterError } = await supabase
@@ -744,4 +759,7 @@ export class CoursesService {
     if (error) throw new InternalServerErrorException('Unable to delete course');
     return { id, message: 'Course deleted successfully' };
   }
+
+
+  
 }

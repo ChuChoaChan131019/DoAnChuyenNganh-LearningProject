@@ -1,4 +1,4 @@
-import {
+import type {
   RegisterRequest,
   RegisterResponse,
   LoginRequest,
@@ -7,7 +7,8 @@ import {
   ApiErrorResponse,
 } from '../types/auth';
 import type { Category, CategoryCourse } from '../types/learning-content';
-import { getStoredToken } from './auth/session';
+import { clearSession, getStoredToken } from './auth/session';
+import type { ChapterOption, CourseOption, LessonOption, QuestionPayload } from '../types/question';
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 
@@ -25,6 +26,7 @@ export class ApiClientError extends Error {
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const method = options.method || 'GET';
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -36,6 +38,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   if (token && !headers['Authorization'] && !headers['authorization']) {
     headers['Authorization'] = `Bearer ${token}`;
   }
+
+  console.log('[API request]', { method, url });
 
   let response: Response;
   try {
@@ -52,24 +56,41 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     );
   }
 
+  let responseBody: unknown = null;
+  try {
+    responseBody = await response.json();
+  } catch {
+    // Empty or non-JSON response body.
+  }
+
+  console.log('[API response]', {
+    method,
+    url,
+    status: response.status,
+    data: responseBody,
+  });
+
   if (!response.ok) {
     let errorDetail: { code?: string; message?: string } = {};
-    try {
-      const errorJson = (await response.json()) as ApiErrorResponse;
-      if (errorJson?.error) {
-        errorDetail = errorJson.error;
-      }
-    } catch {
-      // Body not json
+    const errorJson = responseBody as ApiErrorResponse | null;
+    if (errorJson?.error) {
+      errorDetail = errorJson.error;
     }
 
     const code = errorDetail.code || `HTTP_${response.status}`;
     const message = errorDetail.message || response.statusText || 'Yêu cầu thất bại';
 
+    if (response.status === 401 && typeof window !== 'undefined') {
+      clearSession();
+    }
+
     throw new ApiClientError(message, code, response.status);
   }
 
-  const json = (await response.json()) as ApiSuccessResponse<T>;
+  const json = responseBody as ApiSuccessResponse<T>;
+  if (!json || !('data' in json)) {
+    throw new ApiClientError('Backend returned an invalid response envelope.', 'INVALID_RESPONSE', response.status);
+  }
   return json.data;
 }
 
@@ -292,4 +313,99 @@ export const courseApi = {
     '/api/v1/courses/' + encodeURIComponent(id),
     { method: 'DELETE' },
   ),
+};
+
+export const questionApi = {
+  list: (filters: {
+    search?: string;
+    course_id?: string;
+    difficulty?: import('../types/question').DifficultyLevel;
+    status?: import('../types/question').QuestionStatus;
+    is_ai_generated?: boolean;
+    is_deleted?: boolean;
+  } = {}): Promise<import('../types/question').QuestionItem[]> => {
+    const params = new URLSearchParams();
+    if (filters.search) params.set('search', filters.search);
+    if (filters.course_id) params.set('course_id', filters.course_id);
+    if (filters.difficulty) params.set('difficulty', filters.difficulty);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.is_ai_generated !== undefined) params.set('is_ai_generated', String(filters.is_ai_generated));
+    if (filters.is_deleted !== undefined) params.set('is_deleted', String(filters.is_deleted));
+    const query = params.toString();
+    return request<import('../types/question').QuestionItem[]>(`/api/v1/questions${query ? `?${query}` : ''}`);
+  },
+  // The detail response includes nested relations not covered by QuestionItem.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getById: (id: string) => request<any>(`/api/v1/questions/${id}`),
+  listCourses: (): Promise<CourseOption[]> =>
+    request<CourseOption[]>('/api/v1/courses'),
+  listChapters: (courseId: string): Promise<ChapterOption[]> =>
+    request<ChapterOption[]>(`/api/v1/courses/${encodeURIComponent(String(courseId))}/chapters`),
+  listLessons: (courseId: string, chapterId: string): Promise<LessonOption[]> =>
+    request<LessonOption[]>(
+      `/api/v1/courses/${encodeURIComponent(String(courseId))}/chapters/${encodeURIComponent(String(chapterId))}/lessons`,
+    ),
+  create: (payload: QuestionPayload) => request<{ id: string }>('/api/v1/questions', {
+    method: 'POST', body: JSON.stringify(payload),
+  }),
+  update: (id: string, payload: QuestionPayload) => request<{ id: string }>(`/api/v1/questions/${id}`, {
+    method: 'PUT', body: JSON.stringify(payload),
+  }),
+  updateStatus: (id: string, status: import('../types/question').QuestionStatus) => request<{ id: string; status: string }>(`/api/v1/questions/${id}/status`, {
+    method: 'PATCH', body: JSON.stringify({ status }),
+  }),
+  submitForReview: (id: string) => request<{ id: string; review_pending: boolean }>(`/api/v1/questions/${id}/submit-review`, {
+    method: 'POST', body: JSON.stringify({}),
+  }),
+  remove: (id: string) => request<{ id: string; deleted: boolean }>(`/api/v1/questions/${id}`, {
+    method: 'DELETE',
+  }),
+  delete: (id: string) => request<{ id: string; deleted: boolean }>(`/api/v1/questions/${id}`, {
+    method: 'DELETE',
+  }),
+  restore: (id: string) => request<{ id: string; restored: boolean }>(`/api/v1/questions/${id}/restore`, {
+    method: 'PATCH',
+  }),
+};
+
+type QuizQuestionConfiguration = {
+  question_id: string;
+  score_weight: number;
+};
+
+type ConfiguredQuizQuestion = QuizQuestionConfiguration & {
+  questions: import('../types/question').QuestionItem | null;
+};
+
+type ConfigureQuizQuestionsResponse = {
+  quiz_id: string;
+  total_questions: number;
+  total_score: number;
+};
+
+export const quizApi = {
+  getQuestions: (quizId: string): Promise<ConfiguredQuizQuestion[]> =>
+    request<ConfiguredQuizQuestion[]>(
+      `/api/v1/quizzes/${encodeURIComponent(quizId)}/questions`,
+    ),
+  configureQuestions: (
+    quizId: string,
+    questions: QuizQuestionConfiguration[],
+  ): Promise<ConfigureQuizQuestionsResponse> =>
+    request<ConfigureQuizQuestionsResponse>(
+      `/api/v1/quizzes/${encodeURIComponent(quizId)}/questions`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ questions }),
+      },
+    ),
+};
+
+export const topicApi = {
+  list: () => request<Array<{ id: string; name: string; slug: string }>>('/api/v1/topics'),
+  create: (name: string, description?: string) =>
+    request<{ id: string; name: string; slug: string }>('/api/v1/topics', {
+      method: 'POST',
+      body: JSON.stringify({ name, description }),
+    }),
 };
