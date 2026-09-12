@@ -28,6 +28,10 @@ export interface QuestionItem {
   status: QuestionStatus;
   is_ai_generated: boolean;
   created_at: string;
+  course?: { id: string; title: string } | null;
+  chapter?: { id: string; title: string } | null;
+  lesson?: { title: string } | null;
+  topics?: string[];
 
   // Các trường DTO/UI phục vụ hiển thị trên page.tsx
   subtopic?: string;
@@ -58,4 +62,4 @@ export type QuestionPayload = {
 
 export type CourseOption = { id: string; title: string; slug?: string };
 export type ChapterOption = { id: string; course_id: string; title: string; order_index: number };
-export type LessonOption = { id: string; chapter_id: string; title: string };
+export type LessonOption = { id: string; chapter_id?: string; title: string; order_index: number };

@@ -1,11 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
-import { QuestionDto } from './dto/question.dto.js';
+import {
+  ConfigureQuizQuestionsDto,
+  QuestionDto,
+  QuestionStatus,
+} from './dto/question.dto.js';
 import { QuestionsService } from './questions.service.js';
 
-@Controller('api')
+@Controller('api/v1')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('content_manager', 'admin')
 export class QuestionsController {
@@ -20,6 +24,16 @@ export class QuestionsController {
   @Get('chapters/:id/lessons')
   listLessons(@Param('id') id: string) { return this.questionsService.listLessons(id); }
 
+  @Get('questions')
+  listQuestions(@Query() filters: Record<string, string>) {
+    return this.questionsService.listQuestions(filters);
+  }
+
+  @Get('questions/:id')
+  getById(@Param('id') id: string) {
+    return this.questionsService.getById(id);
+  }
+
   @Post('questions')
   create(@Body() dto: QuestionDto, @Req() request: any) {
     return this.questionsService.create(dto, request.user.id);
@@ -28,6 +42,11 @@ export class QuestionsController {
   @Put('questions/:id')
   update(@Param('id') id: string, @Body() dto: QuestionDto, @Req() request: any) {
     return this.questionsService.update(id, dto, request.user.id);
+  }
+
+  @Patch('questions/:id/status')
+  updateStatus(@Param('id') id: string, @Body() body: { status: QuestionStatus }, @Req() request: any) {
+    return this.questionsService.updateStatus(id, body.status, request.user.id);
   }
 
   @Post('questions/:id/submit-review')
@@ -39,4 +58,32 @@ export class QuestionsController {
   remove(@Param('id') id: string, @Req() request: any) {
     return this.questionsService.remove(id, request.user.id);
   }
+
+  @Put('quizzes/:id/questions')
+  configureQuiz(
+    @Param('id') id: string,
+    @Body() dto: ConfigureQuizQuestionsDto,
+    @Req() request: any,
+  ) {
+    return this.questionsService.configureQuiz(id, dto, request.user.id);
+  }
+
+  @Get('quizzes/:id/questions')
+  getQuizQuestions(@Param('id') id: string) {
+    return this.questionsService.getQuizQuestions(id);
+  }
+
+  @Get('topics')
+  listTopics() {
+    return this.questionsService.listTopics();
+  }
+
+  @Post('topics')
+  createTopic(@Body() body: { name: string; description?: string }) {
+    if (!body.name?.trim()) {
+      throw new BadRequestException('Topic name is required');
+    }
+    return this.questionsService.createTopic(body.name.trim(), body.description?.trim());
+  }
+
 }

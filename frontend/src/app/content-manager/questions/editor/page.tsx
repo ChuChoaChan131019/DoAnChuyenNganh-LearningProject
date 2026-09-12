@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Save,
   SendHorizontal,
@@ -14,7 +15,7 @@ import {
   FileText,
   AlertCircle
 } from 'lucide-react';
-import { ApiClientError, questionApi } from '@/lib/api';
+import { ApiClientError, questionApi, topicApi } from '@/lib/api';
 import { ChapterOption, CourseOption, LessonOption, QuestionPayload } from '@/types/question';
 
 // ==========================================
@@ -80,10 +81,12 @@ export interface QuestionFormData {
   course: string;
   chapter: string;
   lesson: string;
+  topic: string;
   type: QuestionType;
   difficulty: Difficulty;
   content: string;
   explanation: string;
+  status: 'draft' | 'approved';
   options: AnswerOption[];
 }
 
@@ -95,60 +98,142 @@ function getApiErrorMessage(error: unknown): string {
     : 'Unable to complete the request. Please try again.';
 }
 
-export default function QuestionEditorPage() {
+function normalizeNullableId(value: string | null | undefined): string | null {
+  const normalizedValue = value?.trim();
+  return normalizedValue ? normalizedValue : null;
+}
+
+function QuestionEditorContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const questionId = searchParams.get('id');
   const [formData, setFormData] = useState<QuestionFormData>({
     course: '',
     chapter: '',
     lesson: '',
+    topic: '',
     type: 'single_choice',
     difficulty: 'easy',
-    content: 'Which access modifier makes a member visible only inside the declaring class?',
-    explanation: 'private restricts access to the declaring type. protected also allows derived types, internal allows the same assembly.',
+    content: '',
+    explanation: '',
+    status: 'draft',
     options: [
-      { id: '1', label: 'A', text: 'public', isCorrect: false },
-      { id: '2', label: 'B', text: 'private', isCorrect: true },
-      { id: '3', label: 'C', text: 'protected', isCorrect: false },
-      { id: '4', label: 'D', text: 'internal', isCorrect: false }
+      { id: '1', label: 'A', text: '', isCorrect: false },
+      { id: '2', label: 'B', text: '', isCorrect: false }
     ]
   });
 
-  const [previewSelectedOptionId, setPreviewSelectedOptionId] = useState<string | null>('2');
+  const [previewSelectedOptionId, setPreviewSelectedOptionId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [questionId, setQuestionId] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [createdQuestionId, setCreatedQuestionId] = useState<string | null>(null);
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [chapters, setChapters] = useState<ChapterOption[]>([]);
   const [lessons, setLessons] = useState<LessonOption[]>([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(true);
+  const [isLoadingChapters, setIsLoadingChapters] = useState(false);
+  const [isLoadingLessons, setIsLoadingLessons] = useState(false);
+  const [placementError, setPlacementError] = useState<string | null>(null);
+  const [topics, setTopics] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const [newTopicName, setNewTopicName] = useState('');
+  const [isCreatingTopic, setIsCreatingTopic] = useState(false);
+
+  useEffect(() => {
+    if (!questionId) return;
+
+    let active = true;
+    const loadQuestion = async () => {
+      setIsLoadingChapters(true);
+      setIsLoadingLessons(true);
+      try {
+        const question = await questionApi.getById(questionId);
+        const courseId = String(question.course_id ?? question.course?.id ?? '');
+        const chapterId = String(question.chapter_id ?? question.chapter?.id ?? '');
+        const lessonId = String(question.lesson_id ?? question.lesson?.id ?? '');
+        const loadedChapters = courseId ? await questionApi.listChapters(courseId) : [];
+        const loadedLessons = courseId && chapterId
+          ? await questionApi.listLessons(courseId, chapterId)
+          : [];
+        const loadedOptions = (question.options ?? [])
+          .slice()
+          .sort((first: { order_index?: number }, second: { order_index?: number }) => (first.order_index ?? 0) - (second.order_index ?? 0))
+          .map((option: { id?: string; option_text?: string; is_correct?: boolean }, index: number) => ({
+            id: String(option.id ?? `${questionId}-option-${index}`),
+            label: OPTION_LABELS[index] ?? String(index + 1),
+            text: option.option_text ?? '',
+            isCorrect: Boolean(option.is_correct),
+          }));
+        const topic = Array.isArray(question.topics) ? question.topics[0] : null;
+        const topicId = typeof topic === 'string' ? topic : String(topic?.topic_id ?? topic?.id ?? '');
+
+        if (!active) return;
+        setChapters(loadedChapters);
+        setLessons(loadedLessons);
+        setFormData((current) => ({
+          ...current,
+          course: courseId,
+          chapter: chapterId,
+          lesson: lessonId,
+          topic: topicId,
+          type: question.question_type,
+          difficulty: question.difficulty,
+          content: question.content ?? '',
+          explanation: question.explanation ?? '',
+          status: question.status,
+          options: loadedOptions,
+        }));
+      } catch (error: unknown) {
+        if (active) setPlacementError(getApiErrorMessage(error));
+      } finally {
+        if (active) {
+          setIsLoadingChapters(false);
+          setIsLoadingLessons(false);
+        }
+      }
+    };
+
+    void loadQuestion();
+    return () => { active = false; };
+  }, [questionId]);
 
   const handleCourseChange = async (course: string) => {
+    const courseId = String(course);
+    setIsLoadingChapters(true);
+    setIsLoadingLessons(false);
+    setPlacementError(null);
+    setChapters([]);
+    setLessons([]);
+    setFormData((prev) => ({ ...prev, course: courseId, chapter: '', lesson: '' }));
+
     try {
-      const nextChapters = await questionApi.listChapters(course);
-      const newChapter = nextChapters[0]?.id || '';
-      const nextLessons = newChapter ? await questionApi.listLessons(newChapter) : [];
+      const nextChapters = await questionApi.listChapters(courseId);
       setChapters(nextChapters);
-      setLessons(nextLessons);
-      setFormData((prev) => ({
-        ...prev,
-        course,
-        chapter: newChapter,
-        lesson: nextLessons[0]?.id || ''
-      }));
     } catch (error: unknown) {
-      alert(getApiErrorMessage(error));
+      setChapters([]);
+      setLessons([]);
+      setPlacementError(getApiErrorMessage(error));
+    } finally {
+      setIsLoadingChapters(false);
+      setIsLoadingLessons(false);
     }
   };
 
   const handleChapterChange = async (chapter: string) => {
+    const chapterId = String(chapter);
+    setIsLoadingLessons(true);
+    setPlacementError(null);
+    setLessons([]);
+    setFormData((prev) => ({ ...prev, chapter: chapterId, lesson: '' }));
+
     try {
-      const nextLessons = chapter ? await questionApi.listLessons(chapter) : [];
+      const nextLessons = chapterId ? await questionApi.listLessons(formData.course, chapterId) : [];
       setLessons(nextLessons);
-      setFormData((prev) => ({
-        ...prev,
-        chapter,
-        lesson: nextLessons[0]?.id || ''
-      }));
     } catch (error: unknown) {
-      alert(getApiErrorMessage(error));
+      setLessons([]);
+      setPlacementError(getApiErrorMessage(error));
+    } finally {
+      setIsLoadingLessons(false);
     }
   };
 
@@ -157,15 +242,38 @@ export default function QuestionEditorPage() {
       try {
         const items = await questionApi.listCourses();
         setCourses(items);
-        const firstCourse = items[0];
-        if (firstCourse) await handleCourseChange(firstCourse.id);
       } catch (error: unknown) {
-        alert(getApiErrorMessage(error));
+        setPlacementError(getApiErrorMessage(error));
+      } finally {
+        setIsLoadingCourses(false);
       }
     };
 
     void loadCourses();
   }, []);
+
+  useEffect(() => {
+    topicApi.list().then(setTopics).catch((error: unknown) => {
+      alert(getApiErrorMessage(error));
+    });
+  }, []);
+
+  const handleCreateTopic = async () => {
+    const name = newTopicName.trim();
+    if (!name || isCreatingTopic) return;
+
+    setIsCreatingTopic(true);
+    try {
+      const createdTopic = await topicApi.create(name);
+      setTopics((current) => [...current, createdTopic]);
+      setFormData((current) => ({ ...current, topic: createdTopic.id }));
+      setNewTopicName('');
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error));
+    } finally {
+      setIsCreatingTopic(false);
+    }
+  };
 
   const handleOptionTextChange = (id: string, text: string) => {
     setFormData((prev) => ({
@@ -232,14 +340,14 @@ export default function QuestionEditorPage() {
 
   const buildPayload = (status: 'draft' | 'approved'): QuestionPayload => ({
     course_id: formData.course,
-    chapter_id: formData.chapter || null,
-    lesson_id: formData.lesson || null,
+    chapter_id: normalizeNullableId(formData.chapter),
+    lesson_id: normalizeNullableId(formData.lesson),
     question_type: formData.type,
     difficulty: formData.difficulty,
     content: formData.content,
     explanation: formData.explanation || null,
     status,
-    topic_ids: [],
+    topic_ids: formData.topic ? [formData.topic] : [],
     options: formData.type === 'fill_in_blank' ? [] : formData.options.map((option, index) => ({
       option_text: option.text,
       is_correct: option.isCorrect,
@@ -247,13 +355,50 @@ export default function QuestionEditorPage() {
     })),
   });
 
+  const validateForm = () => {
+    if (!formData.course.trim()) {
+      alert('Vui lòng chọn Course');
+      return false;
+    }
+    if (!formData.topic.trim()) {
+      alert('Please select a topic.');
+      return false;
+    }
+    if (!formData.content.trim()) {
+      alert('Please enter question content.');
+      return false;
+    }
+    if (!formData.explanation.trim()) {
+      alert('Please enter an explanation.');
+      return false;
+    }
+    if (formData.type !== 'fill_in_blank') {
+      if (formData.options.length < 2) {
+        alert('A question must contain at least 2 options.');
+        return false;
+      }
+      const emptyOption = formData.options.find((option) => !option.text.trim());
+      if (emptyOption) {
+        alert(`Please fill in option ${emptyOption.label}.`);
+        return false;
+      }
+      if (!formData.options.some((option) => option.isCorrect)) {
+        alert('Please mark at least one correct answer.');
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleSaveDraft = async () => {
+    if (!validateForm()) return;
     setIsSaving(true);
     try {
-      const saved = questionId
-        ? await questionApi.update(questionId, buildPayload('draft'))
+      const existingId = questionId ?? createdQuestionId;
+      const saved = existingId
+        ? await questionApi.update(existingId, buildPayload('draft'))
         : await questionApi.create(buildPayload('draft'));
-      setQuestionId(saved.id);
+      if (!questionId) setCreatedQuestionId(saved.id);
       alert('Draft saved successfully!');
     } catch (error: unknown) {
       alert(getApiErrorMessage(error));
@@ -263,22 +408,15 @@ export default function QuestionEditorPage() {
   };
 
   const handleSubmitForReview = async () => {
-    const hasCorrectOption = formData.options.some((opt) => opt.isCorrect);
-    if (!hasCorrectOption) {
-      alert('Please mark at least one correct answer before submitting.');
-      return;
-    }
-    if (!formData.content.trim()) {
-      alert('Please enter question content.');
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
     try {
-      const saved = questionId
-        ? { id: questionId }
+      const existingId = questionId ?? createdQuestionId;
+      const saved = existingId
+        ? { id: existingId }
         : await questionApi.create(buildPayload('draft'));
-      setQuestionId(saved.id);
+      if (!questionId) setCreatedQuestionId(saved.id);
       await questionApi.submitForReview(saved.id);
       alert('Question submitted for review!');
     } catch (error: unknown) {
@@ -288,13 +426,28 @@ export default function QuestionEditorPage() {
     }
   };
 
+  const handleUpdate = async () => {
+    if (!questionId || !validateForm()) return;
+
+    setIsUpdating(true);
+    try {
+      await questionApi.update(questionId, buildPayload(formData.status));
+      alert('Question updated successfully!');
+      router.push('/content-manager/questions/bank');
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error));
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       {/* Header & Action Buttons */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-            Question editor
+            {questionId ? 'Update Question' : 'Question editor'}
           </h1>
           <p className="mt-1 text-sm text-gray-500">
             Accuracy first: every question needs a correct answer and an explanation.
@@ -302,24 +455,38 @@ export default function QuestionEditorPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            disabled={isSaving}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-60"
-          >
-            <Save className="h-4 w-4 text-gray-500" />
-            <span>{isSaving ? 'Saving...' : 'Save draft'}</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmitForReview}
-            disabled={isSubmitting}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#c93f3a] disabled:opacity-60"
-          >
-            <SendHorizontal className="h-4 w-4" />
-            <span>{isSubmitting ? 'Submitting...' : 'Submit for review'}</span>
-          </button>
+          {questionId ? (
+            <button
+              type="button"
+              onClick={() => void handleUpdate()}
+              disabled={isUpdating}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#c93f3a] disabled:opacity-60"
+            >
+              <Save className="h-4 w-4" />
+              <span>{isUpdating ? 'Updating...' : 'Update Question'}</span>
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => void handleSaveDraft()}
+                disabled={isSaving}
+                className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-60"
+              >
+                <Save className="h-4 w-4 text-gray-500" />
+                <span>{isSaving ? 'Saving...' : 'Save draft'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSubmitForReview()}
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#c93f3a] disabled:opacity-60"
+              >
+                <SendHorizontal className="h-4 w-4" />
+                <span>{isSubmitting ? 'Submitting...' : 'Submit for review'}</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -339,8 +506,15 @@ export default function QuestionEditorPage() {
                 <select
                   value={formData.course}
                   onChange={(e) => handleCourseChange(e.target.value)}
+                  disabled={isLoadingCourses || isLoadingChapters}
                   className={STYLES.select}
                 >
+                  {isLoadingCourses ? (
+                    <option value="">Loading courses...</option>
+                  ) : (
+                    <option value="">Select course...</option>
+                  )}
+                  {!isLoadingCourses && courses.length === 0 && <option value="">No courses found</option>}
                   {courses.map((course) => (
                     <option key={course.id} value={course.id}>{course.title}</option>
                   ))}
@@ -352,8 +526,15 @@ export default function QuestionEditorPage() {
                 <select
                   value={formData.chapter}
                   onChange={(e) => handleChapterChange(e.target.value)}
+                  disabled={isLoadingCourses || isLoadingChapters || !formData.course}
                   className={STYLES.select}
                 >
+                  {isLoadingChapters ? (
+                    <option value="">Loading chapters...</option>
+                  ) : (
+                    <option value="">None</option>
+                  )}
+                  {!isLoadingChapters && formData.course && chapters.length === 0 && <option value="">No chapters found</option>}
                   {chapters.map((chap) => (
                     <option key={chap.id} value={chap.id}>{chap.title}</option>
                   ))}
@@ -365,14 +546,24 @@ export default function QuestionEditorPage() {
                 <select
                   value={formData.lesson}
                   onChange={(e) => setFormData({ ...formData, lesson: e.target.value })}
+                  disabled={isLoadingLessons || !formData.chapter}
                   className={STYLES.select}
                 >
+                  {isLoadingLessons ? (
+                    <option value="">Loading lessons...</option>
+                  ) : (
+                    <option value="">None</option>
+                  )}
+                  {!isLoadingLessons && formData.chapter && lessons.length === 0 && <option value="">No lessons found</option>}
                   {lessons.map((les) => (
                     <option key={les.id} value={les.id}>{les.title}</option>
                   ))}
                 </select>
               </div>
             </div>
+            {placementError && (
+              <p className="text-sm text-red-600" role="alert">{placementError}</p>
+            )}
           </section>
 
           {/* Section 2: Question Details */}
@@ -382,7 +573,7 @@ export default function QuestionEditorPage() {
               <h2 className={STYLES.sectionTitle}>Question</h2>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <div>
                 <label className={STYLES.label}>Question type</label>
                 <select
@@ -407,6 +598,20 @@ export default function QuestionEditorPage() {
                   <option value="easy">Easy</option>
                   <option value="medium">Medium</option>
                   <option value="hard">Hard</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={STYLES.label}>Topic</label>
+                <select
+                  value={formData.topic}
+                  onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
+                  className={STYLES.select}
+                >
+                  <option value="">Select a topic...</option>
+                  {topics.map((topic) => (
+                    <option key={topic.id} value={topic.id}>{topic.name}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -516,7 +721,7 @@ export default function QuestionEditorPage() {
         </div>
 
         {/* Live Preview Column */}
-        <aside className="lg:col-span-4 sticky top-6">
+        <aside className="lg:col-span-4 sticky top-6 space-y-5">
           <div className={`${STYLES.sectionCard} space-y-5`}>
             <div className="pb-3 border-b border-gray-100">
               <div className="flex items-center justify-between">
@@ -595,8 +800,67 @@ export default function QuestionEditorPage() {
               Changes made in the form on the left are synchronized in real-time.
             </div>
           </div>
+
+          <div className={`${STYLES.sectionCard} space-y-4`}>
+            <div>
+              <h2 className={STYLES.sectionTitle}>Topics &amp; Tags</h2>
+              <p className="mt-1 text-xs text-gray-400">Select or add knowledge topics for this question</p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {topics.map((topic) => {
+                const isSelected = formData.topic === topic.id;
+                return (
+                  <button
+                    key={topic.id}
+                    type="button"
+                    onClick={() => setFormData((current) => ({ ...current, topic: topic.id }))}
+                    className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${isSelected
+                      ? 'border-[#F7444E] bg-[#F7444E] text-white'
+                      : 'border-gray-200 bg-gray-100 text-gray-700 hover:border-gray-300'
+                      }`}
+                  >
+                    {topic.name}
+                  </button>
+                );
+              })}
+              {topics.length === 0 && <span className="text-xs text-gray-400">No topics found.</span>}
+            </div>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleCreateTopic();
+              }}
+              className="flex items-center gap-2"
+            >
+              <input
+                type="text"
+                value={newTopicName}
+                onChange={(event) => setNewTopicName(event.target.value)}
+                placeholder="Enter new topic name..."
+                className="min-w-0 flex-1 rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:border-[#F7444E] focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20"
+              />
+              <button
+                type="submit"
+                disabled={!newTopicName.trim() || isCreatingTopic}
+                className="inline-flex items-center gap-1 rounded-xl bg-[#F7444E] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#c93f3a] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add
+              </button>
+            </form>
+          </div>
         </aside>
       </main>
     </div>
+  );
+}
+
+export default function QuestionEditorPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-7xl px-6 py-10 text-sm text-gray-500">Loading question editor...</div>}>
+      <QuestionEditorContent />
+    </Suspense>
   );
 }

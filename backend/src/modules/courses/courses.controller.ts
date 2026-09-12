@@ -40,6 +40,13 @@ export class CoursesController {
     return this.coursesService.findChapters(courseId);
   }
 
+  @Get(':courseId/chapters/:chapterId/lessons')
+  findLessonsByChapter(
+    @Param('chapterId') chapterId: string,
+  ) {
+    return this.coursesService.findLessonsByChapter(chapterId);
+  }
+
   @Patch(':courseId/chapters/reorder')
   reorderChapters(
     @Param('courseId') courseId: string,

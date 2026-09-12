@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
+  IsNumber,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -85,4 +86,20 @@ export class QuestionDto {
 export class SubmitQuestionDto {
   @IsEnum(QuestionStatus)
   status!: QuestionStatus;
+}
+
+export class QuizQuestionItemDto {
+  @IsUUID()
+  question_id!: string;
+
+  @IsNumber()
+  @Min(0.1)
+  score_weight!: number;
+}
+
+export class ConfigureQuizQuestionsDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => QuizQuestionItemDto)
+  questions!: QuizQuestionItemDto[];
 }
