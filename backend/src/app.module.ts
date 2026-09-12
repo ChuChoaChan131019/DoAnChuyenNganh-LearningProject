@@ -20,6 +20,7 @@ import { EventsModule } from './modules/events/events.module.js';
 import { AiModule } from './modules/ai/ai.module.js';
 import { CategoriesModule } from './modules/categories/categories.module.js';
 import { CoursesModule } from './modules/courses/courses.module.js';
+import { QuestionsModule } from './modules/questions/questions.module.js';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { CoursesModule } from './modules/courses/courses.module.js';
     AiModule,
     CategoriesModule,
     CoursesModule,
+    QuestionsModule,
   ],
 
   controllers: [AppController],

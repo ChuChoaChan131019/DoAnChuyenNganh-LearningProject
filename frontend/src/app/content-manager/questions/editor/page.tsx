@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Save,
   SendHorizontal,
@@ -14,6 +14,8 @@ import {
   FileText,
   AlertCircle
 } from 'lucide-react';
+import { ApiClientError, questionApi } from '@/lib/api';
+import { ChapterOption, CourseOption, LessonOption, QuestionPayload } from '@/types/question';
 
 // ==========================================
 // CENTRALIZED STYLES
@@ -85,34 +87,19 @@ export interface QuestionFormData {
   options: AnswerOption[];
 }
 
-const COURSES = [
-  'Object-Oriented Programming',
-  'Data Structures & Algorithms',
-  'Web Development with Next.js',
-  'Introduction to AI & Machine Learning'
-];
-
-const CHAPTERS: Record<string, string[]> = {
-  'Object-Oriented Programming': ['Encapsulation', 'Inheritance', 'Polymorphism', 'Abstraction'],
-  'Data Structures & Algorithms': ['Arrays & Strings', 'Linked Lists', 'Trees & Graphs'],
-  'Web Development with Next.js': ['Routing & Layouts', 'Server Actions', 'Rendering Strategies'],
-  'Introduction to AI & Machine Learning': ['Linear Regression', 'Neural Networks', 'Transformers']
-};
-
-const LESSONS: Record<string, string[]> = {
-  'Encapsulation': ['Access Modifiers', 'Getters & Setters', 'Data Hiding Principles'],
-  'Inheritance': ['Base & Derived Classes', 'Method Overriding'],
-  'Polymorphism': ['Dynamic Method Dispatch', 'Interfaces & Abstract Classes'],
-  'Abstraction': ['Abstract Classes vs Interfaces', 'Contract-based Design']
-};
-
 const OPTION_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
+function getApiErrorMessage(error: unknown): string {
+  return error instanceof ApiClientError
+    ? error.message
+    : 'Unable to complete the request. Please try again.';
+}
 
 export default function QuestionEditorPage() {
   const [formData, setFormData] = useState<QuestionFormData>({
-    course: 'Object-Oriented Programming',
-    chapter: 'Encapsulation',
-    lesson: 'Access Modifiers',
+    course: '',
+    chapter: '',
+    lesson: '',
     type: 'single_choice',
     difficulty: 'easy',
     content: 'Which access modifier makes a member visible only inside the declaring class?',
@@ -128,27 +115,57 @@ export default function QuestionEditorPage() {
   const [previewSelectedOptionId, setPreviewSelectedOptionId] = useState<string | null>('2');
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [questionId, setQuestionId] = useState<string | null>(null);
+  const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [chapters, setChapters] = useState<ChapterOption[]>([]);
+  const [lessons, setLessons] = useState<LessonOption[]>([]);
 
-  const handleCourseChange = (course: string) => {
-    const chapters = CHAPTERS[course] || [];
-    const newChapter = chapters[0] || '';
-    const lessons = LESSONS[newChapter] || [];
-    setFormData((prev) => ({
-      ...prev,
-      course,
-      chapter: newChapter,
-      lesson: lessons[0] || ''
-    }));
+  const handleCourseChange = async (course: string) => {
+    try {
+      const nextChapters = await questionApi.listChapters(course);
+      const newChapter = nextChapters[0]?.id || '';
+      const nextLessons = newChapter ? await questionApi.listLessons(newChapter) : [];
+      setChapters(nextChapters);
+      setLessons(nextLessons);
+      setFormData((prev) => ({
+        ...prev,
+        course,
+        chapter: newChapter,
+        lesson: nextLessons[0]?.id || ''
+      }));
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error));
+    }
   };
 
-  const handleChapterChange = (chapter: string) => {
-    const lessons = LESSONS[chapter] || [];
-    setFormData((prev) => ({
-      ...prev,
-      chapter,
-      lesson: lessons[0] || ''
-    }));
+  const handleChapterChange = async (chapter: string) => {
+    try {
+      const nextLessons = chapter ? await questionApi.listLessons(chapter) : [];
+      setLessons(nextLessons);
+      setFormData((prev) => ({
+        ...prev,
+        chapter,
+        lesson: nextLessons[0]?.id || ''
+      }));
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error));
+    }
   };
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const items = await questionApi.listCourses();
+        setCourses(items);
+        const firstCourse = items[0];
+        if (firstCourse) await handleCourseChange(firstCourse.id);
+      } catch (error: unknown) {
+        alert(getApiErrorMessage(error));
+      }
+    };
+
+    void loadCourses();
+  }, []);
 
   const handleOptionTextChange = (id: string, text: string) => {
     setFormData((prev) => ({
@@ -213,15 +230,39 @@ export default function QuestionEditorPage() {
     }
   };
 
-  const handleSaveDraft = () => {
+  const buildPayload = (status: 'draft' | 'approved'): QuestionPayload => ({
+    course_id: formData.course,
+    chapter_id: formData.chapter || null,
+    lesson_id: formData.lesson || null,
+    question_type: formData.type,
+    difficulty: formData.difficulty,
+    content: formData.content,
+    explanation: formData.explanation || null,
+    status,
+    topic_ids: [],
+    options: formData.type === 'fill_in_blank' ? [] : formData.options.map((option, index) => ({
+      option_text: option.text,
+      is_correct: option.isCorrect,
+      order_index: index,
+    })),
+  });
+
+  const handleSaveDraft = async () => {
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      const saved = questionId
+        ? await questionApi.update(questionId, buildPayload('draft'))
+        : await questionApi.create(buildPayload('draft'));
+      setQuestionId(saved.id);
       alert('Draft saved successfully!');
-    }, 500);
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleSubmitForReview = () => {
+  const handleSubmitForReview = async () => {
     const hasCorrectOption = formData.options.some((opt) => opt.isCorrect);
     if (!hasCorrectOption) {
       alert('Please mark at least one correct answer before submitting.');
@@ -233,10 +274,18 @@ export default function QuestionEditorPage() {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const saved = questionId
+        ? { id: questionId }
+        : await questionApi.create(buildPayload('draft'));
+      setQuestionId(saved.id);
+      await questionApi.submitForReview(saved.id);
       alert('Question submitted for review!');
-    }, 500);
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -292,8 +341,8 @@ export default function QuestionEditorPage() {
                   onChange={(e) => handleCourseChange(e.target.value)}
                   className={STYLES.select}
                 >
-                  {COURSES.map((course) => (
-                    <option key={course} value={course}>{course}</option>
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id}>{course.title}</option>
                   ))}
                 </select>
               </div>
@@ -305,8 +354,8 @@ export default function QuestionEditorPage() {
                   onChange={(e) => handleChapterChange(e.target.value)}
                   className={STYLES.select}
                 >
-                  {(CHAPTERS[formData.course] || []).map((chap) => (
-                    <option key={chap} value={chap}>{chap}</option>
+                  {chapters.map((chap) => (
+                    <option key={chap.id} value={chap.id}>{chap.title}</option>
                   ))}
                 </select>
               </div>
@@ -318,8 +367,8 @@ export default function QuestionEditorPage() {
                   onChange={(e) => setFormData({ ...formData, lesson: e.target.value })}
                   className={STYLES.select}
                 >
-                  {(LESSONS[formData.chapter] || []).map((les) => (
-                    <option key={les} value={les}>{les}</option>
+                  {lessons.map((les) => (
+                    <option key={les.id} value={les.id}>{les.title}</option>
                   ))}
                 </select>
               </div>

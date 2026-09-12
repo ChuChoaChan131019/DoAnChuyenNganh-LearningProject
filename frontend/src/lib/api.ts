@@ -8,6 +8,8 @@ import {
 } from '../types/auth';
 import type { Category, CategoryCourse } from '../types/learning-content';
 import { getStoredToken } from './auth/session';
+import { clearSession, getStoredToken } from './auth/session';
+import { ChapterOption, CourseOption, LessonOption, QuestionPayload } from '../types/question';
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 
@@ -65,6 +67,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
     const code = errorDetail.code || `HTTP_${response.status}`;
     const message = errorDetail.message || response.statusText || 'Yêu cầu thất bại';
+
+    if (response.status === 401 && typeof window !== 'undefined') {
+      clearSession();
+    }
 
     throw new ApiClientError(message, code, response.status);
   }
@@ -292,4 +298,22 @@ export const courseApi = {
     '/api/v1/courses/' + encodeURIComponent(id),
     { method: 'DELETE' },
   ),
+export const questionApi = {
+  listCourses: (): Promise<CourseOption[]> => request<CourseOption[]>('/api/courses'),
+  listChapters: (courseId: string): Promise<ChapterOption[]> =>
+    request<ChapterOption[]>(`/api/courses/${courseId}/chapters`),
+  listLessons: (chapterId: string): Promise<LessonOption[]> =>
+    request<LessonOption[]>(`/api/chapters/${chapterId}/lessons`),
+  create: (payload: QuestionPayload) => request<{ id: string }>('/api/questions', {
+    method: 'POST', body: JSON.stringify(payload),
+  }),
+  update: (id: string, payload: QuestionPayload) => request<{ id: string }>(`/api/questions/${id}`, {
+    method: 'PUT', body: JSON.stringify(payload),
+  }),
+  submitForReview: (id: string) => request<{ id: string; review_pending: boolean }>(`/api/questions/${id}/submit-review`, {
+    method: 'POST', body: JSON.stringify({}),
+  }),
+  remove: (id: string) => request<{ id: string; deleted: boolean }>(`/api/questions/${id}`, {
+    method: 'DELETE',
+  }),
 };
