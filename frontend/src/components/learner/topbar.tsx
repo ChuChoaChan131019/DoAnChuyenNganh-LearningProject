@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Flame, Sun, Bell, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { QuickContentSearch } from '@/components/search/quick-content-search';
 
 export function LearnerTopbar() {
   const router = useRouter();
@@ -33,7 +34,9 @@ export function LearnerTopbar() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-end border-b border-border bg-card px-6">
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between gap-4 border-b border-border bg-card px-6">
+      <QuickContentSearch learner />
+
       {/* Right: Actions & Profile */}
       <div className="flex items-center gap-4">
         {/* Streak Badge */}

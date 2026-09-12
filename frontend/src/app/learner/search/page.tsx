@@ -1,5 +1,5 @@
-import SearchPage from '@/app/content-manager/search/page';
+import { CourseLessonSearch } from '@/components/search/course-lesson-search';
 
 export default function LearnerSearchPage() {
-  return <SearchPage />;
+  return <CourseLessonSearch learner />;
 }
