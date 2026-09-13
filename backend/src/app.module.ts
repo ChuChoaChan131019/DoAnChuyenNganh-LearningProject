@@ -22,6 +22,7 @@ import { CategoriesModule } from './modules/categories/categories.module.js';
 import { CoursesModule } from './modules/courses/courses.module.js';
 import { QuestionsModule } from './modules/questions/questions.module.js';
 import { PracticeModule } from './modules/practice/practice.module.js';
+import { QuizzesModule } from './modules/quizzes/quizzes.module.js';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { PracticeModule } from './modules/practice/practice.module.js';
     CoursesModule,
     QuestionsModule,
     PracticeModule,
+    QuizzesModule,
   ],
 
   controllers: [AppController],

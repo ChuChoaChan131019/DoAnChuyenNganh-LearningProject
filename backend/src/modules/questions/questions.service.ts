@@ -243,6 +243,7 @@ export class QuestionsService {
           dto.questions.map((question) => ({
             quiz_id: quizId,
             question_id: question.question_id,
+            order_index: question.order_index,
             score_weight: question.score_weight,
           })),
           { onConflict: 'quiz_id,question_id' },

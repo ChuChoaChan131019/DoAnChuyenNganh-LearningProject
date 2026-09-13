@@ -9,6 +9,17 @@ import type {
 import type { Category, CategoryCourse } from '../types/learning-content';
 import { clearSession, getStoredToken } from './auth/session';
 import type { ChapterOption, CourseOption, LessonOption, QuestionPayload } from '../types/question';
+import type {
+  QuizItem,
+  QuizData,
+  QuizQuestionItem,
+  QuizAttempt,
+  QuizAnswerSubmission,
+  QuizAttemptQuestion,
+  QuizResultResponse,
+  QuizSubmissionPayload,
+  QuizStatus,
+} from '../types/quiz';
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 
@@ -321,6 +332,9 @@ export const questionApi = {
   list: (filters: {
     search?: string;
     course_id?: string;
+    chapter_id?: string;
+    lesson_id?: string;
+    question_type?: import('../types/question').QuestionType;
     difficulty?: import('../types/question').DifficultyLevel;
     status?: import('../types/question').QuestionStatus;
     is_ai_generated?: boolean;
@@ -329,6 +343,9 @@ export const questionApi = {
     const params = new URLSearchParams();
     if (filters.search) params.set('search', filters.search);
     if (filters.course_id) params.set('course_id', filters.course_id);
+    if (filters.chapter_id) params.set('chapter_id', filters.chapter_id);
+    if (filters.lesson_id) params.set('lesson_id', filters.lesson_id);
+    if (filters.question_type) params.set('question_type', filters.question_type);
     if (filters.difficulty) params.set('difficulty', filters.difficulty);
     if (filters.status) params.set('status', filters.status);
     if (filters.is_ai_generated !== undefined) params.set('is_ai_generated', String(filters.is_ai_generated));
@@ -370,15 +387,6 @@ export const questionApi = {
   }),
 };
 
-type QuizQuestionConfiguration = {
-  question_id: string;
-  score_weight: number;
-};
-
-type ConfiguredQuizQuestion = QuizQuestionConfiguration & {
-  questions: import('../types/question').QuestionItem | null;
-};
-
 type ConfigureQuizQuestionsResponse = {
   quiz_id: string;
   total_questions: number;
@@ -386,13 +394,49 @@ type ConfigureQuizQuestionsResponse = {
 };
 
 export const quizApi = {
-  getQuestions: (quizId: string): Promise<ConfiguredQuizQuestion[]> =>
-    request<ConfiguredQuizQuestion[]>(
+  list: (filters: {
+    course_id?: string;
+    status?: QuizStatus;
+    page?: number;
+  } = {}): Promise<QuizItem[]> => {
+    const params = new URLSearchParams();
+    if (filters.course_id) params.set('course_id', filters.course_id);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.page !== undefined) params.set('page', String(filters.page));
+    const query = params.toString();
+    return request<QuizItem[]>(`/api/v1/quizzes${query ? `?${query}` : ''}`);
+  },
+  getById: (id: string): Promise<QuizData> =>
+    request<QuizData>(`/api/v1/quizzes/${encodeURIComponent(id)}`),
+  create: (payload: Partial<QuizData>): Promise<QuizData> =>
+    request<QuizData>('/api/v1/quizzes', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  update: (id: string, payload: Partial<QuizData>): Promise<QuizData> =>
+    request<QuizData>(`/api/v1/quizzes/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  publish: (id: string): Promise<QuizData> =>
+    request<QuizData>(`/api/v1/quizzes/${encodeURIComponent(id)}/publish`, {
+      method: 'POST',
+    }),
+  archive: (id: string): Promise<QuizData> =>
+    request<QuizData>(`/api/v1/quizzes/${encodeURIComponent(id)}/archive`, {
+      method: 'POST',
+    }),
+  delete: (id: string): Promise<{ id: string; message: string }> =>
+    request<{ id: string; message: string }>(`/api/v1/quizzes/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
+  getQuestions: (quizId: string): Promise<QuizQuestionItem[]> =>
+    request<QuizQuestionItem[]>(
       `/api/v1/quizzes/${encodeURIComponent(quizId)}/questions`,
     ),
   configureQuestions: (
     quizId: string,
-    questions: QuizQuestionConfiguration[],
+    questions: Array<{ question_id: string; score_weight: number }>,
   ): Promise<ConfigureQuizQuestionsResponse> =>
     request<ConfigureQuizQuestionsResponse>(
       `/api/v1/quizzes/${encodeURIComponent(quizId)}/questions`,
@@ -401,6 +445,17 @@ export const quizApi = {
         body: JSON.stringify({ questions }),
       },
     ),
+  startAttempt: (quizId: string): Promise<QuizAttempt & { questions: QuizAttemptQuestion[] }> =>
+    request<QuizAttempt & { questions: QuizAttemptQuestion[] }>(`/api/v1/quizzes/${encodeURIComponent(quizId)}/attempts`, {
+      method: 'POST',
+    }),
+  submitAttempt: (payload: QuizSubmissionPayload) =>
+    request<QuizAttempt & { passed: boolean }>(`/api/v1/quiz-attempts/${encodeURIComponent(payload.attempt_id)}/submit`, {
+      method: 'POST',
+      body: JSON.stringify({ answers: payload.answers }),
+    }),
+  latestResult: (quizId: string): Promise<QuizResultResponse> =>
+    request<QuizResultResponse>(`/api/v1/quiz-results/latest?quiz_id=${encodeURIComponent(quizId)}`),
 };
 
 export const topicApi = {
