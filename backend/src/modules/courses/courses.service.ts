@@ -425,6 +425,11 @@ export class CoursesService {
     }));
   }
 
+  async findLearnerCourses() {
+    const courses = await this.findAll();
+    return courses.filter((course) => course.status === 'Published');
+  }
+
   async create(createCourseDto: CreateCourseDto, creatorId: string) {
     const { category_id: categoryId, ...courseFields } = createCourseDto;
     const supabase = this.supabaseService.getClient();
@@ -552,8 +557,9 @@ export class CoursesService {
     const supabase = this.supabaseService.getClient();
     const { data: course, error: courseError } = await supabase
       .from('courses')
-      .select('id, title, slug')
+      .select('id, title, slug, status')
       .eq('slug', slug)
+      .eq('status', 'published')
       .single();
 
     if (courseError?.code === 'PGRST116' || !course) {
@@ -579,6 +585,7 @@ export class CoursesService {
           .from('lessons')
           .select('id, chapter_id, title, estimated_duration_minutes, order_index, status, content, code_example')
           .in('chapter_id', chapterIds)
+          .eq('status', 'published')
           .order('order_index', { ascending: true })
       : { data: [], error: null };
 
