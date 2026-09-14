@@ -487,7 +487,16 @@ export const practiceApi = {
     method: 'POST',
     body: JSON.stringify({ course_id: courseId, count }),
   }),
-  check: (payload: { question_id: string; option_ids?: string[]; answer_text?: string }) =>
+  createAttempt: (payload: { mode: 'quick' | 'weak' | 'course' | 'ai'; course_id?: string; total_questions: number }) =>
+    request<{ id: string }>('/api/v1/practice/attempts', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  completeAttempt: (attemptId: string) =>
+    request<{ id: string; score: number; percentage: number }>(`/api/v1/practice/attempts/${encodeURIComponent(attemptId)}/complete`, {
+      method: 'POST',
+    }),
+  check: (payload: { question_id: string; option_ids?: string[]; answer_text?: string; attempt_id?: string }) =>
     request<{ is_correct: boolean; explanation: string | null }>('/api/v1/practice/check', {
       method: 'POST',
       body: JSON.stringify(payload),
