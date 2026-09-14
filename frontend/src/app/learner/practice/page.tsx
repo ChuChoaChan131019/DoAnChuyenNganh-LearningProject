@@ -27,6 +27,17 @@ export default function PracticePage() {
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
 
+  const loadOverview = async () => {
+    try {
+      const nextOverview = await practiceApi.overview();
+      setOverview(nextOverview);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to load practice overview.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     practiceApi.overview()
       .then(setOverview)
@@ -97,6 +108,7 @@ export default function PracticePage() {
         return;
       }
     }
+    await loadOverview();
     setMode(null);
     setQuestions([]);
     setAttemptId(null);
