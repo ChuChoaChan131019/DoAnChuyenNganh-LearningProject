@@ -7,7 +7,7 @@ import {
 import { SupabaseService } from '../../config/supabase.service.js';
 import { AiService } from '../ai/ai.service.js';
 
-type PracticeMode = 'quick' | 'weak' | 'course';
+type PracticeMode = 'quick' | 'weak' | 'course' | 'ai';
 
 @Injectable()
 export class PracticeService {
@@ -82,9 +82,33 @@ export class PracticeService {
     };
   }
 
+  async createAttempt(userId: string, body: { mode: PracticeMode; course_id?: string; total_questions: number }) {
+    if (!['quick', 'weak', 'course', 'ai'].includes(body.mode)) {
+      throw new BadRequestException('Unsupported practice mode');
+    }
+
+    const courseIds = await this.getActiveCourseIds(userId);
+    if (body.course_id && !courseIds.includes(body.course_id)) {
+      throw new ForbiddenException('You are not enrolled in this course');
+    }
+
+    const { data, error } = await this.supabaseService.getClient()
+      .from('practice_attempts')
+      .insert({
+        user_id: userId,
+        mode: body.mode,
+        course_id: body.course_id ?? null,
+        total_questions: body.total_questions,
+      })
+      .select('id, mode, total_questions, started_at')
+      .single();
+    if (error || !data) throw new InternalServerErrorException('Unable to create practice attempt');
+    return data;
+  }
+
   async checkAnswer(
     userId: string,
-    body: { question_id: string; option_ids?: string[]; answer_text?: string },
+    body: { question_id: string; option_ids?: string[]; answer_text?: string; attempt_id?: string },
   ) {
     const courseIds = await this.getActiveCourseIds(userId);
     const supabase = this.supabaseService.getClient();
@@ -116,10 +140,84 @@ export class PracticeService {
       && (body.answer_text ?? '').trim().toLowerCase() === (options ?? [])
         .find((option) => option.is_correct)?.option_text.trim().toLowerCase();
 
+    const isCorrect = question.question_type === 'fill_in_blank' ? fillAnswer : optionAnswer;
+    if (body.attempt_id) {
+      const { data: attempt, error: attemptError } = await supabase
+        .from('practice_attempts')
+        .select('id')
+        .eq('id', body.attempt_id)
+        .eq('user_id', userId)
+        .is('completed_at', null)
+        .maybeSingle();
+      if (attemptError) throw new InternalServerErrorException('Unable to load practice attempt');
+      if (!attempt) throw new ForbiddenException('Practice attempt is not available');
+
+      const { error: detailError } = await supabase.from('practice_attempt_details').upsert({
+        attempt_id: body.attempt_id,
+        question_id: question.id,
+        course_id: question.course_id,
+        answer_text: body.answer_text ?? null,
+        selected_option_ids: selectedOptionIds,
+        is_correct: isCorrect,
+      }, { onConflict: 'attempt_id,question_id' });
+      if (detailError) throw new InternalServerErrorException('Unable to save practice answer');
+    }
+
     return {
-      is_correct: question.question_type === 'fill_in_blank' ? fillAnswer : optionAnswer,
+      is_correct: isCorrect,
       explanation: question.explanation,
     };
+  }
+
+  async completeAttempt(userId: string, attemptId: string) {
+    const supabase = this.supabaseService.getClient();
+    const { data: attempt, error: attemptError } = await supabase
+      .from('practice_attempts')
+      .select('id, total_questions, completed_at')
+      .eq('id', attemptId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (attemptError) throw new InternalServerErrorException('Unable to load practice attempt');
+    if (!attempt) throw new ForbiddenException('Practice attempt is not available');
+    if (attempt.completed_at) return attempt;
+
+    const { data: details, error: detailsError } = await supabase
+      .from('practice_attempt_details')
+      .select('course_id, is_correct')
+      .eq('attempt_id', attemptId);
+    if (detailsError) throw new InternalServerErrorException('Unable to load practice answers');
+
+    const rows = details ?? [];
+    const correctAnswers = rows.filter((detail) => detail.is_correct).length;
+    const totalQuestions = Number(attempt.total_questions) || rows.length;
+    const scorePercentage = totalQuestions ? Number(((correctAnswers / totalQuestions) * 100).toFixed(2)) : 0;
+    const completedAt = new Date().toISOString();
+
+    const { data: completedAttempt, error: updateError } = await supabase
+      .from('practice_attempts')
+      .update({ correct_answers: correctAnswers, score_percentage: scorePercentage, completed_at: completedAt })
+      .eq('id', attemptId)
+      .eq('user_id', userId)
+      .is('completed_at', null)
+      .select('*')
+      .single();
+    if (updateError || !completedAttempt) throw new InternalServerErrorException('Unable to complete practice attempt');
+
+    const courseIds = [...new Set(rows.map((detail) => detail.course_id))];
+    if (courseIds.length) {
+      const { error: historyError } = await supabase.from('learning_history').insert(courseIds.map((courseId) => ({
+        learner_id: userId,
+        course_id: courseId,
+        activity_type: 'practice_completed',
+        activity_id: attemptId,
+        event_type: 'practice_completed',
+        occurred_at: completedAt,
+        source: 'user_module',
+      })));
+      if (historyError) throw new InternalServerErrorException('Unable to save practice history');
+    }
+
+    return { ...completedAttempt, score: correctAnswers, percentage: scorePercentage };
   }
 
   private async getActiveCourseIds(userId: string): Promise<string[]> {
@@ -141,17 +239,29 @@ export class PracticeService {
       .from('quiz_attempts')
       .select('id')
       .eq('user_id', userId)
+      .not('completed_at', 'is', null)
       .gte('started_at', since);
     if (attemptsError) throw new InternalServerErrorException('Unable to load practice history');
     const attemptIds = (attempts ?? []).map((attempt) => attempt.id);
-    if (attemptIds.length === 0) return [];
+    const { data: practiceAttempts, error: practiceAttemptsError } = await supabase
+      .from('practice_attempts')
+      .select('id')
+      .eq('user_id', userId)
+      .not('completed_at', 'is', null)
+      .gte('started_at', since);
+    if (practiceAttemptsError) throw new InternalServerErrorException('Unable to load practice history');
+    const practiceAttemptIds = (practiceAttempts ?? []).map((attempt) => attempt.id);
 
-    const { data: details, error: detailsError } = await supabase
-      .from('quiz_attempt_details')
-      .select('question_id, is_correct')
-      .in('attempt_id', attemptIds);
+    const { data: quizDetails, error: detailsError } = attemptIds.length
+      ? await supabase.from('quiz_attempt_details').select('question_id, is_correct').in('attempt_id', attemptIds)
+      : { data: [], error: null };
     if (detailsError) throw new InternalServerErrorException('Unable to load practice results');
-    const questionIds = [...new Set((details ?? []).map((detail) => detail.question_id))];
+    const { data: practiceDetails, error: practiceDetailsError } = practiceAttemptIds.length
+      ? await supabase.from('practice_attempt_details').select('question_id, is_correct').in('attempt_id', practiceAttemptIds)
+      : { data: [], error: null };
+    if (practiceDetailsError) throw new InternalServerErrorException('Unable to load practice results');
+    const details = [...(quizDetails ?? []), ...(practiceDetails ?? [])];
+    const questionIds = [...new Set(details.map((detail) => detail.question_id))];
     if (questionIds.length === 0) return [];
 
     const { data: questions, error: questionsError } = await supabase

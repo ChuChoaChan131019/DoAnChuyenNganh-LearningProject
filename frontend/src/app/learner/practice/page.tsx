@@ -21,9 +21,23 @@ export default function PracticePage() {
   const [answerText, setAnswerText] = useState('');
   const [result, setResult] = useState<AnswerResult | null>(null);
   const [score, setScore] = useState(0);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState('');
+
+  const loadOverview = async () => {
+    try {
+      const nextOverview = await practiceApi.overview();
+      setOverview(nextOverview);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to load practice overview.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     practiceApi.overview()
@@ -39,6 +53,7 @@ export default function PracticePage() {
     setSelectedOptions([]);
     setAnswerText('');
     setScore(0);
+    setAttemptId(null);
 
     try {
       let nextQuestions: PracticeQuestion[];
@@ -49,9 +64,13 @@ export default function PracticePage() {
         const response = await practiceApi.questions(nextMode, courseId);
         nextQuestions = response.questions;
       }
+      const attempt = nextQuestions.length
+        ? await practiceApi.createAttempt({ mode: nextMode, course_id: courseId, total_questions: nextQuestions.length })
+        : null;
       setQuestions(nextQuestions);
       setCurrentIndex(0);
       setMode(nextMode);
+      setAttemptId(attempt?.id ?? null);
       if (nextQuestions.length === 0) setError('Chưa có câu hỏi phù hợp cho bộ luyện tập này.');
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Không thể tạo bộ luyện tập.');
@@ -62,15 +81,43 @@ export default function PracticePage() {
 
   const submitAnswer = async () => {
     const currentQuestion = questions[currentIndex];
-    if (!currentQuestion || result) return;
+    if (!currentQuestion || result || checking) return;
 
-    const answer = await practiceApi.check({
-      question_id: currentQuestion.id,
-      option_ids: selectedOptions,
-      answer_text: answerText,
-    });
-    setResult(answer);
-    if (answer.is_correct) setScore((value) => value + 1);
+    setError('');
+    setChecking(true);
+    try {
+      const answer = await practiceApi.check({
+        question_id: currentQuestion.id,
+        option_ids: selectedOptions,
+        answer_text: answerText,
+        attempt_id: attemptId ?? undefined,
+      });
+      setResult(answer);
+      if (answer.is_correct) setScore((value) => value + 1);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to check the answer.');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const finishPractice = async () => {
+    if (finishing) return;
+    setFinishing(true);
+    if (attemptId) {
+      try {
+        await practiceApi.completeAttempt(attemptId);
+      } catch (requestError) {
+        setError(requestError instanceof Error ? requestError.message : 'Unable to save practice result.');
+        setFinishing(false);
+        return;
+      }
+    }
+    await loadOverview();
+    setMode(null);
+    setQuestions([]);
+    setAttemptId(null);
+    setFinishing(false);
   };
 
   const nextQuestion = () => {
@@ -84,9 +131,11 @@ export default function PracticePage() {
   if (mode && currentQuestion) {
     const isMultiple = currentQuestion.question_type === 'multiple_choice';
     const isFillIn = currentQuestion.question_type === 'fill_in_blank';
+    const displayedScore = score;
 
     return (
       <div className="mx-auto max-w-[820px] space-y-5">
+        {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-[#145a68]">Practice session</p>
@@ -142,13 +191,13 @@ export default function PracticePage() {
             </div>
           )}
           <div className="mt-7 flex justify-end gap-3">
-            <button onClick={() => { setMode(null); setQuestions([]); }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Exit</button>
+            <button onClick={() => { setMode(null); setQuestions([]); setAttemptId(null); }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Exit</button>
             {result ? (
-              <button onClick={currentIndex + 1 < questions.length ? nextQuestion : () => setMode(null)} className="rounded-xl bg-[#f7444e] px-5 py-2 text-sm font-semibold text-white">
-                {currentIndex + 1 < questions.length ? 'Next question' : `Finish · ${score}/${questions.length}`}
+              <button onClick={currentIndex + 1 < questions.length ? nextQuestion : finishPractice} disabled={finishing} className="rounded-xl bg-[#f7444e] px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
+                {currentIndex + 1 < questions.length ? 'Next question' : finishing ? 'Saving...' : `Finish · ${displayedScore}/${questions.length}`}
               </button>
             ) : (
-              <button onClick={submitAnswer} disabled={!selectedOptions.length && !answerText.trim()} className="rounded-xl bg-[#f7444e] px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">Check answer</button>
+              <button onClick={submitAnswer} disabled={checking || (!selectedOptions.length && !answerText.trim())} className="rounded-xl bg-[#f7444e] px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{checking ? 'Checking...' : 'Check answer'}</button>
             )}
           </div>
         </section>
