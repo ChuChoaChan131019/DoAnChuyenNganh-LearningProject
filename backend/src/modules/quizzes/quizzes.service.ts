@@ -132,7 +132,7 @@ export class QuizzesService {
  async getQuestions(quizId: string, role?: string) {
     await this.requireQuiz(quizId, role);
     const { data, error } = await this.supabaseService.getClient().from('quiz_questions')
-      .select('question_id,score_weight,questions(id,content,question_type,options:question_options(id,option_text,order_index))')
+      .select('question_id,score_weight,questions(id,content,question_type,explanation,options:question_options(id,option_text,order_index,is_correct))')
       .eq('quiz_id', quizId);
     this.throwQueryError(error);
     return data ?? [];
