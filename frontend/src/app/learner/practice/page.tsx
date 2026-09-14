@@ -25,6 +25,7 @@ export default function PracticePage() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState('');
 
   const loadOverview = async () => {
@@ -82,6 +83,7 @@ export default function PracticePage() {
     const currentQuestion = questions[currentIndex];
     if (!currentQuestion || result || checking) return;
 
+    setError('');
     setChecking(true);
     try {
       const answer = await practiceApi.check({
@@ -100,11 +102,14 @@ export default function PracticePage() {
   };
 
   const finishPractice = async () => {
+    if (finishing) return;
+    setFinishing(true);
     if (attemptId) {
       try {
         await practiceApi.completeAttempt(attemptId);
       } catch (requestError) {
         setError(requestError instanceof Error ? requestError.message : 'Unable to save practice result.');
+        setFinishing(false);
         return;
       }
     }
@@ -112,6 +117,7 @@ export default function PracticePage() {
     setMode(null);
     setQuestions([]);
     setAttemptId(null);
+    setFinishing(false);
   };
 
   const nextQuestion = () => {
@@ -125,9 +131,11 @@ export default function PracticePage() {
   if (mode && currentQuestion) {
     const isMultiple = currentQuestion.question_type === 'multiple_choice';
     const isFillIn = currentQuestion.question_type === 'fill_in_blank';
+    const displayedScore = score;
 
     return (
       <div className="mx-auto max-w-[820px] space-y-5">
+        {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-[#145a68]">Practice session</p>
@@ -185,8 +193,8 @@ export default function PracticePage() {
           <div className="mt-7 flex justify-end gap-3">
             <button onClick={() => { setMode(null); setQuestions([]); setAttemptId(null); }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Exit</button>
             {result ? (
-              <button onClick={currentIndex + 1 < questions.length ? nextQuestion : finishPractice} className="rounded-xl bg-[#f7444e] px-5 py-2 text-sm font-semibold text-white">
-                {currentIndex + 1 < questions.length ? 'Next question' : `Finish · ${score}/${questions.length}`}
+              <button onClick={currentIndex + 1 < questions.length ? nextQuestion : finishPractice} disabled={finishing} className="rounded-xl bg-[#f7444e] px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
+                {currentIndex + 1 < questions.length ? 'Next question' : finishing ? 'Saving...' : `Finish · ${displayedScore}/${questions.length}`}
               </button>
             ) : (
               <button onClick={submitAnswer} disabled={checking || (!selectedOptions.length && !answerText.trim())} className="rounded-xl bg-[#f7444e] px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{checking ? 'Checking...' : 'Check answer'}</button>

@@ -239,6 +239,7 @@ export class PracticeService {
       .from('quiz_attempts')
       .select('id')
       .eq('user_id', userId)
+      .not('completed_at', 'is', null)
       .gte('started_at', since);
     if (attemptsError) throw new InternalServerErrorException('Unable to load practice history');
     const attemptIds = (attempts ?? []).map((attempt) => attempt.id);
@@ -246,6 +247,7 @@ export class PracticeService {
       .from('practice_attempts')
       .select('id')
       .eq('user_id', userId)
+      .not('completed_at', 'is', null)
       .gte('started_at', since);
     if (practiceAttemptsError) throw new InternalServerErrorException('Unable to load practice history');
     const practiceAttemptIds = (practiceAttempts ?? []).map((attempt) => attempt.id);
