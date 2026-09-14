@@ -157,10 +157,7 @@ export class QuestionsService {
   }
 
   async updateStatus(id: string, status: QuestionStatus, actorId: string) {
-    const actorRole = await this.assertQuestionManager(actorId);
-    if (status === QuestionStatus.APPROVED && actorRole !== 'admin') {
-      throw new BadRequestException('only admin can approve questions');
-    }
+    await this.assertQuestionManager(actorId);
 
     const { data, error } = await this.supabaseService
       .getClient()
