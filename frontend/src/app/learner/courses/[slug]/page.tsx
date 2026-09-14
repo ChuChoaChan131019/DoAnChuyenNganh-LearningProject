@@ -183,30 +183,46 @@ export default function LearnerCourseDetailPage() {
   }> | null>(null);
 
   useEffect(() => {
-    if (!slug) return;
+  if (!slug) return;
 
-    courseApi.learnerLessons(slug)
-      .then((response) => {
-        setDatabaseCourse(response.course);
-        setDatabaseChapters(response.chapters);
-        return quizApi.list({ course_id: response.course.id, status: 'published' });
-      })
-      .then((quizzes) => {
-        setDatabaseQuizzes(quizzes.map((quiz) => ({
-          id: quiz.id,
-          title: quiz.title,
-          description: quiz.description,
-          duration_minutes: quiz.duration_minutes,
-          total_questions: quiz.total_questions,
-          quiz_type: quiz.quiz_type,
-        })));
-      })
-      .catch(() => {
-        setDatabaseCourse(null);
-        setDatabaseChapters(null);
-        setDatabaseQuizzes(null);
-      });
-  }, [slug]);
+  courseApi.learnerLessons(slug)
+    .then(async (response) => {
+      setDatabaseCourse(response.course);
+      setDatabaseChapters(response.chapters);
+      
+      // Lấy danh sách quiz đã xuất bản của khóa học
+      const quizzes = await quizApi.list({ course_id: response.course.id, status: 'published' }).catch(() => []);
+
+      // Lấy chính xác số câu hỏi cho từng bài test
+      const quizzesWithQuestions = await Promise.all(
+        (quizzes || []).map(async (quiz) => {
+          let count = 0;
+          try {
+            const qList = await quizApi.getQuestions(quiz.id);
+            count = Array.isArray(qList) ? qList.length : 0;
+          } catch {
+            count = 0;
+          }
+
+          return {
+            id: quiz.id,
+            title: quiz.title,
+            description: (quiz as any).description,
+            duration_minutes: quiz.duration_minutes,
+            total_questions: count,
+            quiz_type: quiz.quiz_type,
+          };
+        })
+      );
+
+      setDatabaseQuizzes(quizzesWithQuestions);
+    })
+    .catch(() => {
+      setDatabaseCourse(null);
+      setDatabaseChapters(null);
+      setDatabaseQuizzes(null);
+    });
+}, [slug]);
 
   const fallbackCourse = slug ? COURSE_MAP[slug] : null;
   const baseCourse = fallbackCourse ?? (databaseCourse ? {
@@ -469,7 +485,7 @@ export default function LearnerCourseDetailPage() {
             <div className="rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_8px_18px_rgba(0,44,62,0.04)]">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-[22px] font-bold tracking-tight text-slate-800">Tests</h3>
-                <span className="text-sm text-slate-500">{course.questions} available</span>
+                <span className="text-sm text-slate-500">{tests.length} available</span>
               </div>
 
               <div className="space-y-3">
