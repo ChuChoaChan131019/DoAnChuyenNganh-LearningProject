@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft, BookOpen, CheckCircle2, Clock3, FileText } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { courseApi } from '@/lib/api';
+import { courseApi, quizApi } from '@/lib/api';
 
 const COURSE_MAP: Record<string, any> = {
   'csharp-fundamentals': {
@@ -173,6 +173,14 @@ export default function LearnerCourseDetailPage() {
     title: string;
     lessons: Array<{ id: string; title: string; duration: number }>;
   }> | null>(null);
+  const [databaseQuizzes, setDatabaseQuizzes] = useState<Array<{
+    id: string;
+    title: string;
+    description?: string | null;
+    duration_minutes: number | null;
+    total_questions: number;
+    quiz_type: string;
+  }> | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -181,10 +189,22 @@ export default function LearnerCourseDetailPage() {
       .then((response) => {
         setDatabaseCourse(response.course);
         setDatabaseChapters(response.chapters);
+        return quizApi.list({ course_id: response.course.id, status: 'published' });
+      })
+      .then((quizzes) => {
+        setDatabaseQuizzes(quizzes.map((quiz) => ({
+          id: quiz.id,
+          title: quiz.title,
+          description: quiz.description,
+          duration_minutes: quiz.duration_minutes,
+          total_questions: quiz.total_questions,
+          quiz_type: quiz.quiz_type,
+        })));
       })
       .catch(() => {
         setDatabaseCourse(null);
         setDatabaseChapters(null);
+        setDatabaseQuizzes(null);
       });
   }, [slug]);
 
@@ -228,6 +248,7 @@ export default function LearnerCourseDetailPage() {
         }),
       }
     : fallbackCourse;
+  const tests = databaseQuizzes ?? course?.tests ?? [];
 
   if (!course) {
     return (
@@ -452,14 +473,14 @@ export default function LearnerCourseDetailPage() {
               </div>
 
               <div className="space-y-3">
-                {course.tests?.map((test: any) => (
+                {tests.map((test: any) => (
                   <div
                     key={test.id}
                     className="rounded-[12px] border border-slate-200 bg-[#f8f7f5] p-3"
                   >
                     <div className="text-[15px] font-semibold text-slate-800">{test.title}</div>
                     <div className="mt-1 text-[13px] text-slate-500">
-                      {test.description} • {test.duration} • {test.difficulty}
+                      {test.description || `${test.total_questions} questions`} • {test.duration || (test.duration_minutes === null ? 'Unlimited time' : `${test.duration_minutes} minutes`)}{test.difficulty ? ` • ${test.difficulty}` : ''}
                     </div>
                     <Link
                       href={`/learner/courses/${slug}/tests/${test.id}`}

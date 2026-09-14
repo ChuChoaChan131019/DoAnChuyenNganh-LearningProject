@@ -3,7 +3,6 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import {
-  ConfigureQuizQuestionsDto,
   QuestionDto,
   QuestionStatus,
 } from './dto/question.dto.js';
@@ -57,20 +56,6 @@ export class QuestionsController {
   @Delete('questions/:id')
   remove(@Param('id') id: string, @Req() request: any) {
     return this.questionsService.remove(id, request.user.id);
-  }
-
-  @Put('quizzes/:id/questions')
-  configureQuiz(
-    @Param('id') id: string,
-    @Body() dto: ConfigureQuizQuestionsDto,
-    @Req() request: any,
-  ) {
-    return this.questionsService.configureQuiz(id, dto, request.user.id);
-  }
-
-  @Get('quizzes/:id/questions')
-  getQuizQuestions(@Param('id') id: string) {
-    return this.questionsService.getQuizQuestions(id);
   }
 
   @Get('topics')

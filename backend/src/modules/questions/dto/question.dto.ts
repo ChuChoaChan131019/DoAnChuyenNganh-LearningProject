@@ -92,6 +92,10 @@ export class QuizQuestionItemDto {
   @IsUUID()
   question_id!: string;
 
+  @IsInt()
+  @Min(0)
+  order_index!: number;
+
   @IsNumber()
   @Min(0.1)
   score_weight!: number;

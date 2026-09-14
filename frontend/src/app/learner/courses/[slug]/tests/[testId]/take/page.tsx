@@ -2,357 +2,75 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
-import { Clock3 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { CheckCircle2, Clock3 } from 'lucide-react';
+import { ApiClientError, quizApi } from '@/lib/api';
+import type { QuizAttempt, QuizAttemptQuestion, QuizAnswerSubmission } from '@/types/quiz';
 
-type Question = {
-  id: number;
-  question: string;
-  options: string[];
-  correctIndex: number;
-};
-
-type TestDefinition = {
-  title: string;
-  durationMinutes: number;
-  questions: Question[];
-};
-
-const TEST_BANK: Record<string, TestDefinition> = {
-  'final-assessment': {
-    title: 'C# Fundamentals — Final Assessment',
-    durationMinutes: 60,
-    questions: [
-      {
-        id: 1,
-        question: 'Which access modifier makes a member visible only inside the declaring class?',
-        options: ['public', 'private', 'protected', 'internal'],
-        correctIndex: 1,
-      },
-      {
-        id: 2,
-        question: 'Which data type is used to store a true/false value?',
-        options: ['string', 'int', 'bool', 'double'],
-        correctIndex: 2,
-      },
-      {
-        id: 3,
-        question: 'What is the result of 10 / 3 in C# when using int division?',
-        options: ['3.33', '3', '3.0', 'Error'],
-        correctIndex: 1,
-      },
-      {
-        id: 4,
-        question: 'Which keyword is used to define a constant?',
-        options: ['static', 'const', 'readonly', 'final'],
-        correctIndex: 1,
-      },
-      {
-        id: 5,
-        question: 'Which loop executes at least once before checking the condition?',
-        options: ['for', 'while', 'foreach', 'do while'],
-        correctIndex: 3,
-      },
-      {
-        id: 6,
-        question: 'What value does a variable of type string hold?',
-        options: ['A number', 'A boolean', 'A text value', 'A memory address'],
-        correctIndex: 2,
-      },
-    ],
-  },
-  'variables-quiz': {
-    title: 'Variables & Data Types Quiz',
-    durationMinutes: 20,
-    questions: [
-      {
-        id: 1,
-        question: 'Which keyword declares a floating-point number?',
-        options: ['float', 'double', 'decimal', 'string'],
-        correctIndex: 0,
-      },
-      {
-        id: 2,
-        question: 'What does the var keyword do in C#?',
-        options: ['Declares a constant', 'Infers the type from the value', 'Creates a pointer', 'Adds a namespace'],
-        correctIndex: 1,
-      },
-      {
-        id: 3,
-        question: 'Which type is best for monetary values?',
-        options: ['double', 'float', 'decimal', 'int'],
-        correctIndex: 2,
-      },
-      {
-        id: 4,
-        question: 'How do you write a string literal?',
-        options: ['"hello"', "'hello'", '(hello)', '{hello}'],
-        correctIndex: 0,
-      },
-      {
-        id: 5,
-        question: 'Which operator compares equality?',
-        options: ['=', '==', '!=', '=>'],
-        correctIndex: 1,
-      },
-    ],
-  },
-  'oop-quick-check': {
-    title: 'OOP Quick Check',
-    durationMinutes: 25,
-    questions: [
-      {
-        id: 1,
-        question: 'What is encapsulation?',
-        options: ['Combining data and methods', 'Inherited behavior', 'Polymorphic dispatch', 'A loop construct'],
-        correctIndex: 0,
-      },
-      {
-        id: 2,
-        question: 'Which keyword allows a class to inherit another class?',
-        options: ['implements', 'inherits', ':', 'extends'],
-        correctIndex: 2,
-      },
-      {
-        id: 3,
-        question: 'What is polymorphism?',
-        options: ['Multiple methods with same name', 'A static field', 'A type conversion', 'A compile-time error'],
-        correctIndex: 0,
-      },
-    ],
-  },
-  'linq-mini-practice': {
-    title: 'LINQ Mini Practice',
-    durationMinutes: 30,
-    questions: [
-      {
-        id: 1,
-        question: 'Which LINQ operator filters items?',
-        options: ['Select', 'Where', 'OrderBy', 'Any'],
-        correctIndex: 1,
-      },
-      {
-        id: 2,
-        question: 'Which LINQ operator projects values into a new shape?',
-        options: ['Select', 'Where', 'Count', 'GroupBy'],
-        correctIndex: 0,
-      },
-    ],
-  },
-  'exception-flows': {
-    title: 'Exception Handling Drill',
-    durationMinutes: 20,
-    questions: [
-      {
-        id: 1,
-        question: 'What is the purpose of a finally block?',
-        options: ['To catch all exceptions', 'To run code no matter what', 'To declare variables', 'To loop over entries'],
-        correctIndex: 1,
-      },
-      {
-        id: 2,
-        question: 'Which block catches a thrown exception?',
-        options: ['try', 'catch', 'finally', 'throw'],
-        correctIndex: 1,
-      },
-    ],
-  },
-  'async-challenge': {
-    title: 'Async & Tasks Challenge',
-    durationMinutes: 35,
-    questions: [
-      {
-        id: 1,
-        question: 'What keyword is used to await an async method?',
-        options: ['await', 'async', 'task', 'return'],
-        correctIndex: 0,
-      },
-      {
-        id: 2,
-        question: 'Which type represents an asynchronous operation?',
-        options: ['Task', 'List', 'string', 'bool'],
-        correctIndex: 0,
-      },
-    ],
-  },
-  'interview-mock-test': {
-    title: 'OOP Interview Mock Test',
-    durationMinutes: 25,
-    questions: [
-      {
-        id: 1,
-        question: 'What is abstraction?',
-        options: ['Hiding implementation details', 'Using try/catch', 'Declaring a class', 'Creating loops'],
-        correctIndex: 0,
-      },
-      {
-        id: 2,
-        question: 'Which concept allows one object to act as another?',
-        options: ['Inheritance', 'Polymorphism', 'Encapsulation', 'Abstraction'],
-        correctIndex: 1,
-      },
-    ],
-  },
-};
+function errorMessage(error: unknown) { return error instanceof ApiClientError ? error.message : 'Unable to start this quiz.'; }
 
 export default function CourseTestTakePage() {
-  const params = useParams();
+  const params = useParams<{ slug: string; testId: string }>();
+  const slug = String(params.slug ?? '');
+  const testId = String(params.testId ?? '');
   const router = useRouter();
-  const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
-  const testId = Array.isArray(params?.testId) ? params.testId[0] : params?.testId;
-
-  const test = testId ? TEST_BANK[testId] : null;
-  const questions = useMemo(() => test?.questions ?? [], [test]);
+  const [attempt, setAttempt] = useState<(QuizAttempt & { questions: QuizAttemptQuestion[] }) | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedMap, setSelectedMap] = useState<Record<number, number>>({});
-  const [timeLeft, setTimeLeft] = useState(test?.durationMinutes ? test.durationMinutes * 60 : 0);
+  const [answers, setAnswers] = useState<Record<string, QuizAnswerSubmission>>({});
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitted = useRef(false);
 
   useEffect(() => {
-    if (!test) return;
-    setTimeLeft(test.durationMinutes * 60);
-    setCurrentIndex(0);
-    setSelectedMap({});
-  }, [test]);
+    quizApi.startAttempt(testId).then((started) => {
+      setAttempt(started);
+      setTimeLeft(started.quiz_type && started.questions ? null : null);
+    }).catch((loadError) => setError(errorMessage(loadError)));
+  }, [testId]);
 
   useEffect(() => {
-    if (!test || timeLeft <= 0) return;
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [test, timeLeft]);
+    if (!attempt || attempt.questions.length === 0) return;
+    quizApi.getById(attempt.quiz_id).then((quiz) => setTimeLeft(quiz.duration_minutes === null ? null : quiz.duration_minutes * 60)).catch(() => undefined);
+  }, [attempt]);
 
-  const currentQuestion = questions[currentIndex];
-  const progress = questions.length ? ((currentIndex + 1) / questions.length) * 100 : 0;
-  const answeredCount = Object.keys(selectedMap).length;
-
-  const minutes = Math.floor(timeLeft / 60).toString().padStart(2, '0');
-  const seconds = (timeLeft % 60).toString().padStart(2, '0');
-
-  if (!test || !currentQuestion) {
-    return (
-      <div className="mx-auto max-w-[900px] rounded-[16px] border border-slate-200 bg-white p-10 text-center shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-800">Test not found</h1>
-        <p className="mt-2 text-slate-500">This test does not exist for this course.</p>
-        <Link href={slug ? `/learner/courses/${slug}` : '/learner/courses'} className="mt-6 inline-flex rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white">
-          Back to course
-        </Link>
-      </div>
-    );
-  }
-
-  const selectedOption = selectedMap[currentQuestion.id] ?? null;
-
-  const selectOption = (optionIndex: number) => {
-    setSelectedMap((prev) => ({ ...prev, [currentQuestion.id]: optionIndex }));
+  const submit = async () => {
+    if (!attempt || submitted.current || isSubmitting) return;
+    submitted.current = true;
+    setIsSubmitting(true);
+    try {
+      await quizApi.submitAttempt({ attempt_id: attempt.attempt_id, answers: Object.values(answers) });
+      router.push(`/learner/courses/${slug}/tests/${testId}/results`);
+    } catch (submitError) {
+      submitted.current = false;
+      setError(errorMessage(submitError));
+      setIsSubmitting(false);
+    }
   };
 
-  const submitTest = () => {
-    if (!slug || !testId) return;
+  useEffect(() => {
+    if (timeLeft === null || timeLeft <= 0) return;
+    const timer = window.setInterval(() => setTimeLeft((current) => current === null ? null : Math.max(0, current - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [timeLeft]);
 
-    const storageKey = `learner-test-${slug}-${testId}`;
-    window.localStorage.setItem(storageKey, JSON.stringify(selectedMap));
-    router.push(`/learner/courses/${slug}/tests/${testId}/results`);
-  };
+  useEffect(() => { if (timeLeft === 0) void submit(); }, [timeLeft]);
 
-  const goToQuestion = (index: number) => setCurrentIndex(index);
+  if (error || !attempt) return <div className="mx-auto max-w-[900px] rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm"><h1 className="text-2xl font-bold text-slate-800">{error ? 'Quiz unavailable' : 'Starting quiz...'}</h1>{error && <p className="mt-2 text-slate-500">{error}</p>}<Link href={`/learner/courses/${slug}/tests/${testId}`} className="mt-6 inline-block rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white">Back to quiz</Link></div>;
 
-  return (
-    <div className="mx-auto max-w-[1100px] px-4 py-5 text-[#0f3741]">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <div className="text-[20px] font-black tracking-[-0.04em] text-[#0f3741] sm:text-[24px]">
-          {test.title}
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-[#dfeaf0] bg-[#edf6f8] px-2.5 py-1.5 text-[13px] font-semibold text-[#0f3741]">
-          <Clock3 className="h-3.5 w-3.5" />
-          {minutes}:{seconds}
-        </div>
-      </div>
+  const question = attempt.questions[currentIndex];
+  if (!question) return null;
+  const answer = answers[question.question_id];
+  const selected = answer?.selected_option_ids ?? [];
+  const chooseOption = (optionId: string) => setAnswers((current) => {
+    const currentAnswer = current[question.question_id];
+    const isMultiple = question.question_type === 'multiple_choice';
+    const nextSelected = isMultiple ? (selected.includes(optionId) ? selected.filter((id) => id !== optionId) : [...selected, optionId]) : [optionId];
+    return { ...current, [question.question_id]: { question_id: question.question_id, selected_option_ids: nextSelected } };
+  });
+  const minutes = timeLeft === null ? null : Math.floor(timeLeft / 60).toString().padStart(2, '0');
+  const seconds = timeLeft === null ? null : (timeLeft % 60).toString().padStart(2, '0');
+  const answeredCount = Object.keys(answers).length;
 
-      <div className="grid gap-5 xl:grid-cols-[1.85fr_0.75fr]">
-        <div className="rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_8px_18px_rgba(0,44,62,0.04)] sm:p-5">
-          <div className="mb-4 text-[13px] font-medium text-slate-500">
-            Question {currentIndex + 1} of {questions.length}
-          </div>
-
-          <h2 className="mb-5 text-[18px] font-semibold leading-relaxed tracking-[-0.03em] text-[#0f3741] sm:text-[22px]">
-            {currentQuestion.question}
-          </h2>
-
-          <div className="space-y-2.5">
-            {currentQuestion.options.map((option, index) => (
-              <button
-                key={option}
-                onClick={() => selectOption(index)}
-                className={`flex w-full items-center justify-between rounded-[12px] border px-3 py-3 text-left text-[15px] font-medium transition sm:text-[16px] ${
-                  selectedOption === index
-                    ? 'border-[#f3a0a0] bg-[#f8e4e4] text-[#0f3741] shadow-[0_0_0_2px_rgba(247,68,78,0.1)]'
-                    : 'border-[#dfe6df] bg-white text-[#0f3741] hover:border-[#c9dfe3] hover:bg-slate-50'
-                }`}
-              >
-                <span>{option}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-6 flex items-center justify-between gap-3">
-            <button
-              onClick={() => currentIndex > 0 && setCurrentIndex((prev) => prev - 1)}
-              disabled={currentIndex === 0}
-              className="rounded-[10px] border border-[#dfe6df] bg-white px-4 py-2.5 text-[13px] font-semibold text-[#0f3741] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Previous
-            </button>
-
-            <button
-              onClick={() => {
-                if (currentIndex < questions.length - 1) {
-                  setCurrentIndex((prev) => prev + 1);
-                  return;
-                }
-                submitTest();
-              }}
-              className="rounded-[10px] bg-[#F7444E] px-4 py-2.5 text-[13px] font-bold text-white"
-            >
-              {currentIndex === questions.length - 1 ? 'Submit' : 'Next'}
-            </button>
-          </div>
-        </div>
-
-        <div className="rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_8px_18px_rgba(0,44,62,0.04)]">
-          <div className="mb-4 text-[17px] font-semibold text-[#0f3741]">Navigator</div>
-          <div className="grid grid-cols-3 gap-2.5">
-            {questions.map((_, index) => {
-              const active = index === currentIndex;
-              const answered = selectedMap[questions[index].id] !== undefined;
-
-              return (
-                <button
-                  key={index}
-                  onClick={() => goToQuestion(index)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-full text-[12px] font-bold transition ${
-                    active
-                      ? 'bg-[#f7444e] text-white'
-                      : answered
-                        ? 'bg-[#dff5ea] text-[#1d8f69]'
-                        : 'bg-[#eaf5f7] text-[#0f3741]'
-                  }`}
-                >
-                  {index + 1}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-4 border-t border-slate-200 pt-3 text-[12px] text-slate-500">
-            {answeredCount} of {questions.length} answered
-          </div>
-
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#f3d6d7]">
-            <div className="h-full rounded-full bg-[#f7444e]" style={{ width: `${progress}%` }} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="mx-auto max-w-[1100px] px-4 py-6 text-[#0f3741]"><div className="mb-5 flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#F7444E]">Question {currentIndex + 1} of {attempt.questions.length}</p><h1 className="mt-1 text-xl font-black sm:text-2xl">{attempt.quiz_title || 'Quiz attempt'}</h1></div>{timeLeft === null ? <span className="rounded-full bg-[#edf6f8] px-3 py-2 text-xs font-semibold">Unlimited time</span> : <span className="inline-flex items-center gap-2 rounded-full bg-[#edf6f8] px-3 py-2 text-sm font-semibold"><Clock3 className="h-4 w-4" />{minutes}:{seconds}</span>}</div><div className="grid gap-5 xl:grid-cols-[1.85fr_0.75fr]"><main className="rounded-[18px] border border-[#dfe6df] bg-white p-5 shadow-sm sm:p-7"><h2 className="text-xl font-semibold leading-relaxed sm:text-2xl">{question.content}</h2><div className="mt-6 space-y-3">{question.options.map((option) => <button type="button" key={option.id} onClick={() => chooseOption(option.id)} className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-medium ${selected.includes(option.id) ? 'border-[#F7444E] bg-rose-50 text-[#0f3741]' : 'border-slate-200 hover:bg-slate-50'}`}><span>{option.option_text}</span>{selected.includes(option.id) && <CheckCircle2 className="h-5 w-5 text-[#F7444E]" />}</button>)}</div><div className="mt-8 flex justify-between gap-3"><button type="button" disabled={currentIndex === 0} onClick={() => setCurrentIndex((index) => index - 1)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold disabled:opacity-40">Previous</button>{currentIndex === attempt.questions.length - 1 ? <button type="button" disabled={isSubmitting} onClick={() => void submit()} className="rounded-xl bg-[#F7444E] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{isSubmitting ? 'Submitting...' : 'Submit quiz'}</button> : <button type="button" onClick={() => setCurrentIndex((index) => index + 1)} className="rounded-xl bg-[#F7444E] px-5 py-2.5 text-sm font-bold text-white">Next</button>}</div></main><aside className="rounded-[18px] border border-[#dfe6df] bg-white p-5 shadow-sm"><h2 className="font-semibold">Navigator</h2><div className="mt-4 grid grid-cols-4 gap-2">{attempt.questions.map((item, index) => <button type="button" key={item.question_id} onClick={() => setCurrentIndex(index)} className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ${index === currentIndex ? 'bg-[#F7444E] text-white' : answers[item.question_id] ? 'bg-[#dff5ea] text-[#1d8f69]' : 'bg-[#eaf5f7] text-[#0f3741]'}`}>{index + 1}</button>)}</div><p className="mt-5 border-t border-slate-100 pt-4 text-xs text-slate-500">{answeredCount} of {attempt.questions.length} answered</p></aside></div></div>;
 }
