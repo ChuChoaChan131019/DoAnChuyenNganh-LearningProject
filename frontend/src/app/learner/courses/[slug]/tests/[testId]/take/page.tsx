@@ -34,6 +34,7 @@ function errorMessage(error: unknown) {
   return error instanceof ApiClientError ? error.message : 'Unable to initialize the quiz.';
 }
 
+const attemptPromises: Record<string, Promise<any>> = {};
 export default function CourseTestTakePage() {
   const params = useParams<{ slug: string; testId: string }>();
   const slug = String(params?.slug ?? '');
@@ -67,11 +68,17 @@ export default function CourseTestTakePage() {
 
         let startedAttempt: any = null;
         try {
-          startedAttempt = await quizApi.startAttempt(testId);
+          // Nếu đã có request startAttempt đang chạy cho testId này, tái sử dụng luôn promise đó
+          if (!attemptPromises[testId]) {
+            attemptPromises[testId] = quizApi.startAttempt(testId);
+          }
+          startedAttempt = await attemptPromises[testId];
         } catch (attemptErr: any) {
-          console.warn('Attempt already exists or error, continuing with fallback questions:', attemptErr);
+          // Xóa cache nếu lỗi để lần sau có thể thử lại
+          delete attemptPromises[testId];
+          console.warn('Attempt start warning (falling back to direct questions):', attemptErr);
           const fallbackQuestions = await quizApi.getQuestions(testId).catch(() => []);
-          
+
           startedAttempt = {
             attempt_id: 'current-attempt',
             quiz_id: testId,
@@ -84,7 +91,7 @@ export default function CourseTestTakePage() {
                 content: q.content || 'Question',
                 question_type: (q.question_type || 'single_choice') as QuestionType,
                 difficulty: (q.difficulty || 'medium') as DifficultyLevel,
-                options: (q.options || []).map((o: any, idx: number) => ({
+                options: (q.options || q.question_options || []).map((o: any, idx: number) => ({
                   id: String(o.id || idx),
                   option_text: o.option_text || o.content || '',
                 })),
@@ -197,6 +204,7 @@ export default function CourseTestTakePage() {
         console.warn('Backend submit error fallback:', submitApiError);
       }
 
+      delete attemptPromises[testId]; 
       router.push(`/learner/courses/${slug}/tests/${testId}/results`);
     } catch (err) {
       submitted.current = false;
@@ -321,6 +329,7 @@ export default function CourseTestTakePage() {
           </div>
         </div>
 
+        {/* Navigation Buttons: Previous / Next / Submit */}
         <div className="mt-8 flex items-center justify-between border-t border-gray-100 pt-5">
           <button
             type="button"
