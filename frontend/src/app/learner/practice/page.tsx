@@ -46,7 +46,7 @@ export default function PracticePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const startPractice = async (nextMode: PracticeMode, courseId?: string) => {
+  const startPractice = async (nextMode: PracticeMode, courseId?: string, prompt?: string) => {
     setStarting(true);
     setError('');
     setResult(null);
@@ -58,8 +58,10 @@ export default function PracticePage() {
     try {
       let nextQuestions: PracticeQuestion[];
       if (nextMode === 'ai') {
-        const response = await practiceApi.ai(courseId);
-        nextQuestions = response.questions.questions;
+        const response = await practiceApi.ai(courseId, 10, prompt);
+        nextQuestions = Array.isArray(response.questions) 
+          ? (response.questions as unknown as PracticeQuestion[]) 
+          : response.questions.questions;
       } else {
         const response = await practiceApi.questions(nextMode, courseId);
         nextQuestions = response.questions;
@@ -216,7 +218,7 @@ export default function PracticePage() {
       <div className="grid grid-cols-1 gap-[22px] md:grid-cols-3">
         <PracticeCard icon={<Zap className="h-5 w-5" />} title="Quick drill" description="10 câu hỏi trộn từ tất cả khóa học bạn đang tham gia." onClick={() => startPractice('quick')} disabled={loading || starting} />
         <PracticeCard icon={<Brain className="h-5 w-5" />} title="Weak topics" description="Tập trung vào các chủ đề có độ chính xác thấp nhất trong 30 ngày qua." onClick={() => startPractice('weak')} disabled={loading || starting || overview.weakTopics.length === 0} />
-        <PracticeCard icon={<Target className="h-5 w-5" />} title="AI Practice" description="Bộ câu hỏi cá nhân hóa theo lịch sử và tiến độ của bạn." onClick={() => startPractice('ai')} disabled={loading || starting} />
+        <AiPracticeCard icon={<Target className="h-5 w-5" />} title="AI Practice" description="Bộ câu hỏi cá nhân hóa. Nhập yêu cầu để luyện tập chủ đề cụ thể." onStart={(prompt) => startPractice('ai', undefined, prompt)} disabled={loading || starting} />
       </div>
       <div className="grid grid-cols-1 gap-[22px] md:grid-cols-2">
         <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">
@@ -239,4 +241,24 @@ export default function PracticePage() {
 
 function PracticeCard({ icon, title, description, onClick, disabled }: { icon: React.ReactNode; title: string; description: string; onClick: () => void; disabled: boolean }) {
   return <section className="flex flex-col rounded-2xl border border-[#dfe6df] bg-white p-[18px] shadow-sm"><div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-[#f7444e]">{icon}</div><h2 className="mb-1 text-[15px] font-bold text-[#0f3741]">{title}</h2><p className="mb-4 flex-1 text-sm leading-relaxed text-slate-500">{description}</p><button onClick={onClick} disabled={disabled} className="w-full rounded-xl bg-[#f7444e] py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50">Start</button></section>;
+}
+
+function AiPracticeCard({ icon, title, description, onStart, disabled }: { icon: React.ReactNode; title: string; description: string; onStart: (prompt?: string) => void; disabled: boolean }) {
+  const [prompt, setPrompt] = useState('');
+  return (
+    <section className="flex flex-col rounded-2xl border border-[#dfe6df] bg-white p-[18px] shadow-sm">
+      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-[#f7444e]">{icon}</div>
+      <h2 className="mb-1 text-[15px] font-bold text-[#0f3741]">{title}</h2>
+      <p className="mb-4 flex-1 text-sm leading-relaxed text-slate-500">{description}</p>
+      <input
+        type="text"
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder="VD: Cho mình bài tập về mảng"
+        className="mb-4 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#f7444e]"
+        disabled={disabled}
+      />
+      <button onClick={() => onStart(prompt)} disabled={disabled} className="w-full rounded-xl bg-[#f7444e] py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50">Start</button>
+    </section>
+  );
 }
