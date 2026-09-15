@@ -27,7 +27,7 @@ export class PracticeController {
   @Post('ai')
   generateAiPractice(
     @Req() request: any,
-    @Body() body: { course_id?: string; count?: number },
+    @Body() body: { course_id?: string; count?: number; prompt?: string },
   ) {
     return this.practiceService.generateAiPractice(request.user.id, body);
   }

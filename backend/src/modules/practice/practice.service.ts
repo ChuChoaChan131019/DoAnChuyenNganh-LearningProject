@@ -53,10 +53,73 @@ export class PracticeService {
     });
   }
 
-  async generateAiPractice(userId: string, body: { course_id?: string; count?: number }) {
+  async generateAiPractice(userId: string, body: { course_id?: string; count?: number; prompt?: string }) {
     const courseIds = await this.getActiveCourseIds(userId);
     if (body.course_id && !courseIds.includes(body.course_id)) {
       throw new ForbiddenException('You are not enrolled in this course');
+    }
+
+    if (body.prompt?.trim()) {
+      const supabase = this.supabaseService.getClient();
+      const targetCourseIds = body.course_id ? [body.course_id] : courseIds;
+      if (targetCourseIds.length === 0) {
+        throw new ForbiddenException('You are not enrolled in any courses');
+      }
+      
+      const { data: courses } = await supabase.from('courses').select('id, title, description').in('id', targetCourseIds);
+      const courseContext = (courses ?? []).map(c => `${c.title}: ${c.description || ''}`).join('\n');
+      const count = Math.min(Math.max(body.count ?? 10, 5), 20);
+      
+      const aiQuestions = await this.aiService.generatePracticeQuestions(body.prompt, count, courseContext);
+      
+      if (aiQuestions.length > 0) {
+        const targetCourseId = courses?.[0]?.id ?? targetCourseIds[0];
+        const insertedQuestionIds = [];
+        
+        for (const aq of aiQuestions) {
+          const { data: qData, error: qError } = await supabase.from('questions').insert({
+            course_id: targetCourseId,
+            question_type: aq.question_type,
+            difficulty: aq.difficulty || 'medium',
+            content: aq.content,
+            explanation: aq.explanation || null,
+            status: 'approved',
+            is_ai_generated: true,
+          }).select('id').single();
+          
+          if (qData && !qError) {
+            insertedQuestionIds.push(qData.id);
+            const options = (aq.options || []).map((opt: any, idx: number) => ({
+              question_id: qData.id,
+              option_text: opt.option_text,
+              is_correct: opt.is_correct,
+              order_index: opt.order_index ?? idx,
+            }));
+            if (options.length > 0) {
+              await supabase.from('question_options').insert(options);
+            }
+          }
+        }
+        
+        if (insertedQuestionIds.length > 0) {
+          const { data: fetchedQuestions } = await supabase
+            .from('questions')
+            .select('id, course_id, chapter_id, lesson_id, question_type, difficulty, content, explanation, courses(id, title), chapters(id, title), lessons(id, title), question_options(id, option_text, order_index)')
+            .in('id', insertedQuestionIds);
+            
+          return {
+            mode: 'ai',
+            difficulty: 'mixed',
+            rationale: `Tạo bộ câu hỏi luyện tập dựa trên yêu cầu: "${body.prompt.substring(0, 50)}${body.prompt.length > 50 ? '...' : ''}".`,
+            questions: (fetchedQuestions ?? []).map((question) => ({
+              ...question,
+              question_options: (question.question_options ?? [])
+                .sort((left: any, right: any) => left.order_index - right.order_index)
+                .map(({ id, option_text, order_index }: any) => ({ id, option_text, order_index })),
+            })),
+          };
+        }
+      }
     }
 
     const weakTopics = await this.getWeakTopics(userId, courseIds);
@@ -64,9 +127,15 @@ export class PracticeService {
       ? weakTopics.reduce((sum, topic) => sum + topic.accuracy, 0) / weakTopics.length
       : 50;
     const difficulty = await this.aiService.recommendDifficulty(recentAccuracy);
+    
+    let topicIdsToLoad = weakTopics.slice(0, 3).map((topic) => topic.id);
+    let rationale = weakTopics.length
+      ? `Ưu tiên ${weakTopics.slice(0, 2).map((topic) => topic.name).join(' và ')} dựa trên kết quả gần đây.`
+      : 'Chưa có đủ lịch sử làm bài, bộ câu hỏi bắt đầu ở độ khó trung bình.';
+
     const questions = await this.loadQuestions({
       courseIds: body.course_id ? [body.course_id] : courseIds,
-      topicIds: weakTopics.slice(0, 3).map((topic) => topic.id),
+      topicIds: topicIdsToLoad,
       difficulty,
       count: Math.min(Math.max(body.count ?? 10, 5), 20),
       mode: 'ai',
@@ -75,9 +144,7 @@ export class PracticeService {
     return {
       mode: 'ai',
       difficulty,
-      rationale: weakTopics.length
-        ? `Ưu tiên ${weakTopics.slice(0, 2).map((topic) => topic.name).join(' và ')} dựa trên kết quả gần đây.`
-        : 'Chưa có đủ lịch sử làm bài, bộ câu hỏi bắt đầu ở độ khó trung bình.',
+      rationale,
       questions,
     };
   }
