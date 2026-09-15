@@ -1,5 +1,3 @@
-// src/types/question.ts
-
 export type QuestionType =
   | 'single_choice'
   | 'multiple_choice'
@@ -11,8 +9,8 @@ export type DifficultyLevel = 'easy' | 'medium' | 'hard';
 export type QuestionStatus = 'draft' | 'approved';
 
 export interface QuestionOption {
-  id: string;
-  question_id: string;
+  id?: string;
+  question_id?: string;
   option_text: string;
   is_correct: boolean;
   order_index: number;
@@ -30,6 +28,10 @@ export interface QuestionItem {
   status: QuestionStatus;
   is_ai_generated: boolean;
   created_at: string;
+  course?: { id: string; title: string } | null;
+  chapter?: { id: string; title: string } | null;
+  lesson?: { title: string } | null;
+  topics?: string[];
 
   // Các trường DTO/UI phục vụ hiển thị trên page.tsx
   subtopic?: string;
@@ -44,3 +46,20 @@ export interface QuestionFilters {
   difficulty?: DifficultyLevel | 'all';
   is_ai_generated?: boolean | 'all';
 }
+
+export type QuestionPayload = {
+  course_id: string;
+  chapter_id: string | null;
+  lesson_id: string | null;
+  question_type: QuestionType;
+  difficulty: DifficultyLevel;
+  content: string;
+  explanation?: string | null;
+  status: QuestionStatus;
+  topic_ids: string[];
+  options: QuestionOption[];
+};
+
+export type CourseOption = { id: string; title: string; slug?: string };
+export type ChapterOption = { id: string; course_id: string; title: string; order_index: number };
+export type LessonOption = { id: string; chapter_id?: string; title: string; order_index: number };

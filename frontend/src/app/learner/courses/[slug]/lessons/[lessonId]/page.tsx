@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { courseApi } from '@/lib/api';
 import {
   ArrowLeft,
   ArrowRight,
@@ -25,6 +26,10 @@ import {
   Trophy,
   Zap,
   Award,
+  Bookmark,
+  Edit3,
+  X,
+  Save,
   Layers,
 } from 'lucide-react';
 
@@ -150,6 +155,19 @@ interface LessonDetail {
   defaultOutput: string;
   proTipTitle: string;
   proTipContent: string;
+}
+
+interface LearnerLessonChapter {
+  id: string;
+  title: string;
+  lessons: Array<{
+    id: string;
+    title: string;
+    duration: number;
+    status: string;
+    content: string | null;
+    codeExample: string | null;
+  }>;
 }
 
 const LESSON_DATABASE: Record<string, LessonDetail> = {
@@ -450,7 +468,47 @@ export default function LearnerLessonPage() {
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug || 'csharp-fundamentals';
   const lessonIdParam = Array.isArray(params?.lessonId) ? params.lessonId[0] : params?.lessonId;
 
-  const currentCourse = COURSE_MAP[slug] || COURSE_MAP['csharp-fundamentals'];
+  const [databaseCourseTitle, setDatabaseCourseTitle] = useState<string | null>(null);
+  const [databaseChapters, setDatabaseChapters] = useState<LearnerLessonChapter[] | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    courseApi.learnerLessons(slug)
+      .then((response) => {
+        if (isActive) {
+          setDatabaseCourseTitle(response.course.title);
+          setDatabaseChapters(response.chapters);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setDatabaseCourseTitle(null);
+          setDatabaseChapters(null);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [slug]);
+
+  const fallbackCourse = COURSE_MAP[slug] || COURSE_MAP['csharp-fundamentals'];
+  const currentCourse = databaseChapters
+    ? {
+        ...fallbackCourse,
+      title: databaseCourseTitle ?? fallbackCourse.title,
+        chapters: databaseChapters.map((chapter) => ({
+          title: chapter.title,
+          lessons: chapter.lessons.map((lesson) => ({
+            id: lesson.id,
+            title: lesson.title,
+            duration: `${lesson.duration} min`,
+            completed: false,
+          })),
+        })),
+      }
+    : fallbackCourse;
   const courseHref = `/learner/courses/${slug}`;
 
   // Thu thập danh sách phẳng tất cả bài học trong khóa
@@ -504,6 +562,10 @@ export default function LearnerLessonPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [consoleOutput, setConsoleOutput] = useState<string>(currentLesson.defaultOutput);
   const [aiChatInput, setAiChatInput] = useState('');
+  const [isNoteOpen, setIsNoteOpen] = useState(false);
+  const [noteContent, setNoteContent] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{ sender: 'ai' | 'user'; text: string }>>([
     {
       sender: 'ai',
@@ -614,6 +676,15 @@ export default function LearnerLessonPage() {
                   />
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setIsBookmarked(!isBookmarked)}
+                className={`hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-semibold transition ${isBookmarked ? 'bg-rose-50 text-[#f7444e]' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900'}`}
+              >
+                <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-current' : ''}`} />
+                {isBookmarked ? 'Saved' : 'Bookmark'}
+              </button>
 
               <button
                 type="button"
@@ -1013,6 +1084,64 @@ export default function LearnerLessonPage() {
           </div>
         </div>
       </footer>
+
+      {/* Note FAB */}
+      <button
+        onClick={() => setIsNoteOpen(true)}
+        className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#0f3741] text-white shadow-lg transition hover:scale-105 hover:bg-[#145a68]"
+        title="Ghi chú bài học"
+      >
+        <Edit3 className="h-6 w-6" />
+      </button>
+
+      {/* Note Drawer */}
+      {isNoteOpen && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm transition-opacity" onClick={() => setIsNoteOpen(false)} />
+          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md border-l border-slate-200 bg-white shadow-2xl transition-transform ease-[cubic-bezier(0.32,0.72,0,1)] duration-500 flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-[#0f3741]">My Notes</h3>
+                  <p className="text-xs text-slate-500 line-clamp-1">{currentLesson.title}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsNoteOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 p-6 flex flex-col">
+              <textarea
+                value={noteContent}
+                onChange={(e) => {
+                  setNoteContent(e.target.value);
+                  setIsSavingNote(true);
+                  setTimeout(() => setIsSavingNote(false), 1000);
+                }}
+                placeholder="Type your notes here... (Supports Markdown)"
+                className="flex-1 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 placeholder-slate-400 focus:border-[#78bcc4] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#78bcc4]/10"
+              />
+            </div>
+            
+            <div className="border-t border-slate-100 px-6 py-4 flex items-center justify-between bg-slate-50">
+              <div className="text-xs text-slate-500 flex items-center gap-1.5">
+                {isSavingNote ? (
+                  <span className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Saving...</span>
+                ) : (
+                  <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-emerald-500" /> Saved</span>
+                )}
+              </div>
+              <Link href="/learner/notes" className="text-xs font-semibold text-[#f7444e] hover:text-rose-600 transition">
+                View all notes →
+              </Link>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -2,116 +2,26 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { Clock3, FileQuestion, ArrowLeft } from 'lucide-react';
+import { ApiClientError, quizApi } from '@/lib/api';
+import type { QuizItem } from '@/types/quiz';
 
-const TEST_META: Record<string, { title: string; courseLabel: string; duration: string; questions: number; difficulty: string; description: string }> = {
-  'final-assessment': {
-    title: 'C# Fundamentals — Final Assessment',
-    courseLabel: 'C# Fundamentals',
-    duration: '60 minutes, timed — the test submits automatically at zero',
-    questions: 6,
-    difficulty: 'Medium',
-    description: 'You can move freely between questions before submitting',
-  },
-  'variables-quiz': {
-    title: 'Variables & Data Types Quiz',
-    courseLabel: 'C# Fundamentals',
-    duration: '20 minutes, timed — the test submits automatically at zero',
-    questions: 15,
-    difficulty: 'Easy',
-    description: 'You can move freely between questions before submitting',
-  },
-  'oop-quick-check': {
-    title: 'OOP Quick Check',
-    courseLabel: 'Object-Oriented Programming in C#',
-    duration: '25 minutes, timed — the test submits automatically at zero',
-    questions: 5,
-    difficulty: 'Medium',
-    description: 'You can move freely between questions before submitting',
-  },
-  'linq-mini-practice': {
-    title: 'LINQ Mini Practice',
-    courseLabel: 'Collections and LINQ',
-    duration: '30 minutes, timed — the test submits automatically at zero',
-    questions: 7,
-    difficulty: 'Medium',
-    description: 'You can move freely between questions before submitting',
-  },
-  'exception-flows': {
-    title: 'Exception Handling Drill',
-    courseLabel: 'Exception Handling in C#',
-    duration: '20 minutes, timed — the test submits automatically at zero',
-    questions: 6,
-    difficulty: 'Medium',
-    description: 'You can move freely between questions before submitting',
-  },
-  'async-challenge': {
-    title: 'Async & Tasks Challenge',
-    courseLabel: 'Advanced C#: Delegates, Events & Async',
-    duration: '35 minutes, timed — the test submits automatically at zero',
-    questions: 8,
-    difficulty: 'Hard',
-    description: 'You can move freely between questions before submitting',
-  },
-  'interview-mock-test': {
-    title: 'OOP Interview Mock Test',
-    courseLabel: 'C# & OOP Interview Preparation',
-    duration: '25 minutes, timed — the test submits automatically at zero',
-    questions: 5,
-    difficulty: 'Hard',
-    description: 'You can move freely between questions before submitting',
-  },
-};
+function errorMessage(error: unknown) { return error instanceof ApiClientError ? error.message : 'Unable to load this quiz.'; }
 
 export default function CourseTestIntroPage() {
-  const params = useParams();
-  const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
-  const testId = Array.isArray(params?.testId) ? params.testId[0] : params?.testId;
-  const meta = testId ? TEST_META[testId] : null;
+  const params = useParams<{ slug: string; testId: string }>();
+  const slug = String(params.slug ?? '');
+  const testId = String(params.testId ?? '');
+  const [quiz, setQuiz] = useState<QuizItem | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!meta) {
-    return (
-      <div className="mx-auto max-w-[900px] rounded-[16px] border border-slate-200 bg-white p-10 text-center shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-800">Test not found</h1>
-        <p className="mt-2 text-slate-500">This test does not exist for this course.</p>
-        <Link href={slug ? `/learner/courses/${slug}` : '/learner/courses'} className="mt-6 inline-flex rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white">
-          Back to course
-        </Link>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!testId) return;
+    quizApi.getById(testId).then(setQuiz).catch((loadError) => setError(errorMessage(loadError)));
+  }, [testId]);
 
-  return (
-    <div className="mx-auto flex min-h-[600px] max-w-[980px] items-center justify-center px-4 py-8">
-      <div className="w-full max-w-[760px] rounded-[20px] border border-[#dfe4df] bg-white/95 p-5 shadow-[0_8px_18px_rgba(0,44,62,0.04)] sm:p-7">
-        <div className="border-b border-[#e7e9e6] pb-4 text-center sm:text-left">
-          <div className="text-[15px] font-semibold tracking-[-0.02em] text-[#0f3741]
-            sm:text-[17px]">
-            {meta.title}
-          </div>
-          <div className="mt-2 text-[15px] text-slate-500">{meta.courseLabel}</div>
-        </div>
+  if (error || !quiz) return <div className="mx-auto max-w-[900px] rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm"><h1 className="text-2xl font-bold text-slate-800">{error ? 'Unable to load quiz' : 'Loading quiz...'}</h1>{error && <p className="mt-2 text-slate-500">{error}</p>}<Link href={`/learner/courses/${slug}`} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white"><ArrowLeft className="h-4 w-4" />Back to course</Link></div>;
 
-        <div className="mt-6 space-y-4 px-1 text-[15px] leading-8 text-[#3c4d54]">
-          <div>{meta.questions} questions in this attempt</div>
-          <div>{meta.duration}</div>
-          <div>{meta.description}</div>
-        </div>
-
-        <div className="mt-6 flex justify-center sm:justify-start">
-          <span className="inline-flex rounded-full bg-[#f5e7d9] px-3 py-1 text-[13px] font-bold text-[#b75a15] shadow-sm">
-            {meta.difficulty}
-          </span>
-        </div>
-
-        <div className="mt-8">
-          <Link
-            href={slug ? `/learner/courses/${slug}/tests/${testId}/take` : '/learner/practice'}
-            className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#f7444e] text-[18px] font-bold text-white shadow-[0_8px_18px_rgba(247,68,78,0.18)] transition hover:bg-[#eb3d42]"
-          >
-            Start test
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="mx-auto flex min-h-[600px] max-w-[980px] items-center justify-center px-4 py-8"><div className="w-full max-w-[760px] rounded-[20px] border border-[#dfe4df] bg-white p-6 shadow-sm sm:p-8"><div className="border-b border-[#e7e9e6] pb-5"><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#F7444E]">{quiz.quiz_type}</p><h1 className="mt-2 text-2xl font-black text-[#0f3741] sm:text-3xl">{quiz.title}</h1><p className="mt-3 text-base leading-7 text-slate-600">{quiz.description || 'Complete this quiz to check your understanding.'}</p></div><div className="mt-6 grid gap-3 sm:grid-cols-3"><div className="rounded-xl bg-[#f5f8f6] p-4"><FileQuestion className="h-5 w-5 text-[#F7444E]" /><p className="mt-2 text-lg font-bold text-[#0f3741]">{quiz.total_questions}</p><p className="text-xs text-slate-500">questions</p></div><div className="rounded-xl bg-[#f5f8f6] p-4"><Clock3 className="h-5 w-5 text-[#F7444E]" /><p className="mt-2 text-lg font-bold text-[#0f3741]">{quiz.duration_minutes === null ? 'Unlimited' : `${quiz.duration_minutes} min`}</p><p className="text-xs text-slate-500">time limit</p></div><div className="rounded-xl bg-[#f5f8f6] p-4"><p className="text-xs font-bold uppercase text-[#F7444E]">Pass score</p><p className="mt-2 text-lg font-bold text-[#0f3741]">{quiz.pass_score}%</p><p className="text-xs text-slate-500">required</p></div></div><Link href={`/learner/courses/${slug}/tests/${testId}/take`} className="mt-8 flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#F7444E] text-base font-bold text-white shadow-sm hover:bg-[#eb3d42]">Start quiz</Link></div></div>;
 }

@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, CheckCircle2, Clock3, FileText } from 'lucide-react';
 import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { courseApi, quizApi } from '@/lib/api';
 
 const COURSE_MAP: Record<string, any> = {
   'csharp-fundamentals': {
@@ -161,7 +163,108 @@ const COURSE_MAP: Record<string, any> = {
 export default function LearnerCourseDetailPage() {
   const params = useParams();
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
-  const course = slug ? COURSE_MAP[slug] : null;
+  const [databaseCourse, setDatabaseCourse] = useState<{
+    id: string;
+    title: string;
+    slug: string;
+  } | null>(null);
+  const [databaseChapters, setDatabaseChapters] = useState<Array<{
+    id: string;
+    title: string;
+    lessons: Array<{ id: string; title: string; duration: number }>;
+  }> | null>(null);
+  const [databaseQuizzes, setDatabaseQuizzes] = useState<Array<{
+    id: string;
+    title: string;
+    description?: string | null;
+    duration_minutes: number | null;
+    total_questions: number;
+    quiz_type: string;
+  }> | null>(null);
+
+  useEffect(() => {
+  if (!slug) return;
+
+  courseApi.learnerLessons(slug)
+    .then(async (response) => {
+      setDatabaseCourse(response.course);
+      setDatabaseChapters(response.chapters);
+      
+      // Lấy danh sách quiz đã xuất bản của khóa học
+      const quizzes = await quizApi.list({ course_id: response.course.id, status: 'published' }).catch(() => []);
+
+      // Lấy chính xác số câu hỏi cho từng bài test
+      const quizzesWithQuestions = await Promise.all(
+        (quizzes || []).map(async (quiz) => {
+          let count = 0;
+          try {
+            const qList = await quizApi.getQuestions(quiz.id);
+            count = Array.isArray(qList) ? qList.length : 0;
+          } catch {
+            count = 0;
+          }
+
+          return {
+            id: quiz.id,
+            title: quiz.title,
+            description: (quiz as any).description,
+            duration_minutes: quiz.duration_minutes,
+            total_questions: count,
+            quiz_type: quiz.quiz_type,
+          };
+        })
+      );
+
+      setDatabaseQuizzes(quizzesWithQuestions);
+    })
+    .catch(() => {
+      setDatabaseCourse(null);
+      setDatabaseChapters(null);
+      setDatabaseQuizzes(null);
+    });
+}, [slug]);
+
+  const fallbackCourse = slug ? COURSE_MAP[slug] : null;
+  const baseCourse = fallbackCourse ?? (databaseCourse ? {
+    id: databaseCourse.id,
+    slug: databaseCourse.slug,
+    title: databaseCourse.title,
+    level: 'Beginner',
+    description: 'Learning content loaded from Supabase.',
+    lastUpdated: 'Updated today',
+    lessons: 0,
+    questions: 0,
+    hours: 0,
+    chapters: [],
+    instructor: 'Learning team',
+    instructorRole: 'Course instructor',
+    resources: [],
+    tests: [],
+  } : null);
+  const course = baseCourse && databaseChapters
+    ? {
+        ...baseCourse,
+        lessons: databaseChapters.reduce((sum, chapter) => sum + chapter.lessons.length, 0),
+        chapters: databaseChapters.map((chapter) => {
+          const fallbackChapter = baseCourse.chapters.find(
+            (item: any) => item.title === chapter.title,
+          );
+
+          return {
+            title: chapter.title,
+            description: fallbackChapter?.description ?? '',
+            completed: false,
+            lessons: chapter.lessons.map((lesson) => ({
+              id: lesson.id,
+              title: lesson.title,
+              duration: `${lesson.duration} min`,
+              completed: false,
+            })),
+          };
+        }),
+      }
+    : fallbackCourse;
+  const tests = databaseQuizzes ?? course?.tests ?? [];
 
   if (!course) {
     return (
@@ -382,18 +485,18 @@ export default function LearnerCourseDetailPage() {
             <div className="rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_8px_18px_rgba(0,44,62,0.04)]">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-[22px] font-bold tracking-tight text-slate-800">Tests</h3>
-                <span className="text-sm text-slate-500">{course.questions} available</span>
+                <span className="text-sm text-slate-500">{tests.length} available</span>
               </div>
 
               <div className="space-y-3">
-                {course.tests?.map((test: any) => (
+                {tests.map((test: any) => (
                   <div
                     key={test.id}
                     className="rounded-[12px] border border-slate-200 bg-[#f8f7f5] p-3"
                   >
                     <div className="text-[15px] font-semibold text-slate-800">{test.title}</div>
                     <div className="mt-1 text-[13px] text-slate-500">
-                      {test.description} • {test.duration} • {test.difficulty}
+                      {test.description || `${test.total_questions} questions`} • {test.duration || (test.duration_minutes === null ? 'Unlimited time' : `${test.duration_minutes} minutes`)}{test.difficulty ? ` • ${test.difficulty}` : ''}
                     </div>
                     <Link
                       href={`/learner/courses/${slug}/tests/${test.id}`}

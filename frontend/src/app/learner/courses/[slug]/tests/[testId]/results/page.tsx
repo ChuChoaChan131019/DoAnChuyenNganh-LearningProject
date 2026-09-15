@@ -3,196 +3,402 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowLeft,
+  RotateCcw,
+  BookOpen,
+  Check,
+  X,
+  Clock,
+  Target,
+  TimerReset,
+} from 'lucide-react';
+import { ApiClientError, quizApi } from '@/lib/api';
+import type { QuizItem, QuizResultResponse } from '@/types/quiz';
 
-const TEST_BANK: Record<string, { title: string; questions: { id: number; question: string; options: string[]; correctIndex: number; explanation: string }[] }> = {
-  'final-assessment': {
-    title: 'C# Fundamentals — Final Assessment',
-    questions: [
-      {
-        id: 1,
-        question: 'Which access modifier makes a member visible only inside the declaring class?',
-        options: ['public', 'private', 'protected', 'internal'],
-        correctIndex: 1,
-        explanation: 'private restricts access to the declaring type. protected also allows derived types, internal allows the same assembly, and public allows everyone.',
-      },
-      {
-        id: 2,
-        question: 'Select all statements that are true about interfaces in C#.',
-        options: [
-          'A class can implement multiple interfaces',
-          'Interfaces can declare instance fields',
-          'Interfaces may contain default implementations (C# 8+)',
-          'An interface can inherit from another interface',
-        ],
-        correctIndex: 0,
-        explanation: 'A class can implement many interfaces, interfaces may have default methods, and they can inherit from each other. They cannot declare instance fields.',
-      },
-      {
-        id: 3,
-        question: 'A struct in C# is a reference type.',
-        options: ['True', 'False'],
-        correctIndex: 1,
-        explanation: 'A struct is a value type stored inline; classes are reference types stored on the heap.',
-      },
-      {
-        id: 4,
-        question: 'Complete the code: the keyword used to prevent further overriding of a virtual member is _________.',
-        options: ['sealed', 'private', 'static', 'override'],
-        correctIndex: 0,
-        explanation: 'sealed prevents the member from being overridden further down the hierarchy.',
-      },
-      {
-        id: 5,
-        question: 'Which LINQ operator returns a projection of each element in a sequence?',
-        options: ['Where', 'Select', 'Aggregate', 'OrderBy'],
-        correctIndex: 1,
-        explanation: 'Select projects each element; Where filters, Aggregate reduces, OrderBy sorts.',
-      },
-      {
-        id: 6,
-        question: 'What happens when an exception is thrown inside a finally block?',
-        options: ['It is ignored', 'It replaces the original exception and propagates', 'The method exits silently', 'The program continues normally'],
-        correctIndex: 1,
-        explanation: 'The new exception replaces the original exception and propagates up, which is why finally blocks should not throw.',
-      },
-    ],
-  },
-  'variables-quiz': {
-    title: 'Variables & Data Types Quiz',
-    questions: [
-      {
-        id: 1,
-        question: 'Which keyword declares a floating-point number?',
-        options: ['float', 'double', 'decimal', 'string'],
-        correctIndex: 0,
-        explanation: 'float is the correct keyword for a floating-point value. double is also valid, but float is the direct match here.',
-      },
-      {
-        id: 2,
-        question: 'What does var keyword do in C#?',
-        options: ['Declares a constant', 'Infers the type from the value', 'Creates a pointer', 'Adds a namespace'],
-        correctIndex: 1,
-        explanation: 'var lets C# infer the type at compile time from the assigned value.',
-      },
-      {
-        id: 3,
-        question: 'Which type is best for monetary values?',
-        options: ['double', 'float', 'decimal', 'int'],
-        correctIndex: 2,
-        explanation: 'decimal is designed for financial and exact decimal calculations.',
-      },
-    ],
-  },
-};
+function errorMessage(error: unknown) {
+  return error instanceof ApiClientError ? error.message : 'Unable to load test results.';
+}
+
+type QuestionFilter = 'all' | 'incorrect' | 'correct';
 
 export default function CourseTestResultsPage() {
-  const params = useParams();
-  const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
-  const testId = Array.isArray(params?.testId) ? params.testId[0] : params?.testId;
+  const params = useParams<{ slug: string; testId: string }>();
+  const slug = String(params?.slug ?? '');
+  const testId = String(params?.testId ?? '');
 
-  const [answers, setAnswers] = useState<Record<number, number>>({});
-  const [mounted, setMounted] = useState(false);
+  const [quiz, setQuiz] = useState<QuizItem | null>(null);
+  const [result, setResult] = useState<QuizResultResponse | null>(null);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [userAnswers, setUserAnswers] = useState<Record<string, { selected_option_ids: string[] }>>({});
+  const [timeSpentSeconds, setTimeSpentSeconds] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<QuestionFilter>('all');
 
   useEffect(() => {
-    setMounted(true);
-    if (!slug || !testId) return;
-    const stored = window.localStorage.getItem(`learner-test-${slug}-${testId}`);
-    if (stored) {
-      setAnswers(JSON.parse(stored));
+    if (!testId) return;
+
+    if (typeof window !== 'undefined') {
+      const savedAnswers = localStorage.getItem(`quiz_answers_${testId}`) || sessionStorage.getItem(`quiz_answers_${testId}`);
+      if (savedAnswers) {
+        try {
+          setUserAnswers(JSON.parse(savedAnswers));
+        } catch (e) {
+          console.warn('Error parsing answers:', e);
+        }
+      }
+
+      const savedTimeSpent = localStorage.getItem(`quiz_time_spent_${testId}`);
+      if (savedTimeSpent !== null && savedTimeSpent !== '') {
+        setTimeSpentSeconds(Number(savedTimeSpent));
+      }
     }
-  }, [slug, testId]);
 
-  const test = testId ? TEST_BANK[testId] : null;
+    Promise.all([
+      quizApi.getById(testId).catch(() => null),
+      quizApi.latestResult(testId).catch(() => null),
+      quizApi.getQuestions(testId).catch(() => []),
+    ])
+      .then(([loadedQuiz, loadedResult, loadedQuestions]) => {
+        setQuiz(loadedQuiz);
+        setResult(loadedResult);
+        setQuestions(loadedQuestions || []);
+      })
+      .catch((loadError) => setError(errorMessage(loadError)))
+      .finally(() => setIsLoading(false));
+  }, [testId]);
 
-  const review = useMemo(() => {
-    if (!test) return [];
+  const evaluatedQuestions = useMemo(() => {
+    return questions.map((item: any, qIdx: number) => {
+      const q = item.questions || item;
+      const qId = String(item.question_id || q.id);
+      const userSelectedIds = userAnswers[qId]?.selected_option_ids || [];
+      const optionsList = q.options || q.question_options || [];
 
-    return test.questions.map((question) => {
-      const userAnswer = answers[question.id];
-      const isCorrect = userAnswer === question.correctIndex;
+      const correctOptionIds = optionsList
+        .filter((opt: any) => opt.is_correct === true)
+        .map((opt: any) => String(opt.id));
+
+      const isCorrect =
+        correctOptionIds.length > 0 &&
+        correctOptionIds.length === userSelectedIds.length &&
+        correctOptionIds.every((id: string) => userSelectedIds.includes(id));
 
       return {
-        ...question,
-        userAnswer,
+        originalIndex: qIdx,
+        qId,
+        question: q,
+        options: optionsList,
+        userSelectedIds,
+        correctOptionIds,
         isCorrect,
       };
     });
-  }, [answers, test]);
+  }, [questions, userAnswers]);
 
-  const correctCount = review.filter((item) => item.isCorrect).length;
-  const scorePercent = review.length ? Math.round((correctCount / review.length) * 100) : 0;
-  const progressWidth = `${scorePercent}%`;
-
-  if (!test) {
+  if (isLoading) {
     return (
-      <div className="mx-auto max-w-[900px] rounded-[16px] border border-slate-200 bg-white p-10 text-center shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-800">Result not found</h1>
-        <p className="mt-2 text-slate-500">No result is available for this test.</p>
-        <Link href={slug ? `/learner/courses/${slug}` : '/learner/courses'} className="mt-6 inline-flex rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white">
-          Back to course
+      <div className="mx-auto max-w-2xl rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+        <p className="text-sm font-medium text-slate-500">Loading test results...</p>
+      </div>
+    );
+  }
+
+  if (error || !quiz) {
+    return (
+      <div className="mx-auto max-w-2xl rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center shadow-sm">
+        <h1 className="text-xl font-bold text-rose-800">Test not found</h1>
+        <Link
+          href={`/learner/courses/${slug}`}
+          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#c93f3a] transition"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to course
         </Link>
       </div>
     );
   }
 
-  return (
-    <div className="mx-auto max-w-[980px] px-4 py-8">
-      <div className="rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_8px_18px_rgba(0,44,62,0.04)] sm:p-6">
-        <div className="text-center text-[18px] font-bold text-[#0f3741]">Results</div>
-        <div className="mt-2 text-center text-[18px] font-medium text-slate-500">{test.title}</div>
+  const totalQuestions = evaluatedQuestions.length;
+  const correctCount = evaluatedQuestions.filter((q) => q.isCorrect).length;
+  const incorrectCount = totalQuestions - correctCount;
+  const percentage = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+  const passScore = Number((quiz as any).pass_percentage ?? quiz.pass_score ?? 50);
+  const isPassed = percentage >= passScore;
 
-        <div className="mt-6 flex flex-col items-center justify-center">
-          <div className="text-[54px] font-black tracking-[-0.06em] text-[#0f3741]">{scorePercent}%</div>
-          <div className="mt-1 text-[14px] text-slate-500">{correctCount} of {review.length} correct</div>
-          <div className="mt-4 h-2.5 w-full max-w-[420px] overflow-hidden rounded-full bg-[#f5dfe2]">
-            <div className="h-full rounded-full bg-[#f7444e]" style={{ width: progressWidth }} />
+  const filteredQuestions = evaluatedQuestions.filter((item) => {
+    if (activeFilter === 'correct') return item.isCorrect;
+    if (activeFilter === 'incorrect') return !item.isCorrect;
+    return true;
+  });
+
+  const radius = 50;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  const formatDuration = (totalSec: number | null) => {
+    if (totalSec === null || isNaN(totalSec)) return '00:00';
+    const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+    const s = (totalSec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+  return (
+    <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
+      {/* Score Summary Card */}
+      <div className="rounded-3xl border border-[#dfe6df] bg-white p-8 text-center shadow-sm">
+        <h1 className="text-3xl font-black text-[#0f3741]">{quiz.title}</h1>
+
+        {/* Metadata: Passing Requirement • Duration Limit • Time Spent */}
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-5 text-xs font-semibold text-slate-500">
+          <span className="inline-flex items-center gap-1.5">
+            <Target className="h-4 w-4 text-[#F7444E]" />
+            Passing requirement: {passScore}%
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Clock className="h-4 w-4 text-slate-400" />
+            Duration limit: {quiz.duration_minutes ? `${quiz.duration_minutes} mins` : 'Unlimited'}
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">
+            <TimerReset className="h-3.5 w-3.5 text-[#F7444E]" />
+            Time spent: {formatDuration(timeSpentSeconds)}
+          </span>
+        </div>
+
+        {/* Hàng chứa: Vòng tròn % và 3 ô thống kê */}
+        <div className="mx-auto my-7 flex max-w-2xl flex-wrap items-center justify-center gap-6 sm:flex-nowrap sm:justify-between border-y border-gray-100 py-6">
+          {/* Circular Gauge */}
+          <div className="relative flex h-36 w-36 shrink-0 items-center justify-center">
+            <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 120 120">
+              <circle
+                cx="60"
+                cy="60"
+                r={radius}
+                className="text-slate-100"
+                strokeWidth="8"
+                stroke="currentColor"
+                fill="transparent"
+              />
+              <circle
+                cx="60"
+                cy="60"
+                r={radius}
+                className={`transition-all duration-1000 ease-out ${
+                  isPassed ? 'text-emerald-500' : 'text-[#F7444E]'
+                }`}
+                strokeWidth="8"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                stroke="currentColor"
+                fill="transparent"
+              />
+            </svg>
+            <div className="absolute flex flex-col items-center justify-center text-center">
+              <span className="text-3xl font-black tracking-tight text-[#0f3741]">{percentage}%</span>
+              <span
+                className={`mt-0.5 text-[11px] font-black uppercase tracking-wider ${
+                  isPassed ? 'text-emerald-600' : 'text-[#F7444E]'
+                }`}
+              >
+                {isPassed ? 'Passed' : 'Failed'}
+              </span>
+            </div>
+          </div>
+
+          {/* 3 Thẻ: Correct | Incorrect | Total */}
+          <div className="grid flex-1 grid-cols-3 gap-3">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-emerald-100/80 bg-emerald-50/50 p-4 shadow-sm">
+              <span className="text-2xl font-black text-emerald-600">{correctCount}</span>
+              <span className="mt-1 text-xs font-bold uppercase tracking-wider text-emerald-700">Correct</span>
+            </div>
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-rose-100/80 bg-rose-50/50 p-4 shadow-sm">
+              <span className="text-2xl font-black text-rose-600">{incorrectCount}</span>
+              <span className="mt-1 text-xs font-bold uppercase tracking-wider text-rose-700">Incorrect</span>
+            </div>
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/60 bg-slate-50/80 p-4 shadow-sm">
+              <span className="text-2xl font-black text-slate-700">{totalQuestions}</span>
+              <span className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">Total</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="mt-6 rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_8px_18px_rgba(0,44,62,0.04)] sm:p-6">
-        <div className="mb-3 text-[20px] font-bold text-[#0f3741]">Review</div>
-
-        <div className="space-y-4">
-          {review.map((item, idx) => {
-            const correctOption = item.options[item.correctIndex];
-            const userSelected = item.userAnswer !== undefined ? item.options[item.userAnswer] : null;
-
-            return (
-              <div key={item.id} className="rounded-[14px] border border-[#dfe6df] bg-[#f9faf8] p-4">
-                <div className="flex items-start gap-3">
-                  <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${item.isCorrect ? 'bg-[#dff5ea] text-[#1b8f62]' : 'bg-[#f7dfe0] text-[#d93e4f]'}`}>
-                    {item.isCorrect ? '✓' : '✕'}
-                  </div>
-
-                  <div className="flex-1">
-                    <div className="text-[16px] font-semibold leading-relaxed text-[#0f3741]">
-                      {idx + 1}. {item.question}
-                    </div>
-
-                    <div className="mt-2 text-[14px] text-slate-600">
-                      {item.isCorrect ? 'Correct answer:' : 'Correct answer:'} {correctOption}
-                    </div>
-
-                    <div className="mt-2 text-[14px] leading-relaxed text-slate-600">
-                      {item.explanation}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-6">
+        {/* Nút điều hướng */}
+        <div className="flex flex-wrap justify-center gap-4 pt-2">
           <Link
-            href={slug ? `/learner/courses/${slug}` : '/learner/courses'}
-            className="flex h-[46px] w-full items-center justify-center rounded-[12px] border border-[#dfe6df] bg-white text-[15px] font-semibold text-[#0f3741] transition hover:bg-slate-50"
+            href={`/learner/courses/${slug}/tests/${testId}/take`}
+            className={`inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-bold transition ${
+              percentage === 100
+                ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm'
+                : 'bg-[#F7444E] text-white shadow-sm hover:bg-[#c93f3a]'
+            }`}
           >
-            Back to dashboard
+            <RotateCcw className="h-4 w-4" /> Retake test
+          </Link>
+          <Link
+            href={`/learner/courses/${slug}`}
+            className={`inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-bold transition ${
+              percentage === 100
+                ? 'bg-[#F7444E] text-white shadow-sm hover:bg-[#c93f3a]'
+                : 'border border-slate-200 bg-white text-[#0f3741] hover:bg-slate-50 shadow-sm'
+            }`}
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to course
           </Link>
         </div>
       </div>
+
+      {/* Review Section */}
+      {totalQuestions > 0 && (
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-3">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-[#F7444E]" />
+              <h2 className="text-xl font-bold text-slate-900">Answers & Explanations</h2>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="inline-flex rounded-xl bg-slate-100 p-1 text-xs font-bold text-slate-600">
+              <button
+                type="button"
+                onClick={() => setActiveFilter('all')}
+                className={`rounded-lg px-3 py-1.5 transition ${
+                  activeFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'hover:text-slate-900'
+                }`}
+              >
+                All ({totalQuestions})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveFilter('incorrect')}
+                className={`rounded-lg px-3 py-1.5 transition ${
+                  activeFilter === 'incorrect' ? 'bg-white text-rose-600 shadow-sm' : 'hover:text-slate-900'
+                }`}
+              >
+                Incorrect ({incorrectCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveFilter('correct')}
+                className={`rounded-lg px-3 py-1.5 transition ${
+                  activeFilter === 'correct' ? 'bg-white text-emerald-600 shadow-sm' : 'hover:text-slate-900'
+                }`}
+              >
+                Correct ({correctCount})
+              </button>
+            </div>
+          </div>
+
+          {filteredQuestions.length === 0 ? (
+            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-sm text-slate-500">
+              No questions found under this filter.
+            </div>
+          ) : (
+            filteredQuestions.map((item) => {
+              const { originalIndex, qId, question: q, options: optionsList, userSelectedIds, isCorrect: isCorrectQuestion } = item;
+
+              return (
+                <article
+                  key={qId}
+                  className="relative rounded-2xl border border-gray-200/80 bg-[#FFFAFC]/50 p-6 shadow-sm space-y-4"
+                >
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={`flex h-6 w-6 items-center justify-center rounded-full text-white text-xs font-bold shadow-sm ${
+                          isCorrectQuestion ? 'bg-emerald-500' : 'bg-rose-500'
+                        }`}
+                      >
+                        {isCorrectQuestion ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+                      </span>
+
+                      <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-200 text-xs font-bold text-slate-800">
+                        {originalIndex + 1}
+                      </span>
+                      <span className="text-xs font-semibold text-slate-500 uppercase">
+                        {q.question_type || 'single_choice'}
+                      </span>
+                    </div>
+
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                        isCorrectQuestion
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      }`}
+                    >
+                      {isCorrectQuestion ? 'Correct' : 'Incorrect'}
+                    </span>
+                  </div>
+
+                  <p className="text-base font-bold text-slate-900">{q.content}</p>
+
+                  <div className="space-y-2.5">
+                    {optionsList.map((opt: any, oIdx: number) => {
+                      const optId = String(opt.id);
+                      const isCorrect = opt.is_correct === true;
+                      const isChosen = userSelectedIds.includes(optId);
+
+                      let cardStyle = 'border-gray-200 bg-white text-slate-700';
+                      let badgeStyle = 'border-gray-300 bg-gray-100 text-slate-600';
+
+                      if (isCorrect) {
+                        cardStyle = 'border-emerald-300 bg-emerald-50/80 font-medium text-emerald-900';
+                        badgeStyle = 'border-emerald-400 bg-emerald-500 text-white';
+                      } else if (isChosen && !isCorrect) {
+                        cardStyle = 'border-rose-300 bg-rose-50/80 font-medium text-rose-900';
+                        badgeStyle = 'border-rose-400 bg-rose-500 text-white';
+                      }
+
+                      return (
+                        <div
+                          key={optId || oIdx}
+                          className={`flex items-center justify-between rounded-xl border p-3.5 text-sm transition ${cardStyle}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`flex h-6 w-6 items-center justify-center rounded-full border text-xs font-bold ${badgeStyle}`}
+                            >
+                              {String.fromCharCode(65 + oIdx)}
+                            </span>
+                            <span className="break-words">{opt.option_text}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {isChosen && !isCorrect && (
+                              <span className="rounded-md bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700">
+                                Your answer
+                              </span>
+                            )}
+                            {isChosen && isCorrect && (
+                              <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+                                Your correct answer
+                              </span>
+                            )}
+                            {!isChosen && isCorrect && (
+                              <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+                                Correct answer
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {q.explanation && (
+                    <div className="mt-4 rounded-xl border border-gray-100 bg-slate-50/90 p-4">
+                      <p className="text-xs leading-relaxed text-slate-600">
+                        <span className="font-bold text-slate-800">Explanation: </span>
+                        {q.explanation}
+                      </p>
+                    </div>
+                  )}
+                </article>
+              );
+            })
+          )}
+        </div>
+      )}
     </div>
   );
 }
