@@ -530,3 +530,76 @@ export const notificationsApi = {
   },
 };
 
+export interface FeedbackItem {
+  id: string;
+  managerId: string;
+  learnerId: string;
+  learnerName: string;
+  learnerEmail: string;
+  courseId: string;
+  courseTitle?: string;
+  content: string;
+  contextType: 'general' | 'progress' | 'result' | 'task';
+  contextId?: string | null;
+  contextSnapshot?: any;
+  status: 'draft' | 'sent';
+  sentAt?: string | null;
+  readAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateFeedbackPayload {
+  learnerId: string;
+  courseId: string;
+  content: string;
+  contextType?: 'general' | 'progress' | 'result' | 'task';
+  contextId?: string;
+  contextSnapshot?: Record<string, any>;
+  status?: 'draft' | 'sent';
+}
+
+export interface UpdateFeedbackPayload {
+  content?: string;
+  contextType?: 'general' | 'progress' | 'result' | 'task';
+  contextId?: string;
+  contextSnapshot?: Record<string, any>;
+}
+
+export const feedbacksApi = {
+  getLearners: (courseId?: string): Promise<Array<{ id: string; name: string; email: string }>> => {
+    const query = courseId ? `?courseId=${encodeURIComponent(courseId)}` : '';
+    return request<Array<{ id: string; name: string; email: string }>>(`/api/v1/feedbacks/learners${query}`);
+  },
+  list: (status?: string): Promise<FeedbackItem[]> => {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    return request<FeedbackItem[]>(`/api/v1/feedbacks${query}`);
+  },
+  getById: (id: string): Promise<FeedbackItem> => {
+    return request<FeedbackItem>(`/api/v1/feedbacks/${encodeURIComponent(id)}`);
+  },
+  create: (payload: CreateFeedbackPayload): Promise<FeedbackItem> => {
+    return request<FeedbackItem>('/api/v1/feedbacks', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  update: (id: string, payload: UpdateFeedbackPayload): Promise<FeedbackItem> => {
+    return request<FeedbackItem>(`/api/v1/feedbacks/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+  delete: (id: string): Promise<{ success: boolean; message: string }> => {
+    return request<{ success: boolean; message: string }>(`/api/v1/feedbacks/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  },
+  send: (id: string): Promise<FeedbackItem> => {
+    return request<FeedbackItem>(`/api/v1/feedbacks/${encodeURIComponent(id)}/send`, {
+      method: 'POST',
+    });
+  },
+};
+
+
