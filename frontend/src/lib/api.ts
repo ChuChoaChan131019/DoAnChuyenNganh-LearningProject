@@ -125,6 +125,25 @@ export const authApi = {
   },
 };
 
+export const aiTutorApi = {
+  history: () =>
+    request<{
+      conversations: Array<{ id: string; title: string; preview: string; created_at: string }>;
+      messages: Array<{
+        id: string;
+        conversation_id: string;
+        sender_role: 'user' | 'assistant' | 'system';
+        message_content: string;
+        created_at: string;
+      }>;
+    }>('/api/v1/ai/tutor/history'),
+  send: (payload: { conversationId?: string; message: string }) =>
+    request<{ conversationId: string; message: { id: string; conversation_id: string; sender_role: 'assistant'; message_content: string; created_at: string } }>(
+      '/api/v1/ai/tutor/message',
+      { method: 'POST', body: JSON.stringify(payload) },
+    ),
+};
+
 export const categoryApi = {
   list: (): Promise<Category[]> => {
     return request<Category[]>('/api/v1/categories');
