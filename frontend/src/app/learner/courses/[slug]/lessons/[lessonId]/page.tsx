@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { courseApi } from '@/lib/api';
@@ -10,27 +10,22 @@ import {
   BookOpen,
   CheckCircle2,
   Clock3,
-  Flame,
-  Bot,
   Play,
   Copy,
   Check,
   Code2,
-  Lock,
   Download,
   FileText,
   Video,
-  Sparkles,
-  Send,
   Terminal,
   Trophy,
   Zap,
-  Award,
   Bookmark,
   Edit3,
   X,
-  Save,
   Layers,
+  PanelLeft,
+  ChevronDown,
 } from 'lucide-react';
 
 // DỮ LIỆU ĐỒNG BỘ TRỰC TIẾP TỪ PAGE_7.TSX
@@ -560,30 +555,43 @@ export default function LearnerLessonPage() {
   const [isCompleted, setIsCompleted] = useState(currentLessonMeta.completed);
   const [copiedCode, setCopiedCode] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
-  const [consoleOutput, setConsoleOutput] = useState<string>(currentLesson.defaultOutput);
-  const [aiChatInput, setAiChatInput] = useState('');
+  const [hasRun, setHasRun] = useState(false);
+  const [consoleOutput, setConsoleOutput] = useState<string>('');
   const [isNoteOpen, setIsNoteOpen] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [chatMessages, setChatMessages] = useState<Array<{ sender: 'ai' | 'user'; text: string }>>([
-    {
-      sender: 'ai',
-      text: `Chào bạn! Mình có thể hỗ trợ giải thích bất kỳ phần nào trong bài "${currentLesson.title}".`,
-    },
-  ]);
+
+  const [showOutline, setShowOutline] = useState(true);
+  const outlineDialog = useRef<HTMLDialogElement>(null);
+  const desktopOutline = useRef<HTMLElement>(null);
+
+  const revealActiveLesson = (root: HTMLElement | null) => {
+    const list = root?.querySelector<HTMLElement>('[data-lesson-list]');
+    const active = list?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (list && active) {
+      list.scrollTop += active.getBoundingClientRect().top - list.getBoundingClientRect().top - 8;
+    }
+  };
+
+  useEffect(() => {
+    if (showOutline) revealActiveLesson(desktopOutline.current);
+  }, [showOutline, activeLessonId, databaseChapters]);
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const closeOnDesktop = () => { if (desktop.matches) outlineDialog.current?.close(); };
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => desktop.removeEventListener('change', closeOnDesktop);
+  }, []);
 
   // Cập nhật khi đổi bài học
   useEffect(() => {
-    setConsoleOutput(currentLesson.defaultOutput);
+    setHasRun(false);
+    setIsRunning(false);
+    setConsoleOutput('');
     setIsCompleted(currentLessonMeta.completed);
-    setChatMessages([
-      {
-        sender: 'ai',
-        text: `Chào bạn! Cần giải thích thêm về nội dung bài "${currentLesson.title}" không?`,
-      },
-    ]);
-  }, [activeLessonId, currentLesson.defaultOutput, currentLesson.title, currentLessonMeta.completed]);
+  }, [activeLessonId, currentLessonMeta.completed]);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(currentLesson.initialCode);
@@ -592,30 +600,13 @@ export default function LearnerLessonPage() {
   };
 
   const handleRunCode = () => {
+    setHasRun(true);
     setIsRunning(true);
     setConsoleOutput('Đang biên dịch bằng .NET SDK (Roslyn)...');
     setTimeout(() => {
       setIsRunning(false);
       setConsoleOutput(currentLesson.defaultOutput);
     }, 600);
-  };
-
-  const handleSendMessage = (customPrompt?: string) => {
-    const textToSend = customPrompt || aiChatInput;
-    if (!textToSend.trim()) return;
-
-    setChatMessages((prev) => [...prev, { sender: 'user', text: textToSend }]);
-    if (!customPrompt) setAiChatInput('');
-
-    setTimeout(() => {
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          sender: 'ai',
-          text: `Về câu hỏi "${textToSend}": Trong bài học "${currentLesson.title}", vấn đề này liên quan trực tiếp đến ${currentLesson.description.slice(0, 110)}...`,
-        },
-      ]);
-    }, 700);
   };
 
   // Lấy bài test liên quan
@@ -626,14 +617,111 @@ export default function LearnerLessonPage() {
     duration: '15 phút, tính giờ',
   };
 
+  const outlineContent = (<>
+            {/* Card mục lục chương */}
+            <div className="overflow-hidden rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_4px_16px_rgba(0,44,62,0.04)]">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nội dung chương</span>
+                <span className="text-xs font-semibold text-slate-400">
+                  {currentChapterLessons.findIndex((l) => l.id === currentLessonMeta.id) + 1} / {currentChapterLessons.length} bài
+                </span>
+              </div>
+
+              <div data-lesson-list className="mt-3 max-h-[min(45vh,360px)] space-y-1.5 overflow-y-auto overscroll-contain">
+                {currentChapterLessons.map((item, index) => {
+                  const isCurrent = item.id === currentLessonMeta.id;
+                  return (
+                    <Link
+                      key={item.id}
+                      aria-current={isCurrent ? "page" : undefined}
+                      onClick={() => outlineDialog.current?.close()}
+                      href={`/learner/courses/${slug}/lessons/${item.id}`}
+                      className={`flex items-start gap-3 rounded-xl p-2.5 text-xs transition-all ${
+                        isCurrent
+                          ? 'border border-[#f4b7b7] bg-[#fff3f2] font-semibold text-[#f7444e] shadow-sm'
+                          : item.completed
+                          ? 'text-slate-700 hover:bg-slate-50 cursor-pointer'
+                          : 'text-slate-600 hover:bg-slate-50 cursor-pointer'
+                      }`}
+                    >
+                      <span className="mt-0.5 shrink-0">
+                        {item.completed && !isCurrent ? (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#dff5ea] text-[#2b9e6a]">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          </span>
+                        ) : isCurrent ? (
+                          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#F7444E] text-[10px] font-bold text-white">
+                            {index + 1}
+                          </span>
+                        ) : (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                          </span>
+                        )}
+                      </span>
+                      <div className="min-w-0 flex-1 break-words leading-snug">
+                        <p className={isCurrent ? 'text-[#0f3741]' : ''}>{item.title}</p>
+                        <span className="text-[11px] text-slate-400">{item.duration}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Tài nguyên tham khảo của khóa học */}
+            <details className="group rounded-[18px] border border-[#dfe6df] bg-white p-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-bold text-slate-600 [&::-webkit-details-marker]:hidden">Resources <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" /></summary>
+              <div className="mt-3 space-y-2">
+                {currentCourse.resources?.map((resource: any) => (
+                  <div
+                    key={resource.name}
+                    className="flex items-center gap-3 rounded-[12px] border border-slate-200 bg-[#f8f7f5] p-2.5 transition hover:bg-slate-50"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm">
+                      {resource.isVideo ? (
+                        <Video className="h-4 w-4 text-blue-500" />
+                      ) : (
+                        <FileText className="h-4 w-4 text-[#F7444E]" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs font-semibold text-slate-800">{resource.name}</div>
+                      <div className="text-[10px] text-slate-500">{resource.type}</div>
+                    </div>
+                    <Download className="h-4 w-4 text-slate-400 cursor-pointer hover:text-slate-700" />
+                  </div>
+                ))}
+              </div>
+            </details>
+
+            {/* Card Tests: Đồng bộ từ tests của page_7.tsx */}
+            <details className="group rounded-[18px] border border-[#dfe6df] bg-white p-4">
+              <summary className="mb-1 flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-bold text-slate-600 [&::-webkit-details-marker]:hidden">Bài kiểm tra <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" /></summary>
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-700">
+                <Trophy className="h-4 w-4 text-amber-500" />
+                <span>{currentQuiz.title}</span>
+              </div>
+              <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+                {currentQuiz.description} • {currentQuiz.duration}
+              </p>
+              <Link
+                href={`/learner/courses/${slug}/tests/${currentQuiz.id}`}
+                className="mt-3 block w-full text-center rounded-xl bg-[#F7444E] py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#e33b3b]"
+              >
+                Start test
+              </Link>
+            </details>
+  </>);
+
   return (
     <div className="min-h-screen bg-[#F7F8F3] text-slate-700 flex flex-col font-sans">
-      <div className="mx-auto w-full max-w-[1240px] px-4 pt-0 pb-24 sm:px-6 space-y-5">
+      <div className="mx-auto w-full min-w-0 max-w-[1240px] space-y-5 pb-6">
         
         {/* Nút quay về độc lập (Đồng bộ với page_7.tsx) */}
         <Link
           href={courseHref}
-          className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-slate-900"
+          className="inline-flex flex-wrap items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-slate-900"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>{currentCourse.title}</span>
@@ -688,15 +776,6 @@ export default function LearnerLessonPage() {
 
               <button
                 type="button"
-                onClick={() => handleSendMessage(`Tóm tắt nội dung bài ${currentLesson.title}`)}
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
-              >
-                <Bot className="h-4 w-4 text-[#F7444E]" />
-                Hỏi AI Tutor
-              </button>
-
-              <button
-                type="button"
                 onClick={() => setIsCompleted(!isCompleted)}
                 className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold transition shadow-sm ${
                   isCompleted
@@ -711,79 +790,33 @@ export default function LearnerLessonPage() {
           </div>
         </div>
 
-        {/* 3 Cột nội dung */}
-        <main className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_320px]">
-          {/* CỘT TRÁI: Curriculum & Test Card */}
-          <aside className="space-y-5">
-            {/* Card mục lục chương */}
-            <div className="overflow-hidden rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_4px_16px_rgba(0,44,62,0.04)]">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nội dung chương</span>
-                <span className="text-xs font-semibold text-slate-400">
-                  {currentChapterLessons.findIndex((l) => l.id === currentLessonMeta.id) + 1} / {currentChapterLessons.length} bài
-                </span>
-              </div>
-
-              <div className="mt-3 space-y-1.5">
-                {currentChapterLessons.map((item, index) => {
-                  const isCurrent = item.id === currentLessonMeta.id;
-                  return (
-                    <Link
-                      key={item.id}
-                      href={`/learner/courses/${slug}/lessons/${item.id}`}
-                      className={`flex items-start gap-3 rounded-xl p-2.5 text-xs transition-all ${
-                        isCurrent
-                          ? 'border border-[#f4b7b7] bg-[#fff3f2] font-semibold text-[#f7444e] shadow-sm'
-                          : item.completed
-                          ? 'text-slate-700 hover:bg-slate-50 cursor-pointer'
-                          : 'text-slate-600 hover:bg-slate-50 cursor-pointer'
-                      }`}
-                    >
-                      <span className="mt-0.5 shrink-0">
-                        {item.completed && !isCurrent ? (
-                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#dff5ea] text-[#2b9e6a]">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                          </span>
-                        ) : isCurrent ? (
-                          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#F7444E] text-[10px] font-bold text-white">
-                            {index + 1}
-                          </span>
-                        ) : (
-                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                          </span>
-                        )}
-                      </span>
-                      <div className="flex-1 leading-snug">
-                        <p className={isCurrent ? 'text-[#0f3741]' : ''}>{item.title}</p>
-                        <span className="text-[11px] text-slate-400">{item.duration}</span>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
+        <div className="flex items-center">
+          <button type="button" aria-expanded={showOutline} aria-controls="lesson-outline" onClick={() => setShowOutline(!showOutline)} className="hidden min-w-[148px] items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[#145a68] transition-[background-color,transform] duration-200 hover:bg-[#eaf4f3] active:scale-[0.97] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 lg:inline-flex">
+            <PanelLeft className={`h-4 w-4 shrink-0 transition-transform duration-300 motion-reduce:transition-none ${showOutline ? "" : "-scale-x-100"}`} />{showOutline ? 'Ẩn mục lục' : 'Hiện mục lục'}
+          </button>
+          <button type="button" aria-haspopup="dialog" onClick={() => { outlineDialog.current?.showModal(); revealActiveLesson(outlineDialog.current); }} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[#145a68] hover:bg-[#eaf4f3] focus-visible:outline-2 focus-visible:outline-offset-2 lg:hidden">
+            <PanelLeft className="h-4 w-4" />Mục lục & tài nguyên
+          </button>
+        </div>
+        <dialog ref={outlineDialog} aria-labelledby="outline-title" onClick={(event) => { if (event.target === event.currentTarget) outlineDialog.current?.close(); }} className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/35">
+          <div className="flex h-full w-[min(340px,90vw)] flex-col bg-[#F7F8F3] shadow-xl">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b p-4">
+              <h2 id="outline-title" className="text-sm font-bold text-[#0f3741]">Mục lục & tài nguyên</h2>
+              <button type="button" autoFocus aria-label="Đóng mục lục" onClick={() => outlineDialog.current?.close()} className="rounded-lg p-2 hover:bg-slate-200 focus-visible:outline-2"><X className="h-5 w-5" /></button>
             </div>
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4">{outlineContent}</div>
+          </div>
+        </dialog>
 
-            {/* Card Tests: Đồng bộ từ tests của page_7.tsx */}
-            <div className="rounded-[18px] border border-[#dfe6df] bg-[#f8f7f5] p-4 shadow-[0_4px_16px_rgba(0,44,62,0.03)]">
-              <div className="flex items-center gap-2 text-xs font-bold text-amber-700">
-                <Trophy className="h-4 w-4 text-amber-500" />
-                <span>{currentQuiz.title}</span>
-              </div>
-              <p className="mt-2 text-xs text-slate-600 leading-relaxed">
-                {currentQuiz.description} • {currentQuiz.duration}
-              </p>
-              <Link
-                href={`/learner/courses/${slug}/tests/${currentQuiz.id}`}
-                className="mt-3 block w-full text-center rounded-xl bg-[#F7444E] py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#e33b3b]"
-              >
-                Start test
-              </Link>
-            </div>
+        {/* Hai cột: mục lục và tài nguyên bên trái, bài học bên phải */}
+        <div className={`grid min-w-0 grid-cols-1 items-start gap-y-6 transition-[grid-template-columns,column-gap] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${showOutline ? "lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-x-6" : "lg:grid-cols-[0px_minmax(0,1fr)] lg:gap-x-0"}`}>
+          {/* CỘT TRÁI: Nội dung chương, Resources và bài kiểm tra */}
+          <aside ref={desktopOutline} id="lesson-outline" inert={!showOutline} aria-hidden={!showOutline} className={`hidden min-w-0 overflow-hidden transition-[opacity,transform] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none lg:block ${showOutline ? "translate-x-0 opacity-100" : "pointer-events-none -translate-x-3 opacity-0"}`}>
+            <div className="w-[230px] space-y-3">{outlineContent}</div>
           </aside>
 
-          {/* CỘT GIỮA: Nội dung bài học & Code Runner */}
-          <section className="space-y-6">
+          {/* NỘI DUNG BÀI HỌC & Code Runner */}
+          <section className="min-w-0 space-y-6">
             {/* Mục tiêu bài học */}
             <div className="rounded-[18px] border border-[#d6e3e7] bg-[#f2f8fa] p-5 shadow-[0_4px_16px_rgba(0,44,62,0.02)]">
               <div className="flex items-center gap-2.5 text-sm font-bold text-[#0f3741]">
@@ -862,13 +895,6 @@ export default function LearnerLessonPage() {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => handleSendMessage(`Giải thích chi tiết mã Program.cs của bài ${currentLesson.title}`)}
-                      className="inline-flex items-center gap-1 rounded-lg bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700 transition"
-                    >
-                      <Sparkles className="h-3 w-3 text-amber-400" /> Giải thích
-                    </button>
-                    <button
-                      type="button"
                       onClick={handleCopyCode}
                       className="inline-flex items-center gap-1 rounded-lg bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700 transition"
                     >
@@ -900,15 +926,39 @@ export default function LearnerLessonPage() {
                   </pre>
                 </div>
 
-                <div className="border-t border-slate-800 bg-[#060a0e] p-3 font-mono text-xs">
-                  <div className="flex items-center gap-2 text-[11px] text-slate-400 mb-1.5 font-sans font-semibold">
-                    <Terminal className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>Terminal Output:</span>
+                {(hasRun || isRunning) && (
+                  <div className="border-t border-slate-800 bg-[#060a0e] p-3 font-mono text-xs animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5 font-sans font-semibold">
+                      <div className="flex items-center gap-2">
+                        <Terminal className="h-3.5 w-3.5 text-emerald-400" />
+                        <span>Terminal Output:</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isRunning ? (
+                          <span className="flex items-center gap-1.5 text-[10px] text-amber-400">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+                            Đang thực thi...
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHasRun(false);
+                              setConsoleOutput('');
+                            }}
+                            className="text-[10px] text-slate-500 hover:text-slate-300 transition"
+                            title="Đóng terminal"
+                          >
+                            Đóng terminal
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <pre className={`whitespace-pre-wrap text-[11px] leading-relaxed ${isRunning ? 'text-amber-400/90 italic' : 'text-emerald-400/90'}`}>
+                      {consoleOutput}
+                    </pre>
                   </div>
-                  <pre className="whitespace-pre-wrap text-emerald-400/90 text-[11px] leading-relaxed">
-                    {consoleOutput}
-                  </pre>
-                </div>
+                )}
               </div>
 
               {/* Mẹo phỏng vấn */}
@@ -922,168 +972,54 @@ export default function LearnerLessonPage() {
             </div>
           </section>
 
-          {/* CỘT PHẢI: AI Tutor, Instructor & Resources (Đồng bộ với page_7.tsx) */}
-          <aside className="space-y-5">
-            {/* AI Tutor Chat Widget */}
-            <div className="rounded-[18px] border border-[#dfe6df] bg-white flex flex-col h-[380px] shadow-[0_4px_16px_rgba(0,44,62,0.04)] overflow-hidden">
-              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-[#fbfbf9]">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-rose-50 text-[#F7444E]">
-                    <Bot className="h-4 w-4" />
-                  </div>
-                  <span className="text-xs font-bold text-[#0f3741]">Trợ lý AI Tutor</span>
-                </div>
-                <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 rounded-full px-2 py-0.5">
-                  C# 12 Expert
-                </span>
-              </div>
+        </div>
 
-              <div className="flex-1 overflow-y-auto p-3.5 space-y-3 text-xs">
-                {chatMessages.map((msg, idx) => (
-                  <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${
-                        msg.sender === 'user'
-                          ? 'bg-[#F7444E] text-white font-medium rounded-br-none'
-                          : 'bg-[#f4f7f6] text-slate-700 border border-[#e1e8e6] rounded-bl-none'
-                      }`}
-                    >
-                      {msg.text}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="border-t border-slate-100 px-3 py-2 flex flex-wrap gap-1.5 bg-[#fdfdfc]">
-                <button
-                  type="button"
-                  onClick={() => handleSendMessage(`Trọng tâm kiến thức của bài ${currentLesson.title}`)}
-                  className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:border-[#F7444E] hover:text-[#F7444E] transition"
-                >
-                  Trọng tâm bài học?
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSendMessage('Ví dụ thực tế trong dự án')}
-                  className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:border-[#F7444E] hover:text-[#F7444E] transition"
-                >
-                  Ví dụ thực tế?
-                </button>
-              </div>
-
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSendMessage();
-                }}
-                className="p-2.5 border-t border-slate-100 flex gap-2 bg-white"
-              >
-                <input
-                  type="text"
-                  value={aiChatInput}
-                  onChange={(e) => setAiChatInput(e.target.value)}
-                  placeholder="Đặt câu hỏi cho AI..."
-                  className="flex-1 rounded-xl border border-slate-200 bg-[#f8f9f7] px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:border-[#F7444E] focus:outline-none focus:bg-white"
-                />
-                <button
-                  type="submit"
-                  className="rounded-xl bg-[#F7444E] px-3 py-1.5 text-white hover:bg-[#e33b3b] transition flex items-center justify-center shadow-sm"
-                >
-                  <Send className="h-3.5 w-3.5" />
-                </button>
-              </form>
-            </div>
-
-            {/* Card Instructor: Đồng bộ chính xác từ page_7.tsx */}
-            <div className="rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_4px_16px_rgba(0,44,62,0.04)]">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Instructor</h3>
-              <div className="mt-3 flex items-center gap-3 rounded-[12px] border border-slate-200 bg-slate-50 p-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#dfeff5] text-sm font-bold text-slate-700">
-                  DL
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-xs font-bold text-[#0f3741]">{currentCourse.instructor}</div>
-                  <div className="truncate text-[11px] text-slate-500">{currentCourse.instructorRole}</div>
-                </div>
-                <span className="inline-flex rounded-full bg-blue-50 p-1 text-blue-500">
-                  <Award className="h-4 w-4" />
-                </span>
-              </div>
-            </div>
-
-            {/* Card Resources: Đồng bộ chính xác từ page_7.tsx */}
-            <div className="rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_4px_16px_rgba(0,44,62,0.04)]">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Resources</h3>
-              <div className="mt-3 space-y-2">
-                {currentCourse.resources?.map((resource: any) => (
-                  <div
-                    key={resource.name}
-                    className="flex items-center gap-3 rounded-[12px] border border-slate-200 bg-[#f8f7f5] p-2.5 transition hover:bg-slate-50"
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm">
-                      {resource.isVideo ? (
-                        <Video className="h-4 w-4 text-blue-500" />
-                      ) : (
-                        <FileText className="h-4 w-4 text-[#F7444E]" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-xs font-semibold text-slate-800">{resource.name}</div>
-                      <div className="text-[10px] text-slate-500">{resource.type}</div>
-                    </div>
-                    <Download className="h-4 w-4 text-slate-400 cursor-pointer hover:text-slate-700" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </aside>
-        </main>
-      </div>
-
-      {/* FOOTER ĐIỀU HƯỚNG BÀI TRƯỚC / TIẾP THEO */}
-      <footer className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#dfe6df] bg-white/95 backdrop-blur-md px-4 py-3 sm:px-6 shadow-[0_-4px_16px_rgba(0,44,62,0.03)]">
-        <div className="mx-auto flex max-w-[1240px] items-center justify-between">
-          {prevLesson ? (
-            <Link
-              href={`/learner/courses/${slug}/lessons/${prevLesson.id}`}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-sm"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Bài trước: {prevLesson.title}</span>
-              <span className="sm:hidden">Bài trước</span>
-            </Link>
-          ) : (
-            <div />
-          )}
-
-          <div className="flex items-center gap-3">
-            <Link
-              href={courseHref}
-              className="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
-            >
-              Mục lục khóa học
-            </Link>
-
-            {nextLesson ? (
+        {/* FOOTER ĐIỀU HƯỚNG BÀI TRƯỚC / TIẾP THEO */}
+        <footer className="py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {prevLesson ? (
               <Link
-                href={`/learner/courses/${slug}/lessons/${nextLesson.id}`}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#e33b3b] transition shadow-sm"
+                href={`/learner/courses/${slug}/lessons/${prevLesson.id}`}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-sm"
               >
-                <span>Bài tiếp theo: {nextLesson.title}</span>
-                <ArrowRight className="h-3.5 w-3.5" />
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Bài trước: {prevLesson.title}</span>
+                <span className="sm:hidden">Bài trước</span>
               </Link>
             ) : (
+              <div />
+            )}
+
+            <div className="flex items-center gap-3">
               <Link
                 href={courseHref}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-emerald-500 transition shadow-sm"
+                className="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
               >
-                <span>Hoàn thành khóa học</span>
-                <CheckCircle2 className="h-3.5 w-3.5" />
+                Mục lục khóa học
               </Link>
-            )}
+
+              {nextLesson ? (
+                <Link
+                  href={`/learner/courses/${slug}/lessons/${nextLesson.id}`}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#e33b3b] transition shadow-sm"
+                >
+                  <span className="hidden sm:inline">Bài tiếp theo: {nextLesson.title}</span>
+                  <span className="sm:hidden">Bài tiếp theo</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              ) : (
+                <Link
+                  href={courseHref}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-emerald-500 transition shadow-sm"
+                >
+                  <span>Hoàn thành khóa học</span>
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                </Link>
+              )}
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      </div>
 
       {/* Note FAB */}
       <button

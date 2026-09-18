@@ -5,7 +5,6 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 @Injectable()
 export class SupabaseService {
   private readonly logger = new Logger(SupabaseService.name);
-  private client: SupabaseClient;
   private readonly supabaseUrl: string;
   private readonly publishableKey: string;
   private readonly secretKey: string;
@@ -41,17 +40,15 @@ export class SupabaseService {
       );
     }
 
-    this.client = createClient(this.supabaseUrl, this.secretKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
   }
 
-  /** Client với secret key — toàn quyền backend (service role), bypass RLS */
+  /**
+   * Tạo client backend mới cho mỗi lần gọi.
+   * Không dùng singleton ở đây: signInWithPassword() sẽ gắn session vào client,
+   * nếu dùng chung thì các request sau có thể vô tình dùng JWT của user thay vì secret key.
+   */
   getClient(): SupabaseClient {
-    return this.client;
+    return this.getAdminClient();
   }
 
   /** Tạo client với publishable key hoặc user token — tuân thủ RLS */
@@ -83,5 +80,21 @@ export class SupabaseService {
 
   getJwksUrl(): string {
     return this.jwksUrl;
+  }
+
+  /** Tạo fresh admin client với service_role key gắn cứng vào Authorization header
+   *  — đảm bảo bypass RLS dù shared client bị contaminate bởi user token */
+  getAdminClient(): SupabaseClient {
+    return createClient(this.supabaseUrl, this.secretKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${this.secretKey}`,
+        },
+      },
+    });
   }
 }
