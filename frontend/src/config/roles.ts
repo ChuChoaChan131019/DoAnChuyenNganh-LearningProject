@@ -23,7 +23,7 @@ export const ROLE_CONFIGS: Record<UserRole, RoleConfig> = {
   admin: {
     role: 'admin',
     displayName: 'Quản trị viên',
-    defaultRoute: '/admin/dashboard',
+    defaultRoute: '/admin',
     allowedRoutePrefixes: ['/admin', '/content-manager', '/learner'],
   },
 };

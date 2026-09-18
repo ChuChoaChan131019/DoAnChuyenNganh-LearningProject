@@ -22,6 +22,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Tạm thời cho phép truy cập trực tiếp vào /admin (Bypass Auth trong lúc Dev)
+  if (pathname.startsWith('/admin')) {
+    return NextResponse.next();
+  }
+
   // 2. Bảo vệ các tuyến đường nội bộ (Role-based Protected Routes)
   if (isProtectedRoute(pathname)) {
     // Nếu chưa đăng nhập: chuyển hướng về /login kèm callbackUrl
