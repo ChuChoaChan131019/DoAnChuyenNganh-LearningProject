@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Eye,
@@ -75,7 +75,7 @@ interface CourseItem {
   title: string;
 }
 
-export default function TestBuilderPage() {
+function TestBuilderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quizId = searchParams.get('quizId') || searchParams.get('id');
@@ -409,5 +409,13 @@ export default function TestBuilderPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TestBuilderPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-7xl px-6 py-10 text-sm text-gray-500">Loading test builder...</div>}>
+      <TestBuilderContent />
+    </Suspense>
   );
 }
