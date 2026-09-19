@@ -92,7 +92,8 @@ export class SupabaseService {
       },
       global: {
         headers: {
-          Authorization: `Bearer ${this.secretKey}`,
+          // Supabase v2 requires apikey header for service role key
+          apikey: this.secretKey,
         },
       },
     });

@@ -621,4 +621,71 @@ export const feedbacksApi = {
   },
 };
 
+// Dashboard API
+export interface ContinueLearningStudyPlan {
+  id: string;
+  name: string;
+  lesson_id: string;
+  lesson_name: string;
+  course_id: string;
+  course_name: string;
+}
 
+export interface ContinueLearningLesson {
+  id: string;
+  name: string;
+  course_id: string;
+  course_name: string;
+}
+
+export interface ContinueLearning {
+  type: 'study_plan' | 'lesson' | 'empty';
+  study_plan?: ContinueLearningStudyPlan;
+  lesson?: ContinueLearningLesson;
+}
+
+export interface CourseProgress {
+  course_id: string;
+  course_name: string;
+  completed_lessons: number;
+  total_lessons: number;
+  percentage: number;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  deadline?: string;
+  status: string;
+}
+
+export interface QuizResult {
+  id: string;
+  quiz_name: string;
+  score: number;
+  total_questions: number;
+  completed_at: string;
+}
+
+export interface DashboardData {
+  continue_learning: ContinueLearning;
+  progress: {
+    courses: CourseProgress[];
+  };
+  tasks: {
+    active: Task[];
+    overdue: Task[];
+    upcoming: Task[];
+  };
+  recent_results: {
+    quizzes: QuizResult[];
+    trend: 'improving' | 'stable' | 'declining' | 'insufficient_data';
+  };
+}
+
+export const dashboardApi = {
+  get: (): Promise<DashboardData> => {
+    return request<DashboardData>('/api/v1/dashboard');
+  },
+};
