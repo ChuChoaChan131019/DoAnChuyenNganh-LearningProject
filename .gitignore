@@ -24,3 +24,6 @@ pnpm-debug.log*
 # Next.js auto-generated rules
 frontend/AGENTS.md
 frontend/CLAUDE.md
+
+# Tooling and temporary artifacts
+.gstack/
