@@ -189,6 +189,7 @@ export class AiService {
     const context = await this.getAllCourseContext();
     const supabase = this.supabaseService.getAdminClient();
     let conversationId = params.conversationId;
+    let previousMessages: Array<{ sender_role: string; message_content: string }> = [];
 
     if (conversationId) {
       const { data: conversation } = await supabase
@@ -198,6 +199,21 @@ export class AiService {
         .eq('user_id', userId)
         .single();
       if (!conversation) throw new BadRequestException('Conversation is not available');
+
+      const { data: history, error: historyError } = await supabase
+        .from('ai_tutor_messages')
+        .select('sender_role, message_content, created_at')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: false })
+        .limit(12);
+      if (historyError) throw new InternalServerErrorException('Unable to load tutor context');
+
+      previousMessages = (history ?? [])
+        .reverse()
+        .map((historyMessage) => ({
+          sender_role: historyMessage.sender_role,
+          message_content: this.decryptTutorMessage(historyMessage.message_content),
+        }));
     } else {
       const { data: conversation, error } = await supabase
         .from('ai_tutor_conversations')
@@ -215,7 +231,7 @@ export class AiService {
     });
     if (userMessageError) throw new InternalServerErrorException('Unable to save tutor message');
 
-    const reply = await this.generateTutorReply(message, context);
+    const reply = await this.generateTutorReply(message, context, previousMessages);
     const { data: assistantMessage, error: assistantMessageError } = await supabase
       .from('ai_tutor_messages')
       .insert({
@@ -235,18 +251,25 @@ export class AiService {
   private async generateTutorReply(
     message: string,
     context: { courses: any[]; chapters: any[] },
+    previousMessages: Array<{ sender_role: string; message_content: string }>,
   ): Promise<string> {
     const courseLessons = context.chapters
       .map((chapter) => `${chapter.course?.title} / ${chapter.title}: ${(chapter.lessons ?? []).map((lesson: any) => `\n- ${lesson.title}\n  ${(lesson.content || '').slice(0, 3500)}\n  Code: ${(lesson.code_example || '').slice(0, 1200)}`).join('')}`)
       .join('\n');
     const lessonTitles = context.chapters
       .flatMap((chapter) => (chapter.lessons ?? []).map((lesson: any) => lesson.title));
+    const conversationHistory = previousMessages
+      .map((historyMessage) => `${historyMessage.sender_role}: ${historyMessage.message_content}`)
+      .join('\n');
     const systemPrompt = `You are a focused AI tutor for the published lessons in this learning platform.
 Available courses: ${context.courses.map((course) => course.title).join(', ')}
 Published lessons and content:
 ${courseLessons.slice(0, 30000)}
+Recent conversation history:
+${conversationHistory || '(none)'}
 Questions about C#, .NET, programming concepts, or any lesson title above are related, including broad questions such as "C# là gì?".
 Only refuse when the question is clearly unrelated to programming or these lessons. If the lesson content is brief, explain using the lesson title and established C# fundamentals without inventing course-specific facts.
+Use the recent conversation history to understand follow-up questions such as "giải thích rõ hơn". Keep the same topic unless the user explicitly changes it. Do not switch to another lesson just because it appears in the course context.
 For unrelated questions, reply exactly: "Câu hỏi này không liên quan đến nội dung các bài học hiện có. Hãy hỏi về kiến thức trong các bài học nhé."
 Be concise, answer directly, and use short C# examples only when useful. Maximum 400 words. Format with short paragraphs and Markdown when helpful.`;
 
@@ -306,17 +329,18 @@ Be concise, answer directly, and use short C# examples only when useful. Maximum
     }
 
     const normalizedQuestion = message.toLowerCase();
+    const normalizedConversation = `${conversationHistory}\nuser: ${message}`.toLowerCase();
     const isLessonRelated = [
       'c#', 'csharp', '.net', 'lập trình', 'program', 'class', 'method',
       'hàm', 'biến', 'cú pháp', 'code', 'mã', 'console', 'delegate',
       'event', 'async', 'await', 'oop', ...lessonTitles,
-    ].some((keyword) => normalizedQuestion.includes(keyword.toLowerCase()));
+    ].some((keyword) => normalizedConversation.includes(keyword.toLowerCase()));
     if (!isLessonRelated) {
       return 'Câu hỏi này không liên quan đến nội dung các bài học hiện có. Hãy hỏi về kiến thức trong các bài học nhé.';
     }
 
     const firstLesson = lessonTitles[0] || 'các bài học hiện có';
-    if (normalizedQuestion.includes('.net runtime')) {
+    if (normalizedConversation.includes('.net runtime')) {
       return '**.NET Runtime** là môi trường thực thi chương trình .NET. Nó biên dịch hoặc thực thi mã C#, quản lý bộ nhớ, xử lý kiểu dữ liệu và cung cấp các dịch vụ cần thiết để ứng dụng chạy được.';
     }
     if (normalizedQuestion.includes('class')) {
