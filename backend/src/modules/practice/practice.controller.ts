@@ -3,6 +3,9 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { PracticeService } from './practice.service.js';
+import { GenerateAiPracticeDto } from './dto/generate-ai-practice.dto.js';
+import { CreatePracticeAttemptDto } from './dto/create-practice-attempt.dto.js';
+import { CheckAnswerDto } from './dto/check-answer.dto.js';
 
 @Controller('api/v1/practice')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -27,7 +30,7 @@ export class PracticeController {
   @Post('ai')
   generateAiPractice(
     @Req() request: any,
-    @Body() body: { course_id?: string; count?: number; prompt?: string },
+    @Body() body: GenerateAiPracticeDto,
   ) {
     return this.practiceService.generateAiPractice(request.user.id, body);
   }
@@ -35,7 +38,7 @@ export class PracticeController {
   @Post('attempts')
   createAttempt(
     @Req() request: any,
-    @Body() body: { mode: 'quick' | 'weak' | 'course' | 'ai'; course_id?: string; total_questions: number },
+    @Body() body: CreatePracticeAttemptDto,
   ) {
     return this.practiceService.createAttempt(request.user.id, body);
   }
@@ -48,7 +51,7 @@ export class PracticeController {
   @Post('check')
   checkAnswer(
     @Req() request: any,
-    @Body() body: { question_id: string; option_ids?: string[]; answer_text?: string; attempt_id?: string },
+    @Body() body: CheckAnswerDto,
   ) {
     return this.practiceService.checkAnswer(request.user.id, body);
   }
