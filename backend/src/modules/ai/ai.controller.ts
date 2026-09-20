@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Body, Query, Req, UseGuards } from '@nestjs/common';
 import { AiService } from './ai.service.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
+import { LearningPlanSuggestionDto } from './dto/learning-plan-suggestion.dto.js';
+import { TutorMessageDto } from './dto/tutor-message.dto.js';
 
 @Controller('api/v1/ai')
 @UseGuards(JwtAuthGuard)
@@ -9,13 +11,7 @@ export class AiController {
 
   @Post('plan-suggestion')
   async getPlanSuggestion(
-    @Body()
-    body: {
-      courseId: string;
-      goal: string;
-      availableDays: number[];
-      sessionDurationMinutes: number;
-    },
+    @Body() body: LearningPlanSuggestionDto,
   ): Promise<any> {
     return this.aiService.generateLearningPlanSuggestion(body);
   }
@@ -27,11 +23,7 @@ export class AiController {
 
   @Post('tutor/message')
   async sendTutorMessage(
-    @Body()
-    body: {
-      conversationId?: string;
-      message: string;
-    },
+    @Body() body: TutorMessageDto,
     @Req() request: any,
   ) {
     return this.aiService.sendTutorMessage(request.user.id, body);
