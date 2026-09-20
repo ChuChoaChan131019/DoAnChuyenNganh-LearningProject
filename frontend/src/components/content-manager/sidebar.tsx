@@ -23,7 +23,6 @@ import {
   Search,
   Bell,
   MessageSquare,
-  Settings,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -35,12 +34,12 @@ const SIDEBAR_WIDTHS: Record<"collapsed" | "expanded", string> = {
 
 const NAV_ITEM_STYLES: Record<"active" | "inactive", string> = {
   active: "bg-[#173e4a] text-white shadow-xs",
-  inactive: "text-slate-400/50 hover:bg-white/10 hover:text-white font-medium",
+  inactive: "text-slate-300 hover:bg-white/10 hover:text-white font-medium",
 };
 
 const NAV_ICON_STYLES: Record<"active" | "inactive", string> = {
   active: "text-red-400",
-  inactive: "text-slate-400/50 group-hover:text-gray-200",
+  inactive: "text-slate-400 group-hover:text-gray-200",
 };
 
 const NAV_ITEM_ALIGNMENT: Record<"collapsed" | "expanded", string> = {
@@ -185,7 +184,6 @@ const MENU_DATA: NavGroup[] = [
         href: "/content-manager/feedback",
         icon: MessageSquare,
       },
-      { label: "Settings", href: "/content-manager/settings", icon: Settings },
     ],
   },
 ];
@@ -204,7 +202,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           <Sparkles className="h-5 w-5 text-white" />
         </div>
         {!isCollapsed && (
-          <div className="truncate text-[15px] font-medium tracking-tight text-slate-400/50">
+          <div className="truncate text-[15px] font-semibold tracking-tight text-slate-200">
             Content Studio
           </div>
         )}
@@ -215,7 +213,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         {MENU_DATA.map((section, idx) => (
           <div key={idx} className="space-y-1">
             {!isCollapsed && (
-              <div className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-400/30 uppercase">
+              <div className="px-3 pb-2 text-[11px] font-bold tracking-wider text-slate-200 uppercase">
                 {section.group}
               </div>
             )}

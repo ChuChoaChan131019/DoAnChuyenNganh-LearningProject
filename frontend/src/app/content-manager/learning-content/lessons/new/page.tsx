@@ -91,71 +91,71 @@ export default function NewLessonPage() {
     <div className="mx-auto max-w-[1100px] space-y-5 pb-12">
       <Link
         href="/content-manager/learning-content/lessons"
-        className="inline-flex items-center gap-2 text-sm text-[#637981] hover:text-[#002C3E]"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
         All lessons
       </Link>
 
       <header>
-        <h1 className="text-3xl font-bold tracking-tight text-[#002C3E]">New lesson</h1>
-        <p className="mt-1 text-sm text-[#637981]">Create lesson content and save it to Supabase.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">New lesson</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Create lesson content and save it to Supabase.</p>
       </header>
 
-      {isLoading && <p className="rounded-xl bg-cyan-50 px-4 py-3 text-sm text-cyan-800">Loading courses...</p>}
-      {error && <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}
+      {isLoading && <p className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-800 dark:border-cyan-900/50 dark:bg-cyan-950/40 dark:text-cyan-300">Loading courses...</p>}
+      {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400">{error}</p>}
 
       <form onSubmit={handleSubmit} className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="space-y-5">
-          <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">
-            <div className="border-b border-[#dfe6df] px-5 py-4">
-              <h2 className="font-semibold text-[#002C3E]">Lesson content</h2>
+          <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
+            <div className="border-b border-border px-5 py-4">
+              <h2 className="font-semibold text-foreground">Lesson content</h2>
             </div>
             <div className="space-y-4 p-5">
-              <label className="block text-sm font-semibold text-[#526f78]">
+              <label className="block text-sm font-semibold text-muted-foreground">
                 Title
-                <input required value={title} onChange={(event) => setTitle(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-[#002C3E] outline-none focus:border-[#78BCC4]" placeholder="e.g. Introduction to variables" />
+                <input required value={title} onChange={(event) => setTitle(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-border bg-background px-3 text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-muted-foreground" placeholder="e.g. Introduction to variables" />
               </label>
-              <label className="block text-sm font-semibold text-[#526f78]">
+              <label className="block text-sm font-semibold text-muted-foreground">
                 Content
-                <textarea value={content} onChange={(event) => setContent(event.target.value)} className="mt-1.5 min-h-[230px] w-full resize-y rounded-xl border border-[#dfe6df] p-3 text-[#16485a] outline-none focus:border-[#78BCC4]" placeholder="Write the lesson content..." />
+                <textarea value={content} onChange={(event) => setContent(event.target.value)} className="mt-1.5 min-h-[230px] w-full resize-y rounded-xl border border-border bg-background p-3 text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-muted-foreground" placeholder="Write the lesson content..." />
               </label>
-              <label className="block text-sm font-semibold text-[#526f78]">
+              <label className="block text-sm font-semibold text-muted-foreground">
                 C# example
-                <textarea value={codeExample} onChange={(event) => setCodeExample(event.target.value)} className="mt-1.5 min-h-[180px] w-full resize-y rounded-xl border border-[#dfe6df] bg-[#061d26] p-3 font-mono text-sm text-[#d8e9e8] outline-none focus:border-[#78BCC4]" placeholder="Paste a C# code example..." />
+                <textarea value={codeExample} onChange={(event) => setCodeExample(event.target.value)} className="mt-1.5 min-h-[180px] w-full resize-y rounded-xl border border-border bg-muted/40 p-3 font-mono text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-muted-foreground" placeholder="Paste a C# code example..." />
               </label>
             </div>
           </section>
         </div>
 
-        <aside className="h-fit rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-sm">
-          <h2 className="border-b border-[#dfe6df] pb-4 font-semibold text-[#002C3E]">Lesson settings</h2>
-          <label className="mt-4 block text-sm font-semibold text-[#526f78]">
+        <aside className="h-fit rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <h2 className="border-b border-border pb-4 font-semibold text-foreground">Lesson settings</h2>
+          <label className="mt-4 block text-sm font-semibold text-muted-foreground">
             Course
-            <select value={courseId} onChange={(event) => setCourseId(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E]">
-              {courses.map((course) => <option key={course.id} value={String(course.id)}>{course.title}</option>)}
+            <select value={courseId} onChange={(event) => setCourseId(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer">
+              {courses.map((course) => <option key={course.id} value={String(course.id)} className="bg-card text-foreground">{course.title}</option>)}
             </select>
           </label>
-          <label className="mt-4 block text-sm font-semibold text-[#526f78]">
+          <label className="mt-4 block text-sm font-semibold text-muted-foreground">
             Chapter
-            <select value={chapterId} onChange={(event) => setChapterId(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E]">
-              {chapters.map((chapter) => <option key={chapter.id} value={String(chapter.id)}>{chapter.title}</option>)}
+            <select value={chapterId} onChange={(event) => setChapterId(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer">
+              {chapters.map((chapter) => <option key={chapter.id} value={String(chapter.id)} className="bg-card text-foreground">{chapter.title}</option>)}
             </select>
           </label>
-          <label className="mt-4 block text-sm font-semibold text-[#526f78]">
+          <label className="mt-4 block text-sm font-semibold text-muted-foreground">
             Duration (minutes)
-            <input type="number" min="0" max="1440" value={duration} onChange={(event) => setDuration(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-[#002C3E]" />
+            <input type="number" min="0" max="1440" value={duration} onChange={(event) => setDuration(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-border bg-background px-3 text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </label>
-          <label className="mt-4 block text-sm font-semibold text-[#526f78]">
+          <label className="mt-4 block text-sm font-semibold text-muted-foreground">
             Status
-            <select value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="mt-1.5 h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E]">
-              <option value="draft">Draft</option>
-              <option value="in_review">In review</option>
-              <option value="approved">Approved</option>
-              <option value="published">Published</option>
+            <select value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="mt-1.5 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer">
+              <option value="draft" className="bg-card text-foreground">Draft</option>
+              <option value="in_review" className="bg-card text-foreground">In review</option>
+              <option value="approved" className="bg-card text-foreground">Approved</option>
+              <option value="published" className="bg-card text-foreground">Published</option>
             </select>
           </label>
-          <button type="submit" disabled={isSaving || isLoading} className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#F7444E] text-sm font-semibold text-white hover:bg-[#df3540] disabled:cursor-not-allowed disabled:opacity-60">
+          <button type="submit" disabled={isSaving || isLoading} className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 shadow-xs">
             <Save className="h-4 w-4" />
             {isSaving ? "Saving..." : "Save lesson"}
           </button>

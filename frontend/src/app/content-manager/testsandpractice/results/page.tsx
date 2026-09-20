@@ -14,39 +14,39 @@ import {
 // ==========================================
 const STAT_CARD_VARIANTS = {
   attempts: {
-    bg: 'bg-rose-50',
-    iconColor: 'text-[#F7444E]',
+    bg: 'bg-rose-50 dark:bg-rose-950/40',
+    iconColor: 'text-[#F7444E] dark:text-rose-400',
   },
   score: {
-    bg: 'bg-emerald-50',
-    iconColor: 'text-emerald-600',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
   },
   passRate: {
-    bg: 'bg-sky-50',
-    iconColor: 'text-sky-600',
+    bg: 'bg-sky-50 dark:bg-sky-950/40',
+    iconColor: 'text-sky-600 dark:text-sky-400',
   },
   weakest: {
-    bg: 'bg-amber-50',
-    iconColor: 'text-amber-600',
+    bg: 'bg-amber-50 dark:bg-amber-950/40',
+    iconColor: 'text-amber-600 dark:text-amber-400',
   },
 };
 
 const STYLES = {
   // Container & Cards
   pageContainer: 'mx-auto max-w-7xl space-y-6 pb-12',
-  card: 'bg-[#FFFAFC]/50 border border-gray-200/80 rounded-2xl p-6 shadow-xs',
+  card: 'bg-card border border-border rounded-2xl p-6 shadow-xs',
   cardHeaderWithDivider:
-    'border-b border-gray-100 px-6 py-4 -mx-6 -mt-6 mb-5 flex items-center justify-between',
-  cardTitle: 'font-semibold text-gray-900 text-sm sm:text-base tracking-tight',
+    'border-b border-border px-6 py-4 -mx-6 -mt-6 mb-5 flex items-center justify-between',
+  cardTitle: 'font-semibold text-foreground text-sm sm:text-base tracking-tight',
 
   // Progress Bar
-  progressTrack: 'h-1.5 w-full bg-rose-100/70 rounded-full overflow-hidden mt-1.5',
-  progressBar: 'h-full bg-[#F7444E] rounded-full transition-all duration-500',
+  progressTrack: 'h-1.5 w-full bg-muted rounded-full overflow-hidden mt-1.5',
+  progressBar: 'h-full bg-primary rounded-full transition-all duration-500',
 
   // Table
   tableThead:
-    'border-b border-gray-100 bg-transparent text-xs font-semibold uppercase tracking-wider text-gray-500',
-  tableTr: 'transition-colors hover:bg-gray-50/70',
+    'border-b border-border bg-transparent text-xs font-semibold uppercase tracking-wider text-muted-foreground',
+  tableTr: 'transition-colors hover:bg-muted/50',
 };
 
 // ==========================================
@@ -130,10 +130,10 @@ export default function ResultsAnalyticsPage() {
     <div className={STYLES.pageContainer}>
       {/* Header Section */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Results &amp; analytics
         </h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           How students are performing across the C# curriculum.
         </p>
       </div>
@@ -143,7 +143,7 @@ export default function ResultsAnalyticsPage() {
         {/* Total Attempts */}
         <div className={STYLES.card}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500">Total attempts</span>
+            <span className="text-xs font-semibold text-muted-foreground">Total attempts</span>
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.attempts.bg}`}
             >
@@ -151,11 +151,11 @@ export default function ResultsAnalyticsPage() {
             </div>
           </div>
           <div className="mt-2">
-            <span className="text-3xl font-bold tracking-tight text-gray-900">
+            <span className="text-3xl font-bold tracking-tight text-foreground">
               {METRICS_DATA.totalAttempts.toLocaleString('en-US')}
             </span>
           </div>
-          <p className="text-xs font-medium text-emerald-600 mt-1">
+          <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 mt-1">
             +{METRICS_DATA.attemptsGrowth} this month
           </p>
         </div>
@@ -163,7 +163,7 @@ export default function ResultsAnalyticsPage() {
         {/* Average Score */}
         <div className={STYLES.card}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500">Average score</span>
+            <span className="text-xs font-semibold text-muted-foreground">Average score</span>
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.score.bg}`}
             >
@@ -171,11 +171,11 @@ export default function ResultsAnalyticsPage() {
             </div>
           </div>
           <div className="mt-2">
-            <span className="text-3xl font-bold tracking-tight text-gray-900">
+            <span className="text-3xl font-bold tracking-tight text-foreground">
               {METRICS_DATA.averageScore}%
             </span>
           </div>
-          <p className="text-xs font-medium text-emerald-600 mt-1">
+          <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 mt-1">
             +{METRICS_DATA.scoreGrowth} pts
           </p>
         </div>
@@ -183,7 +183,7 @@ export default function ResultsAnalyticsPage() {
         {/* Pass Rate */}
         <div className={STYLES.card}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500">Pass rate</span>
+            <span className="text-xs font-semibold text-muted-foreground">Pass rate</span>
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.passRate.bg}`}
             >
@@ -191,7 +191,7 @@ export default function ResultsAnalyticsPage() {
             </div>
           </div>
           <div className="mt-2">
-            <span className="text-3xl font-bold tracking-tight text-gray-900">
+            <span className="text-3xl font-bold tracking-tight text-foreground">
               {METRICS_DATA.passRate}%
             </span>
           </div>
@@ -200,7 +200,7 @@ export default function ResultsAnalyticsPage() {
         {/* Weakest Topic */}
         <div className={STYLES.card}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500">Weakest topic</span>
+            <span className="text-xs font-semibold text-muted-foreground">Weakest topic</span>
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.weakest.bg}`}
             >
@@ -208,7 +208,7 @@ export default function ResultsAnalyticsPage() {
             </div>
           </div>
           <div className="mt-2">
-            <span className="text-2xl font-bold tracking-tight text-gray-900 truncate block">
+            <span className="text-2xl font-bold tracking-tight text-foreground truncate block">
               {METRICS_DATA.weakestTopic}
             </span>
           </div>
@@ -238,10 +238,10 @@ export default function ResultsAnalyticsPage() {
                     style={{ top: item.top }}
                     className="absolute left-0 right-0 flex items-center -translate-y-1/2 pointer-events-none"
                   >
-                    <span className="w-7 text-[11px] font-medium text-gray-400 select-none text-right pr-2">
+                    <span className="w-7 text-[11px] font-medium text-muted-foreground select-none text-right pr-2">
                       {item.val}
                     </span>
-                    <div className="flex-1 border-t border-dashed border-gray-200/90" />
+                    <div className="flex-1 border-t border-dashed border-border" />
                   </div>
                 ))}
 
@@ -251,7 +251,7 @@ export default function ResultsAnalyticsPage() {
                       {item.score > 0 && (
                         <div
                           style={{ height: `${item.score}%` }}
-                          className="w-full max-w-[56px] bg-[#F7444E] rounded-t-2xl transition-all duration-500 hover:opacity-90"
+                          className="w-full max-w-[56px] bg-primary rounded-t-2xl transition-all duration-500 hover:opacity-90"
                         />
                       )}
                     </div>
@@ -262,7 +262,7 @@ export default function ResultsAnalyticsPage() {
               <div className="flex justify-between pl-7 gap-2 sm:gap-4 px-3 pt-1">
                 {CHART_DATA.map((item, index) => (
                   <div key={index} className="flex-1 text-center">
-                    <span className="text-xs text-gray-500 font-medium truncate block max-w-full">
+                    <span className="text-xs text-muted-foreground font-medium truncate block max-w-full">
                       {item.label}
                     </span>
                   </div>
@@ -283,10 +283,10 @@ export default function ResultsAnalyticsPage() {
               {STRUGGLE_TOPICS.map((topicItem, index) => (
                 <div key={index}>
                   <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-semibold text-gray-900 text-sm">
+                    <span className="font-semibold text-foreground text-sm">
                       {topicItem.topic}
                     </span>
-                    <span className="text-gray-500 font-medium text-xs">
+                    <span className="text-muted-foreground font-medium text-xs">
                       {topicItem.accuracy}%
                     </span>
                   </div>
@@ -310,7 +310,7 @@ export default function ResultsAnalyticsPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-gray-600">
+          <table className="w-full text-left text-sm text-foreground">
             <thead className={STYLES.tableThead}>
               <tr>
                 <th scope="col" className="pb-3 pr-4 font-semibold">Test</th>
@@ -319,19 +319,19 @@ export default function ResultsAnalyticsPage() {
                 <th scope="col" className="pb-3 pl-4 text-right font-semibold">Avg score</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-xs sm:text-sm">
+            <tbody className="divide-y divide-border text-xs sm:text-sm">
               {RECENT_ATTEMPTS.map((row) => (
                 <tr key={row.id} className={STYLES.tableTr}>
-                  <td className="py-3.5 pr-4 font-semibold text-gray-900 line-clamp-1">
+                  <td className="py-3.5 pr-4 font-semibold text-foreground line-clamp-1">
                     {row.testTitle}
                   </td>
-                  <td className="py-3.5 px-4 text-gray-500 whitespace-nowrap">
+                  <td className="py-3.5 px-4 text-muted-foreground whitespace-nowrap">
                     {row.courseName}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-medium text-gray-600 whitespace-nowrap">
+                  <td className="py-3.5 px-4 text-right font-medium text-foreground whitespace-nowrap">
                     {row.attemptsCount}
                   </td>
-                  <td className="py-3.5 pl-4 text-right font-medium text-gray-600 whitespace-nowrap">
+                  <td className="py-3.5 pl-4 text-right font-medium text-foreground whitespace-nowrap">
                     {row.avgScore}%
                   </td>
                 </tr>

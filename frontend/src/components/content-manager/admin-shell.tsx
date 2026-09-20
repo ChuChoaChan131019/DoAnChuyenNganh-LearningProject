@@ -15,7 +15,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const contentState = isCollapsed ? 'collapsed' : 'expanded';
 
   return (
-    <div className="flex min-h-screen bg-[#F7F8F3]">
+    <div className="flex min-h-screen bg-background text-foreground">
       <Sidebar
         isCollapsed={isCollapsed}
         onToggle={() => setIsCollapsed(!isCollapsed)}

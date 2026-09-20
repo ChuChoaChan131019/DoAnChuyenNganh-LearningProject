@@ -689,3 +689,60 @@ export const dashboardApi = {
     return request<DashboardData>('/api/v1/dashboard');
   },
 };
+
+export interface ContentManagerCourseOption {
+  id: string;
+  title: string;
+  slug: string;
+  status: string;
+}
+
+export interface ContentManagerStats {
+  total_courses: number;
+  total_lessons: number;
+  total_questions: number;
+  total_active_learners: number;
+  published_count: number;
+  draft_count: number;
+  ai_generated_count: number;
+  total_feedbacks: number;
+  total_notifications: number;
+}
+
+export interface StatusDistribution {
+  published: number;
+  approved: number;
+  draft: number;
+  in_review: number;
+}
+
+export interface MonthlyGrowth {
+  month: string;
+  lessons: number;
+  questions: number;
+}
+
+export interface RecentActivityItem {
+  id: string;
+  type: 'lesson' | 'feedback' | 'notification' | 'course';
+  title: string;
+  description: string;
+  timestamp: string;
+}
+
+export interface ContentManagerDashboardData {
+  courses: ContentManagerCourseOption[];
+  selected_course_id?: string;
+  stats: ContentManagerStats;
+  status_distribution: StatusDistribution;
+  monthly_growth: MonthlyGrowth[];
+  recent_activities: RecentActivityItem[];
+}
+
+export const contentManagerDashboardApi = {
+  get: (courseId?: string): Promise<ContentManagerDashboardData> => {
+    const query = courseId ? `?course_id=${encodeURIComponent(courseId)}` : '';
+    return request<ContentManagerDashboardData>(`/api/v1/dashboard/content-manager${query}`);
+  },
+};
+
