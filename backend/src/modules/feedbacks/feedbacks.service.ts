@@ -49,7 +49,7 @@ export class FeedbacksService {
     try {
       let targetLearnerIds: string[] = [];
 
-      // 1. Nếu có courseId và là UUID hợp lệ, thử tìm trong course_enrollments
+      // 1. Nếu có courseId và là UUID hợp lệ, tìm trong course_enrollments
       if (courseId && UUID_REGEX.test(courseId)) {
         const { data: enrollments, error: enrollError } = await supabase
           .from('course_enrollments')
@@ -59,11 +59,11 @@ export class FeedbacksService {
 
         if (!enrollError && enrollments && enrollments.length > 0) {
           targetLearnerIds = enrollments.map((e: any) => e.learner_id);
+        } else {
+          return []; // Khóa học này không có học viên active
         }
-      }
-
-      // 2. Nếu chưa có học viên nào từ enrollment, fallback lấy toàn bộ profiles có role = 'learner'
-      if (targetLearnerIds.length === 0) {
+      } else if (!courseId) {
+        // 2. Chỉ fallback lấy toàn bộ profiles có role = 'learner' nếu không chọn khóa học nào
         const { data: learnerProfiles } = await supabase
           .from('profiles')
           .select('id')

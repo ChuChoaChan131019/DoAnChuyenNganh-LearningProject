@@ -23,19 +23,13 @@ import {
   Code,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { feedbacksApi, courseApi, FeedbackItem, CreateFeedbackPayload } from '@/lib/api';
-
-const DEFAULT_COURSES = [
-  { id: 'course-1', title: 'Advanced C#: Delegates, Events & Async' },
-  { id: 'course-2', title: 'Object-Oriented Programming in C#' },
-  { id: 'course-3', title: 'C# & OOP Interview Preparation' },
-];
+import { feedbacksApi, contentManagerDashboardApi, FeedbackItem, CreateFeedbackPayload } from '@/lib/api';
 
 const CONTEXT_TYPE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  progress: { label: 'Tiến độ (Progress)', color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
-  result: { label: 'Kết quả test (Result)', color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200' },
-  task: { label: 'Nhiệm vụ (Task)', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
-  general: { label: 'Chung (General)', color: 'text-slate-700', bg: 'bg-slate-100 border-slate-200' },
+  progress: { label: 'Tiến độ (Progress)', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-800' },
+  result: { label: 'Kết quả test (Result)', color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-50 border-purple-200 dark:bg-purple-950/40 dark:border-purple-800' },
+  task: { label: 'Nhiệm vụ (Task)', color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800' },
+  general: { label: 'Chung (General)', color: 'text-foreground', bg: 'bg-muted border-border' },
 };
 
 interface LearnerOption {
@@ -48,7 +42,7 @@ export default function FeedbackManagementPage() {
   // Trạng thái dữ liệu
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [learners, setLearners] = useState<LearnerOption[]>([]);
-  const [courses, setCourses] = useState<Array<{ id: string; title: string }>>(DEFAULT_COURSES);
+  const [courses, setCourses] = useState<Array<{ id: string; title: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Bộ lọc & Tìm kiếm
@@ -84,56 +78,62 @@ export default function FeedbackManagementPage() {
     }
   }, []);
 
-  // Tải danh sách học viên
+  // Tải danh sách học viên theo khóa học đang chọn
   const loadLearners = useCallback(async (courseId?: string) => {
+    if (!courseId) {
+      setLearners([]);
+      setSelectedLearner('');
+      return;
+    }
     try {
       const data = await feedbacksApi.getLearners(courseId);
       const list = Array.isArray(data) ? data : [];
       setLearners(list);
-      if (list.length > 0 && !selectedLearner) {
-        setSelectedLearner(list[0].id);
-      }
+      setSelectedLearner(list.length > 0 ? list[0].id : '');
     } catch {
       setLearners([]);
+      setSelectedLearner('');
     }
-  }, [selectedLearner]);
+  }, []);
 
-  // Tải danh sách khóa học (gộp môn thật trong DB và các môn mặc định)
+  // Tải danh sách khóa học thuộc content manager hiện tại (theo created_by)
   useEffect(() => {
-    courseApi.list()
-      .then((courseList) => {
-        if (Array.isArray(courseList) && courseList.length > 0) {
-          const dbCourses = courseList.map((c: any) => ({ id: c.id, title: c.title }));
-          // Gộp các môn thật từ DB và các môn mặc định nếu chưa có
-          const merged = [...dbCourses];
-          for (const fallback of DEFAULT_COURSES) {
-            if (!merged.some((c) => c.title.toLowerCase() === fallback.title.toLowerCase())) {
-              merged.push(fallback);
-            }
-          }
-          setCourses(merged);
-          setSelectedCourse(merged[0].id);
+    contentManagerDashboardApi.get()
+      .then((dashboardData) => {
+        const courseList = dashboardData?.courses || [];
+        if (courseList.length > 0) {
+          const dbCourses = courseList.map((c) => ({ id: String(c.id), title: c.title }));
+          setCourses(dbCourses);
+          setSelectedCourse(dbCourses[0].id);
+          loadLearners(dbCourses[0].id);
         } else {
-          setCourses(DEFAULT_COURSES);
-          setSelectedCourse(DEFAULT_COURSES[0].id);
+          setCourses([]);
+          setSelectedCourse('');
+          setLearners([]);
         }
       })
       .catch(() => {
-        setCourses(DEFAULT_COURSES);
-        setSelectedCourse(DEFAULT_COURSES[0].id);
+        setCourses([]);
+        setSelectedCourse('');
+        setLearners([]);
       });
-  }, []);
+  }, [loadLearners]);
 
   useEffect(() => {
     loadFeedbacks();
-    loadLearners();
-  }, [loadFeedbacks, loadLearners]);
+  }, [loadFeedbacks]);
 
   // Mở modal tạo mới
   const handleOpenCreateModal = () => {
     setEditingFeedback(null);
-    setSelectedLearner(learners.length > 0 ? learners[0].id : '');
-    setSelectedCourse(courses.length > 0 ? courses[0].id : DEFAULT_COURSES[0].id);
+    const initialCourse = courses.length > 0 ? courses[0].id : '';
+    setSelectedCourse(initialCourse);
+    if (initialCourse) {
+      loadLearners(initialCourse);
+    } else {
+      setLearners([]);
+      setSelectedLearner('');
+    }
     setContextType('progress');
     setContent('');
     setShowModal(true);
@@ -146,8 +146,14 @@ export default function FeedbackManagementPage() {
       return;
     }
     setEditingFeedback(fb);
-    setSelectedLearner(fb.learnerId);
     setSelectedCourse(fb.courseId);
+    if (fb.courseId) {
+      loadLearners(fb.courseId).then(() => {
+        setSelectedLearner(fb.learnerId);
+      });
+    } else {
+      setSelectedLearner(fb.learnerId);
+    }
     setContextType(fb.contextType || 'progress');
     setContent(fb.content);
     setShowModal(true);
@@ -308,10 +314,10 @@ export default function FeedbackManagementPage() {
       {/* ── HEADER ────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#002C3E] sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Phản hồi học tập (Feedback)
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Quản lý và gửi phản hồi cá nhân hóa tới học viên về tiến độ, kết quả bài test hoặc nhiệm vụ.
           </p>
         </div>
@@ -319,7 +325,7 @@ export default function FeedbackManagementPage() {
         <button
           type="button"
           onClick={handleOpenCreateModal}
-          className="flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-all hover:bg-[#e03a44]"
+          className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-opacity hover:opacity-90"
         >
           <Plus className="h-4 w-4" />
           Soạn phản hồi mới
@@ -328,49 +334,49 @@ export default function FeedbackManagementPage() {
 
       {/* ── STATS CARDS (3 CỘT CÂN ĐỐI) ───────────────────── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500">Tổng phản hồi</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#002C3E]/10 text-[#002C3E]">
+            <span className="text-sm font-medium text-muted-foreground">Tổng phản hồi</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <MessageSquare className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-bold text-[#002C3E]">{isLoading ? '...' : stats.total}</p>
+          <p className="mt-3 text-3xl font-bold text-foreground">{isLoading ? '...' : stats.total}</p>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500">Đã gửi thành công</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+            <span className="text-sm font-medium text-muted-foreground">Đã gửi thành công</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-bold text-emerald-600">{isLoading ? '...' : stats.sent}</p>
+          <p className="mt-3 text-3xl font-bold text-emerald-600 dark:text-emerald-400">{isLoading ? '...' : stats.sent}</p>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500">Bản nháp (Draft)</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+            <span className="text-sm font-medium text-muted-foreground">Bản nháp (Draft)</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
               <FileText className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-bold text-amber-600">{isLoading ? '...' : stats.draft}</p>
+          <p className="mt-3 text-3xl font-bold text-amber-600 dark:text-amber-400">{isLoading ? '...' : stats.draft}</p>
         </div>
       </div>
 
       {/* ── BỘ LỌC VÀ TÌM KIẾM THEO TÊN HỌC VIÊN ───────────── */}
-      <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           {/* Lọc trạng thái */}
-          <div className="flex rounded-xl bg-gray-100 p-1">
+          <div className="flex rounded-xl bg-muted p-1">
             <button
               type="button"
               onClick={() => setStatusFilter('all')}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                 statusFilter === 'all'
-                  ? 'bg-white text-[#002C3E] shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900'
+                  ? 'bg-card text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Tất cả ({stats.total})
@@ -380,8 +386,8 @@ export default function FeedbackManagementPage() {
               onClick={() => setStatusFilter('sent')}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                 statusFilter === 'sent'
-                  ? 'bg-white text-emerald-600 shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900'
+                  ? 'bg-card text-emerald-600 dark:text-emerald-400 shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Đã gửi ({stats.sent})
@@ -391,8 +397,8 @@ export default function FeedbackManagementPage() {
               onClick={() => setStatusFilter('draft')}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                 statusFilter === 'draft'
-                  ? 'bg-white text-amber-600 shadow-xs'
-                  : 'text-gray-500 hover:text-gray-900'
+                  ? 'bg-card text-amber-600 dark:text-amber-400 shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Bản nháp ({stats.draft})
@@ -403,52 +409,52 @@ export default function FeedbackManagementPage() {
           <select
             value={contextFilter}
             onChange={(e) => setContextFilter(e.target.value)}
-            className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 outline-none focus:border-teal-500"
+            className="rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground outline-none focus:border-primary"
           >
-            <option value="all">Tất cả ngữ cảnh</option>
-            <option value="progress">Tiến độ (Progress)</option>
-            <option value="result">Kết quả test (Result)</option>
-            <option value="task">Nhiệm vụ (Task)</option>
-            <option value="general">Khác / Chung (General)</option>
+            <option value="all" className="bg-card text-foreground">Tất cả ngữ cảnh</option>
+            <option value="progress" className="bg-card text-foreground">Tiến độ (Progress)</option>
+            <option value="result" className="bg-card text-foreground">Kết quả test (Result)</option>
+            <option value="task" className="bg-card text-foreground">Nhiệm vụ (Task)</option>
+            <option value="general" className="bg-card text-foreground">Khác / Chung (General)</option>
           </select>
         </div>
 
         {/* Ô tìm kiếm theo Tên học viên */}
         <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder="Tìm theo tên học viên..."
             value={searchLearnerName}
             onChange={(e) => setSearchLearnerName(e.target.value)}
-            className="h-9 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-4 text-xs text-gray-700 placeholder-gray-400 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+            className="h-9 w-full rounded-xl border border-border bg-background pl-9 pr-4 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           />
         </div>
       </div>
 
       {/* ── DANH SÁCH FEEDBACK ────────────────────────────── */}
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
         {isLoading ? (
-          <div className="flex h-64 flex-col items-center justify-center gap-2 text-gray-400">
-            <Loader2 className="h-6 w-6 animate-spin text-[#F7444E]" />
+          <div className="flex h-64 flex-col items-center justify-center gap-2 text-muted-foreground">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
             <span className="text-sm">Đang tải danh sách phản hồi...</span>
           </div>
         ) : filteredFeedbacks.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center gap-2 p-8 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
               {searchLearnerName.trim() ? <Search className="h-6 w-6" /> : <MessageSquare className="h-6 w-6" />}
             </div>
-            <p className="text-base font-semibold text-[#002C3E]">
+            <p className="text-base font-semibold text-foreground">
               {searchLearnerName.trim() ? 'Không tìm thấy học viên' : 'Chưa có phản hồi nào'}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               {searchLearnerName.trim()
                 ? `Không có học viên nào khớp với từ khóa "${searchLearnerName.trim()}".`
                 : 'Danh sách phản hồi hiện đang trống.'}
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-border">
             {filteredFeedbacks.map((item) => {
               const ctx = CONTEXT_TYPE_LABELS[item.contextType] || CONTEXT_TYPE_LABELS.general;
               const isDraft = item.status === 'draft';
@@ -456,18 +462,18 @@ export default function FeedbackManagementPage() {
               return (
                 <div
                   key={item.id}
-                  className="flex flex-col gap-4 p-5 transition-colors hover:bg-gray-50/70 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-4 p-5 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
                 >
                   {/* Cột thông tin học viên & nội dung */}
                   <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       {/* Trạng thái Draft / Sent */}
                       {isDraft ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 font-semibold text-amber-700">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 font-semibold text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">
                           <Clock className="h-3 w-3" /> Bản nháp (Draft)
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 font-semibold text-emerald-700">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 font-semibold text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
                           <CheckCircle2 className="h-3 w-3" /> Đã gửi (Sent)
                         </span>
                       )}
@@ -478,30 +484,30 @@ export default function FeedbackManagementPage() {
                       </span>
 
                       {/* Khóa học */}
-                      <span className="inline-flex items-center gap-1 text-gray-500">
-                        <BookOpen className="h-3 w-3 text-teal-600" />
+                      <span className="inline-flex items-center gap-1 text-muted-foreground">
+                        <BookOpen className="h-3 w-3 text-teal-600 dark:text-teal-400" />
                         <span className="max-w-[200px] truncate">{item.courseTitle}</span>
                       </span>
 
                       {/* Thời gian */}
-                      <span className="text-gray-400">
+                      <span className="text-muted-foreground">
                         {new Date(item.sentAt || item.createdAt).toLocaleString('vi-VN')}
                       </span>
                     </div>
 
                     {/* Người nhận */}
                     <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-teal-100 text-xs font-bold text-teal-800">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-teal-100 text-xs font-bold text-teal-800 dark:bg-teal-950 dark:text-teal-200">
                         {item.learnerName.slice(0, 1).toUpperCase()}
                       </div>
-                      <span className="text-sm font-bold text-[#002C3E]">{item.learnerName}</span>
+                      <span className="text-sm font-bold text-foreground">{item.learnerName}</span>
                       {item.learnerEmail && (
-                        <span className="text-xs text-gray-400">({item.learnerEmail})</span>
+                        <span className="text-xs text-muted-foreground">({item.learnerEmail})</span>
                       )}
                     </div>
 
                     {/* Nội dung phản hồi */}
-                    <p className="text-sm text-gray-700 line-clamp-2 leading-relaxed whitespace-pre-wrap">
+                    <p className="text-sm text-foreground/80 line-clamp-2 leading-relaxed whitespace-pre-wrap">
                       {item.content}
                     </p>
                   </div>
@@ -521,7 +527,7 @@ export default function FeedbackManagementPage() {
                         <button
                           type="button"
                           onClick={() => handleOpenEditModal(item)}
-                          className="rounded-xl border border-gray-200 bg-white p-2 text-gray-600 transition hover:border-gray-300 hover:bg-gray-50 hover:text-[#002C3E]"
+                          className="rounded-xl border border-border bg-card p-2 text-muted-foreground transition hover:border-border hover:bg-muted hover:text-foreground"
                           title="Chỉnh sửa bản nháp"
                         >
                           <Edit className="h-4 w-4" />
@@ -529,7 +535,7 @@ export default function FeedbackManagementPage() {
                         <button
                           type="button"
                           onClick={() => setDeletingFeedbackId(item.id)}
-                          className="rounded-xl border border-rose-100 bg-rose-50/50 p-2 text-rose-600 transition hover:bg-rose-100 hover:text-rose-700"
+                          className="rounded-xl border border-rose-200/50 bg-rose-50/50 p-2 text-rose-600 transition hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/60"
                           title="Xóa bản nháp"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -539,7 +545,7 @@ export default function FeedbackManagementPage() {
                       <button
                         type="button"
                         onClick={() => setViewingFeedback(item)}
-                        className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#002C3E] transition hover:bg-gray-50"
+                        className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted"
                       >
                         <Eye className="h-3.5 w-3.5" /> Chi tiết
                       </button>
@@ -554,19 +560,19 @@ export default function FeedbackManagementPage() {
 
       {/* ── MODAL SOẠN / CHỈNH SỬA FEEDBACK ──────────────── */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-2xl rounded-2xl border border-border bg-card p-6 text-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             {/* Header Modal */}
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+            <div className="flex items-center justify-between border-b border-border pb-4">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F7444E]/10 text-[#F7444E]">
                   <MessageSquare className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-[#002C3E]">
+                  <h3 className="text-lg font-bold text-foreground">
                     {editingFeedback ? 'Chỉnh sửa bản nháp phản hồi' : 'Soạn phản hồi mới cho học viên'}
                   </h3>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Phản hồi có thể lưu thành nháp hoặc gửi ngay tới học viên.
                   </p>
                 </div>
@@ -575,7 +581,7 @@ export default function FeedbackManagementPage() {
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -584,37 +590,22 @@ export default function FeedbackManagementPage() {
             {/* Nội dung form */}
             <div className="mt-4 space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {/* Chọn Học viên */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">
-                    Người nhận (Learner) *
-                  </label>
-                  <select
-                    value={selectedLearner}
-                    onChange={(e) => setSelectedLearner(e.target.value)}
-                    disabled={!!editingFeedback}
-                    className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-xs text-gray-800 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:bg-gray-100"
-                  >
-                    {learners.length === 0 && <option value="">Không có học viên khả dụng</option>}
-                    {learners.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name} ({l.email || 'Không có email'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
                 {/* Chọn Khóa học */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
                     Khóa học liên quan *
                   </label>
                   <select
                     value={selectedCourse}
-                    onChange={(e) => setSelectedCourse(e.target.value)}
+                    onChange={(e) => {
+                      const newId = e.target.value;
+                      setSelectedCourse(newId);
+                      loadLearners(newId);
+                    }}
                     disabled={!!editingFeedback}
-                    className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-xs text-gray-800 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 disabled:bg-gray-100"
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-xs text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:bg-muted disabled:text-muted-foreground"
                   >
+                    {courses.length === 0 && <option value="">Chưa có khóa học nào</option>}
                     {courses.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.title}
@@ -622,11 +613,34 @@ export default function FeedbackManagementPage() {
                     ))}
                   </select>
                 </div>
+
+                {/* Chọn Học viên */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    Người nhận (Learner) *
+                  </label>
+                  <select
+                    value={selectedLearner}
+                    onChange={(e) => setSelectedLearner(e.target.value)}
+                    disabled={!!editingFeedback}
+                    className="w-full rounded-xl border border-border bg-background p-2.5 text-xs text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:bg-muted disabled:text-muted-foreground"
+                  >
+                    {learners.length === 0 ? (
+                      <option value="">Khóa học chưa có học viên nào ghi danh</option>
+                    ) : (
+                      learners.map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.name} ({l.email || 'Không có email'})
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
               </div>
 
               {/* Chọn Loại ngữ cảnh (Tiến độ / Kết quả / Nhiệm vụ) */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Loại ngữ cảnh phản hồi
                 </label>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -640,12 +654,12 @@ export default function FeedbackManagementPage() {
                         onClick={() => setContextType(type)}
                         className={`rounded-xl border p-2.5 text-left text-xs font-medium transition-all ${
                           isSelected
-                            ? 'border-[#002C3E] bg-[#002C3E] text-white shadow-xs'
-                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                            ? 'border-primary bg-primary text-primary-foreground shadow-xs'
+                            : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:bg-muted'
                         }`}
                       >
                         <div className="font-semibold">{meta.label.split(' (')[0]}</div>
-                        <div className={`text-[10px] ${isSelected ? 'text-gray-300' : 'text-gray-400'}`}>
+                        <div className={`text-[10px] ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                           {type}
                         </div>
                       </button>
@@ -657,16 +671,16 @@ export default function FeedbackManagementPage() {
               {/* Khung Soạn thảo Nội dung (hỗ trợ Rich Text toolbar tinh tế) */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-600">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Nội dung phản hồi *
                   </label>
                   {/* Toolbar định dạng Rich Text nhỏ gọn */}
-                  <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-xs">
-                    <span className="text-[10px] text-gray-400 mr-1">Định dạng:</span>
+                  <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-1.5 py-0.5 text-xs">
+                    <span className="text-[10px] text-muted-foreground mr-1">Định dạng:</span>
                     <button
                       type="button"
                       onClick={() => handleInsertFormat('bold')}
-                      className="rounded p-1 text-gray-600 hover:bg-white hover:text-black"
+                      className="rounded p-1 text-muted-foreground hover:bg-background hover:text-foreground"
                       title="In đậm (**text**)"
                     >
                       <Bold className="h-3 w-3" />
@@ -674,7 +688,7 @@ export default function FeedbackManagementPage() {
                     <button
                       type="button"
                       onClick={() => handleInsertFormat('italic')}
-                      className="rounded p-1 text-gray-600 hover:bg-white hover:text-black"
+                      className="rounded p-1 text-muted-foreground hover:bg-background hover:text-foreground"
                       title="In nghiêng (*text*)"
                     >
                       <Italic className="h-3 w-3" />
@@ -682,7 +696,7 @@ export default function FeedbackManagementPage() {
                     <button
                       type="button"
                       onClick={() => handleInsertFormat('list')}
-                      className="rounded p-1 text-gray-600 hover:bg-white hover:text-black"
+                      className="rounded p-1 text-muted-foreground hover:bg-background hover:text-foreground"
                       title="Danh sách gạch đầu dòng"
                     >
                       <List className="h-3 w-3" />
@@ -690,7 +704,7 @@ export default function FeedbackManagementPage() {
                     <button
                       type="button"
                       onClick={() => handleInsertFormat('code')}
-                      className="rounded p-1 text-gray-600 hover:bg-white hover:text-black"
+                      className="rounded p-1 text-muted-foreground hover:bg-background hover:text-foreground"
                       title="Khối mã (`code`)"
                     >
                       <Code className="h-3 w-3" />
@@ -703,30 +717,30 @@ export default function FeedbackManagementPage() {
                   placeholder="Nhập nội dung góp ý, nhận xét tiến độ học tập hoặc hướng dẫn chi tiết dành cho học viên..."
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-[#F7F8F3]/50 p-3.5 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-teal-500 focus:bg-white focus:ring-1 focus:ring-teal-500"
+                  className="w-full rounded-xl border border-border bg-background p-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
               </div>
             </div>
 
-            {/* Nút hành động modal: Đã bỏ nút Hủy bỏ thừa thãi, chỉ giữ 2 nút gửi */}
-            <div className="mt-6 flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
+            {/* Nút hành động modal */}
+            <div className="mt-6 flex items-center justify-end gap-3 border-t border-border pt-4">
               {/* Nút 1: Lưu Draft */}
               <button
                 type="button"
                 onClick={() => handleSubmitFeedback('draft')}
                 disabled={isSubmitting}
-                className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-xl border border-amber-300/80 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/60"
               >
                 {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
                 Lưu bản nháp
               </button>
 
-              {/* Nút 2: Gửi ngay (1 chạm) */}
+              {/* Nút 2: Gửi ngay */}
               <button
                 type="button"
                 onClick={() => handleSubmitFeedback('sent')}
                 disabled={isSubmitting}
-                className="flex items-center gap-1.5 rounded-xl bg-[#F7444E] px-5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-[#e03a44] disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground shadow-xs transition hover:bg-primary/90 disabled:opacity-50"
               >
                 {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                 Gửi phản hồi ngay
@@ -738,21 +752,21 @@ export default function FeedbackManagementPage() {
 
       {/* ── MODAL XEM CHI TIẾT FEEDBACK ───────────────────── */}
       {viewingFeedback && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-start justify-between border-b border-gray-100 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 text-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between border-b border-border pb-3">
               <div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-600">
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
                   <CheckCircle2 className="h-3.5 w-3.5" /> Phản hồi đã gửi
                 </span>
-                <h3 className="mt-2 text-lg font-bold text-[#002C3E]">
+                <h3 className="mt-2 text-lg font-bold text-foreground">
                   Gửi tới: {viewingFeedback.learnerName}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setViewingFeedback(null)}
-                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -760,25 +774,25 @@ export default function FeedbackManagementPage() {
 
             <div className="mt-4 space-y-3 text-xs">
               <div className="flex flex-wrap gap-2">
-                <div className="flex items-center gap-1 rounded-lg bg-teal-50 px-2.5 py-1 text-teal-700 font-medium">
+                <div className="flex items-center gap-1 rounded-lg bg-teal-50 px-2.5 py-1 font-medium text-teal-700 dark:bg-teal-950/50 dark:text-teal-300">
                   <BookOpen className="h-3.5 w-3.5" />
                   <span>{viewingFeedback.courseTitle || viewingFeedback.courseId}</span>
                 </div>
-                <div className="flex items-center gap-1 rounded-lg bg-gray-100 px-2.5 py-1 text-gray-700">
+                <div className="flex items-center gap-1 rounded-lg bg-muted px-2.5 py-1 text-foreground">
                   <User className="h-3.5 w-3.5" />
                   <span>{viewingFeedback.learnerEmail}</span>
                 </div>
-                <div className="flex items-center gap-1 rounded-lg bg-gray-100 px-2.5 py-1 text-gray-600">
+                <div className="flex items-center gap-1 rounded-lg bg-muted px-2.5 py-1 text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" />
                   <span>{new Date(viewingFeedback.sentAt || viewingFeedback.createdAt).toLocaleString('vi-VN')}</span>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-100 bg-[#F7F8F3] p-4">
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1.5">
+              <div className="rounded-xl border border-border bg-muted/30 p-4">
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Nội dung phản hồi
                 </label>
-                <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                   {viewingFeedback.content}
                 </p>
               </div>
@@ -788,7 +802,7 @@ export default function FeedbackManagementPage() {
               <button
                 type="button"
                 onClick={() => setViewingFeedback(null)}
-                className="rounded-xl border border-gray-200 px-5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                className="rounded-xl border border-border px-5 py-2 text-xs font-semibold text-foreground hover:bg-muted"
               >
                 Đóng
               </button>
@@ -799,15 +813,15 @@ export default function FeedbackManagementPage() {
 
       {/* ── MODAL XÁC NHẬN XÓA BẢN NHÁP ──────────────────── */}
       {deletingFeedbackId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
                 <AlertTriangle className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-gray-900">Xác nhận xóa bản nháp?</h4>
-                <p className="mt-1 text-xs text-gray-500">
+                <h4 className="text-sm font-bold text-foreground">Xác nhận xóa bản nháp?</h4>
+                <p className="mt-1 text-xs text-muted-foreground">
                   Bản nháp này sẽ bị xóa vĩnh viễn khỏi hệ thống (AC-T27).
                 </p>
               </div>
@@ -817,7 +831,7 @@ export default function FeedbackManagementPage() {
               <button
                 type="button"
                 onClick={() => setDeletingFeedbackId(null)}
-                className="rounded-xl border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                className="rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
               >
                 Hủy
               </button>

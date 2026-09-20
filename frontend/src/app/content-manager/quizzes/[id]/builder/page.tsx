@@ -35,7 +35,7 @@ type SettingsState = {
 };
 
 const inputClass =
-  'w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-800 outline-none transition focus:border-[#F7444E] focus:ring-2 focus:ring-[#F7444E]/20 disabled:bg-gray-50';
+  'w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-muted disabled:text-muted-foreground';
 
 function getErrorMessage(error: unknown) {
   return error instanceof ApiClientError ? error.message : 'Unable to complete the request. Please try again.';
@@ -43,11 +43,11 @@ function getErrorMessage(error: unknown) {
 
 function QuestionMeta({ question }: { question: QuestionItem }) {
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-      <span className="rounded-md border border-gray-200 bg-white px-2 py-0.5">
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+      <span className="rounded-md border border-border bg-card px-2 py-0.5 text-foreground">
         {TYPE_LABELS[question.question_type] || question.question_type}
       </span>
-      <span className="rounded-md border border-amber-200/70 bg-amber-50 px-2 py-0.5 text-amber-700 capitalize">
+      <span className="rounded-md border border-amber-200/70 bg-amber-50 px-2 py-0.5 text-amber-700 capitalize dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">
         {question.difficulty}
       </span>
       {question.lesson?.title && <span>{question.lesson.title}</span>}
@@ -349,7 +349,7 @@ export default function QuizBuilderPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-7xl p-8 text-sm text-gray-500">
+      <div className="mx-auto max-w-7xl p-8 text-sm text-muted-foreground">
         Loading quiz builder...
       </div>
     );
@@ -360,10 +360,10 @@ export default function QuizBuilderPage() {
       <header>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
               Test Setting
             </h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               Configure information, delivery rules, and approved questions.
             </p>
           </div>
@@ -371,7 +371,7 @@ export default function QuizBuilderPage() {
             type="button"
             onClick={() => void save()}
             disabled={isSaving}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#d93e47] disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-xs transition hover:opacity-90 disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
             {isSaving ? 'Saving...' : 'Save quiz'}
@@ -380,21 +380,21 @@ export default function QuizBuilderPage() {
       </header>
 
       {error && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300" role="alert">
           {error}
         </div>
       )}
       {saveMessage && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
           {saveMessage}
         </div>
       )}
 
       {/* Quiz Information and Settings */}
-      <section className="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
-        <div className="mb-5 flex items-center gap-2 border-b border-gray-100 pb-4">
-          <Layers className="h-5 w-5 text-[#F7444E]" />
-          <h2 className="font-semibold text-gray-900">Quiz information and settings</h2>
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        <div className="mb-5 flex items-center gap-2 border-b border-border pb-4">
+          <Layers className="h-5 w-5 text-primary" />
+          <h2 className="font-semibold text-foreground">Quiz information and settings</h2>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <label className="lg:col-span-2">
@@ -483,7 +483,7 @@ export default function QuizBuilderPage() {
               />
               <button
                 type="button"
-                className="rounded-xl border border-gray-200 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                className="rounded-xl border border-border bg-card px-3 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
                 onClick={() =>
                   updateSettings('duration_minutes', settings.duration_minutes === null ? 15 : null)
                 }
@@ -517,11 +517,11 @@ export default function QuizBuilderPage() {
           </label>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-5 border-t border-gray-100 pt-4 text-sm text-gray-700">
+        <div className="mt-5 flex flex-wrap gap-5 border-t border-border pt-4 text-sm text-foreground/80">
           <label className="inline-flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              className="accent-[#F7444E]"
+              className="accent-primary"
               checked={settings.shuffle_questions}
               onChange={(e) => updateSettings('shuffle_questions', e.target.checked)}
             />
@@ -530,7 +530,7 @@ export default function QuizBuilderPage() {
           <label className="inline-flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              className="accent-[#F7444E]"
+              className="accent-primary"
               checked={settings.shuffle_options}
               onChange={(e) => updateSettings('shuffle_options', e.target.checked)}
             />
@@ -539,7 +539,7 @@ export default function QuizBuilderPage() {
           <label className="inline-flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              className="accent-[#F7444E]"
+              className="accent-primary"
               checked={settings.is_active}
               onChange={(e) => updateSettings('is_active', e.target.checked)}
             />
@@ -548,7 +548,7 @@ export default function QuizBuilderPage() {
           <label className="inline-flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              className="accent-[#F7444E]"
+              className="accent-primary"
               checked={settings.is_required}
               onChange={(e) => updateSettings('is_required', e.target.checked)}
             />
@@ -557,7 +557,7 @@ export default function QuizBuilderPage() {
           <label className="inline-flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              className="accent-[#F7444E]"
+              className="accent-primary"
               checked={settings.counts_toward_progress}
               onChange={(e) => updateSettings('counts_toward_progress', e.target.checked)}
             />
@@ -569,16 +569,16 @@ export default function QuizBuilderPage() {
       {/* Main 2-Column Area: Bank & Selected */}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(420px,0.95fr)]">
         {/* Question bank */}
-        <section className="rounded-2xl border border-gray-200/80 bg-[#FFFAFC]/50 p-5 shadow-sm">
-          <div className="mb-5 flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="mb-5 flex items-start justify-between gap-4 border-b border-border pb-4">
             <div>
               <div className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-[#F7444E]" />
-                <h2 className="font-semibold text-gray-900">Question bank</h2>
+                <BookOpen className="h-5 w-5 text-primary" />
+                <h2 className="font-semibold text-foreground">Question bank</h2>
               </div>
-              <p className="mt-1 text-xs text-gray-500">Only approved questions are shown.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Only approved questions are shown.</p>
             </div>
-            <span className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-[#F7444E]">
+            <span className="rounded-full border border-rose-200/60 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300">
               {filteredQuestions.length} available
             </span>
           </div>
@@ -658,16 +658,16 @@ export default function QuizBuilderPage() {
             </label>
           </div>
 
-          <div className="mt-5 flex items-center justify-between border-y border-gray-100 py-3">
-            <label className="inline-flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer">
-              <input type="checkbox" checked={allVisibleSelected} onChange={toggleVisible} className="accent-[#F7444E]" />
+          <div className="mt-5 flex items-center justify-between border-y border-border py-3">
+            <label className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground cursor-pointer">
+              <input type="checkbox" checked={allVisibleSelected} onChange={toggleVisible} className="accent-primary" />
               Select all visible
             </label>
             <button
               type="button"
               onClick={addSelected}
               disabled={!selectedIds.length}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-xs transition hover:opacity-90 disabled:opacity-50"
             >
               <Plus className="h-4 w-4" />
               Add selected ({selectedIds.length})
@@ -681,7 +681,7 @@ export default function QuizBuilderPage() {
                 <label
                   key={question.id}
                   className={`flex cursor-pointer gap-3 rounded-xl border p-3 transition-colors ${
-                    checked ? 'border-[#F7444E]/40 bg-rose-50/60' : 'border-gray-100 bg-gray-50/40 hover:bg-white'
+                    checked ? 'border-primary/50 bg-primary/10' : 'border-border bg-muted/30 hover:bg-muted/60'
                   }`}
                 >
                   <input
@@ -692,18 +692,18 @@ export default function QuizBuilderPage() {
                         checked ? current.filter((id) => id !== question.id) : [...current, question.id]
                       )
                     }
-                    className="mt-1 accent-[#F7444E]"
+                    className="mt-1 accent-primary"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-gray-900">{question.content}</span>
+                    <span className="block text-sm font-medium text-foreground">{question.content}</span>
                     <QuestionMeta question={question} />
                   </span>
-                  {checked && <Check className="h-4 w-4 text-[#F7444E]" />}
+                  {checked && <Check className="h-4 w-4 text-primary" />}
                 </label>
               );
             })}
             {!filteredQuestions.length && (
-              <div className="rounded-xl border border-dashed border-gray-200 px-4 py-10 text-center text-sm text-gray-500">
+              <div className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
                 No approved questions match these filters.
               </div>
             )}
@@ -711,30 +711,30 @@ export default function QuizBuilderPage() {
         </section>
 
         {/* Selected questions */}
-        <section className="rounded-2xl border border-gray-200/80 bg-[#FFFAFC]/50 p-5 shadow-sm">
-          <div className="mb-5 flex items-start justify-between border-b border-gray-100 pb-4">
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="mb-5 flex items-start justify-between border-b border-border pb-4">
             <div>
               <div className="flex items-center gap-2">
-                <Layers className="h-5 w-5 text-[#F7444E]" />
-                <h2 className="font-semibold text-gray-900">Selected questions</h2>
+                <Layers className="h-5 w-5 text-primary" />
+                <h2 className="font-semibold text-foreground">Selected questions</h2>
               </div>
-              <p className="mt-1 text-xs text-gray-500">Reorder, score, or remove questions.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Reorder, score, or remove questions.</p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-gray-900">{assignedQuestions.length}</p>
-              <p className="text-xs text-gray-500">questions · {totalScore.toFixed(1)} points</p>
+              <p className="text-2xl font-bold text-foreground">{assignedQuestions.length}</p>
+              <p className="text-xs text-muted-foreground">questions · {totalScore.toFixed(1)} points</p>
             </div>
           </div>
 
           <div className="space-y-3">
             {assignedQuestions.map((item, index) => (
-              <div key={item.question?.id || index} className="rounded-xl border border-gray-200 bg-white p-3">
+              <div key={item.question?.id || index} className="rounded-xl border border-border bg-background p-3">
                 <div className="flex items-start gap-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-xs font-bold text-[#F7444E]">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
                     {index + 1}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900">{item.question?.content || 'Untitled question'}</p>
+                    <p className="text-sm font-medium text-foreground">{item.question?.content || 'Untitled question'}</p>
                     {item.question && <QuestionMeta question={item.question} />}
                   </div>
                   <div className="flex shrink-0 gap-1">
@@ -743,7 +743,7 @@ export default function QuizBuilderPage() {
                       title="Move up"
                       disabled={index === 0}
                       onClick={() => moveQuestion(index, -1)}
-                      className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-30"
+                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
                     >
                       <ArrowUp className="h-4 w-4" />
                     </button>
@@ -752,7 +752,7 @@ export default function QuizBuilderPage() {
                       title="Move down"
                       disabled={index === assignedQuestions.length - 1}
                       onClick={() => moveQuestion(index, 1)}
-                      className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-30"
+                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
                     >
                       <ArrowDown className="h-4 w-4" />
                     </button>
@@ -764,13 +764,13 @@ export default function QuizBuilderPage() {
                           current.filter((c) => c.question.id !== item.question.id)
                         )
                       }
-                      className="rounded-lg p-1.5 text-gray-400 hover:bg-rose-50 hover:text-[#F7444E]"
+                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
-                <label className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-semibold text-gray-500">
+                <label className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs font-semibold text-muted-foreground">
                   Score weight
                   <input
                     type="number"
@@ -786,13 +786,13 @@ export default function QuizBuilderPage() {
                         )
                       )
                     }
-                    className="w-24 rounded-lg border border-gray-200 px-2.5 py-1.5 text-right text-sm font-semibold text-gray-800"
+                    className="w-24 rounded-lg border border-border bg-background px-2.5 py-1.5 text-right text-sm font-semibold text-foreground outline-none focus:border-primary"
                   />
                 </label>
               </div>
             ))}
             {!assignedQuestions.length && (
-              <div className="rounded-xl border border-dashed border-gray-200 px-4 py-12 text-center text-sm text-gray-500">
+              <div className="rounded-xl border border-dashed border-border px-4 py-12 text-center text-sm text-muted-foreground">
                 Add approved questions from the bank.
               </div>
             )}
@@ -808,7 +808,7 @@ export default function QuizBuilderPage() {
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.08em;
-          color: #6b7280;
+          color: var(--muted-foreground, #6b7280);
         }
       `}</style>
     </div>

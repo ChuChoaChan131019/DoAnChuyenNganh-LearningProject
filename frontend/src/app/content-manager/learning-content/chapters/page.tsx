@@ -15,10 +15,10 @@ import type { Chapter, ContentStatus } from "@/types/learning-content";
 import { courseApi } from "@/lib/api";
 
 const statusStyles: Record<ContentStatus, string> = {
-  Published: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  Approved: "border-cyan-200 bg-cyan-50 text-cyan-700",
-  "In review": "border-amber-200 bg-amber-50 text-amber-700",
-  Draft: "border-slate-200 bg-slate-100 text-slate-600",
+  Published: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
+  Approved: "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300",
+  "In review": "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
+  Draft: "border-border bg-muted text-muted-foreground",
 };
 
 function StatusBadge({ status }: { status: ContentStatus }) {
@@ -256,10 +256,10 @@ export default function ChaptersPage() {
     <div className="mx-auto max-w-[1328px] space-y-6 pb-12">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#002C3E]">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Chapter management
           </h1>
-          <p className="mt-1 text-sm text-[#637981]">
+          <p className="mt-1 text-sm text-muted-foreground">
             Drag chapters to reorder the curriculum. Expand a chapter to manage
             its lessons.
           </p>
@@ -270,28 +270,28 @@ export default function ChaptersPage() {
             value={selectedCourseId ?? ""}
             onChange={(event) => handleCourseChange(event.target.value)}
             disabled={courseOptions.length === 0}
-            className="h-full w-full appearance-none rounded-xl border border-[#dfe6df] bg-white px-3 pr-9 text-sm text-[#526f78] outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
+            className="h-full w-full appearance-none rounded-xl border border-border bg-card px-3 pr-9 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           >
             {courseOptions.map((course) => (
-              <option key={course.id} value={course.id}>{course.title}</option>
+              <option key={course.id} value={course.id} className="bg-card text-foreground">{course.title}</option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-[#71878c]" />
+          <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-muted-foreground" />
         </label>
       </header>
       <section className="space-y-4">
         {isLoading && (
-          <div className="rounded-2xl border border-[#dfe6df] bg-white px-5 py-12 text-center text-sm text-[#637981]">
+          <div className="rounded-2xl border border-border bg-card px-5 py-12 text-center text-sm text-muted-foreground">
             Loading chapters...
           </div>
         )}
         {!isLoading && loadError && (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-12 text-center text-sm text-rose-700">
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/40 px-5 py-12 text-center text-sm text-rose-700 dark:text-rose-300">
             {loadError}
           </div>
         )}
         {!isLoading && !loadError && chapters.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-[#dfe6df] bg-white px-5 py-12 text-center text-sm text-[#637981]">
+          <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-12 text-center text-sm text-muted-foreground">
             No chapters found for this course.
           </div>
         )}
@@ -302,9 +302,9 @@ export default function ChaptersPage() {
               key={chapter.id}
               onDragOver={(event) => event.preventDefault()}
               onDrop={() => void reorderChapter(String(chapter.id))}
-              className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-[0_8px_18px_rgba(0,44,62,0.04)]"
+              className="overflow-hidden rounded-2xl border border-border bg-card shadow-xs"
             >
-              <div className="flex items-center gap-3 border-b border-[#dfe6df] px-5 py-4">
+              <div className="flex items-center gap-3 border-b border-border px-5 py-4">
                 <span
                   draggable
                   onDragStart={() => setDraggedChapterId(String(chapter.id))}
@@ -312,25 +312,25 @@ export default function ChaptersPage() {
                   title="Drag to reorder chapter"
                   className="cursor-grab touch-none active:cursor-grabbing"
                 >
-                  <GripVertical className="h-4 w-4 shrink-0 text-[#71878c]" />
+                  <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </span>
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#ffe0df] font-mono text-xs font-semibold text-[#F7444E]">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-rose-50 dark:bg-rose-950/50 font-mono text-xs font-semibold text-primary">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-semibold text-[#002C3E]">
+                  <h2 className="font-semibold text-foreground">
                     {chapter.title}
                   </h2>
-                  <p className="truncate text-xs text-[#637981]">
+                  <p className="truncate text-xs text-muted-foreground">
                     {chapter.lessons.length} lessons · {chapter.summary}
                   </p>
                 </div>
-                <div className="flex items-center gap-1 text-[#527983]">
+                <div className="flex items-center gap-1 text-muted-foreground">
                   <button
                     type="button"
                     aria-label={`Edit ${chapter.title}`}
                     onClick={() => openEditChapter(chapter)}
-                    className="rounded-lg p-2 hover:bg-[#eaf4f3]"
+                    className="rounded-lg p-2 hover:bg-muted hover:text-foreground transition-colors"
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
@@ -338,7 +338,7 @@ export default function ChaptersPage() {
                     type="button"
                     aria-label={`Delete ${chapter.title}`}
                     onClick={() => void deleteChapter(chapter)}
-                    className="rounded-lg p-2 hover:bg-[#fff1f0] hover:text-[#F7444E]"
+                    className="rounded-lg p-2 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400 transition-colors"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -352,7 +352,7 @@ export default function ChaptersPage() {
                           : [...current, chapter.id],
                       )
                     }
-                    className="rounded-lg p-2 hover:bg-[#eaf4f3]"
+                    className="rounded-lg p-2 hover:bg-muted hover:text-foreground transition-colors"
                   >
                     {isExpanded ? (
                       <ChevronUp className="h-4 w-4" />
@@ -363,9 +363,9 @@ export default function ChaptersPage() {
                 </div>
               </div>
               {isExpanded && (
-                <div className="bg-[#fbfcf8]">
+                <div className="bg-muted/30">
                   {chapter.lessons.length === 0 && (
-                    <p className="border-b border-[#e5ebe5] px-14 py-4 text-sm text-[#71878c]">
+                    <p className="border-b border-border px-14 py-4 text-sm text-muted-foreground">
                       No lessons
                     </p>
                   )}
@@ -374,7 +374,7 @@ export default function ChaptersPage() {
                       key={lesson.id ?? lesson.code + lesson.title}
                       onDragOver={(event) => event.preventDefault()}
                       onDrop={() => void reorderLesson(chapter, String(lesson.id))}
-                      className="flex min-h-[46px] items-center gap-3 border-b border-[#e5ebe5] px-5 pl-14 text-sm"
+                      className="flex min-h-[46px] items-center gap-3 border-b border-border px-5 pl-14 text-sm"
                     >
                       <span
                         draggable={Boolean(lesson.id)}
@@ -383,22 +383,22 @@ export default function ChaptersPage() {
                         title="Drag to reorder lesson"
                         className="cursor-grab touch-none active:cursor-grabbing"
                       >
-                        <GripVertical className="h-4 w-4 shrink-0 text-[#a6b7b8]" />
+                        <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
                       </span>
-                      <span className="w-10 shrink-0 font-mono text-xs text-[#71878c]">
+                      <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground">
                         {`L${String(lessonIndex + 1).padStart(2, "0")}`}
                       </span>
-                      <FileText className="h-4 w-4 shrink-0 text-[#71878c]" />
-                      <span className="min-w-0 flex-1 truncate text-[#002C3E]">
+                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 flex-1 truncate text-foreground">
                         {lesson.title}
                       </span>
                       <div className="flex shrink-0 items-center gap-3">
-                        <span className="hidden items-center gap-1 text-xs text-[#637981] sm:flex">
+                        <span className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
                           <Clock3 className="h-3.5 w-3.5" />
                           {lesson.duration}
                         </span>
                         {lesson.ai && (
-                          <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 text-[11px] font-semibold text-cyan-700">
+                          <span className="rounded-full border border-cyan-200 bg-cyan-50 dark:border-cyan-800 dark:bg-cyan-950/40 px-2 py-1 text-[11px] font-semibold text-cyan-700 dark:text-cyan-300">
                             ✣ AI
                           </span>
                         )}
@@ -412,7 +412,7 @@ export default function ChaptersPage() {
                       setFormError("");
                       setLessonChapterId(String(chapter.id));
                     }}
-                    className="flex items-center gap-2 px-9 py-3 text-sm text-[#526f78] hover:text-[#F7444E]"
+                    className="flex items-center gap-2 px-9 py-3 text-sm text-muted-foreground hover:text-primary transition-colors"
                   >
                     <Plus className="h-4 w-4" />
                     Add lesson
@@ -426,45 +426,45 @@ export default function ChaptersPage() {
       <button
         type="button"
         onClick={openAddChapter}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[#dfe6df] bg-white py-3 text-sm font-medium text-[#002C3E] hover:border-[#78BCC4] hover:bg-[#f8fbf9]"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card py-3 text-sm font-medium text-foreground hover:border-primary hover:bg-muted/50 transition-colors"
       >
         <Plus className="h-4 w-4" />
         Add chapter
       </button>
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-[#002c3e]/40 px-4" role="dialog" aria-modal="true" aria-labelledby="add-chapter-title">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-xs px-4" role="dialog" aria-modal="true" aria-labelledby="add-chapter-title">
           <form
             onSubmit={(event) => { event.preventDefault(); void saveChapter(); }}
-            className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl"
           >
-            <h2 id="add-chapter-title" className="text-xl font-bold text-[#002C3E]">{editingChapter ? "Edit chapter" : "Add chapter"}</h2>
-            <p className="mt-1 text-sm text-[#637981]">{editingChapter ? "Update this chapter." : `Create a draft chapter for ${selectedCourse}.`}</p>
-            <label className="mt-5 block text-sm font-medium text-[#002C3E]">
+            <h2 id="add-chapter-title" className="text-xl font-bold text-foreground">{editingChapter ? "Edit chapter" : "Add chapter"}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{editingChapter ? "Update this chapter." : `Create a draft chapter for ${selectedCourse}.`}</p>
+            <label className="mt-5 block text-sm font-medium text-foreground">
               Chapter title
               <input
                 value={chapterTitle}
                 onChange={(event) => setChapterTitle(event.target.value)}
                 maxLength={160}
                 autoFocus
-                className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
+                className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 placeholder="e.g. Object-oriented programming"
               />
             </label>
-            <label className="mt-4 block text-sm font-medium text-[#002C3E]">
-              Description <span className="font-normal text-[#71878c]">(optional)</span>
+            <label className="mt-4 block text-sm font-medium text-foreground">
+              Description <span className="font-normal text-muted-foreground">(optional)</span>
               <textarea
                 value={chapterDescription}
                 onChange={(event) => setChapterDescription(event.target.value)}
                 maxLength={2000}
                 rows={4}
-                className="mt-2 w-full resize-none rounded-xl border border-[#dfe6df] px-3 py-2 text-sm outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
+                className="mt-2 w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 placeholder="What will learners study in this chapter?"
               />
             </label>
-            {formError && <p className="mt-3 text-sm text-[#d9363e]">{formError}</p>}
+            {formError && <p className="mt-3 text-sm text-destructive">{formError}</p>}
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => { setEditingChapter(null); setIsModalOpen(false); }} className="rounded-xl px-4 py-2 text-sm font-medium text-[#526f78] hover:bg-[#f3f7f5]">Cancel</button>
-              <button type="submit" disabled={isSaving} className="rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db3540] disabled:cursor-not-allowed disabled:opacity-60">
+              <button type="button" onClick={() => { setEditingChapter(null); setIsModalOpen(false); }} className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors">Cancel</button>
+              <button type="submit" disabled={isSaving} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-60">
                 {isSaving ? "Saving..." : editingChapter ? "Save changes" : "Create chapter"}
               </button>
             </div>
@@ -472,24 +472,24 @@ export default function ChaptersPage() {
         </div>
       )}
       {lessonChapterId && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-[#002c3e]/40 px-4" role="dialog" aria-modal="true" aria-labelledby="add-lesson-title">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-xs px-4" role="dialog" aria-modal="true" aria-labelledby="add-lesson-title">
           <form
             onSubmit={(event) => { event.preventDefault(); void addLesson(); }}
-            className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl"
           >
-            <h2 id="add-lesson-title" className="text-xl font-bold text-[#002C3E]">Add lesson</h2>
-            <label className="mt-5 block text-sm font-medium text-[#002C3E]">
+            <h2 id="add-lesson-title" className="text-xl font-bold text-foreground">Add lesson</h2>
+            <label className="mt-5 block text-sm font-medium text-foreground">
               Lesson title
               <input
                 value={lessonTitle}
                 onChange={(event) => setLessonTitle(event.target.value)}
                 maxLength={160}
                 autoFocus
-                className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
+                className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 placeholder="e.g. Defining a class"
               />
             </label>
-            <label className="mt-4 block text-sm font-medium text-[#002C3E]">
+            <label className="mt-4 block text-sm font-medium text-foreground">
               Duration in minutes
               <input
                 type="number"
@@ -497,13 +497,13 @@ export default function ChaptersPage() {
                 max="1440"
                 value={lessonDuration}
                 onChange={(event) => setLessonDuration(event.target.value)}
-                className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
+                className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </label>
-            {formError && <p className="mt-3 text-sm text-[#d9363e]">{formError}</p>}
+            {formError && <p className="mt-3 text-sm text-destructive">{formError}</p>}
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setLessonChapterId(null)} className="rounded-xl px-4 py-2 text-sm font-medium text-[#526f78] hover:bg-[#f3f7f5]">Cancel</button>
-              <button type="submit" disabled={isSaving} className="rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db3540] disabled:cursor-not-allowed disabled:opacity-60">
+              <button type="button" onClick={() => setLessonChapterId(null)} className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors">Cancel</button>
+              <button type="submit" disabled={isSaving} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-60">
                 {isSaving ? "Saving..." : "Create lesson"}
               </button>
             </div>
