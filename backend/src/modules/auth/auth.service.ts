@@ -186,6 +186,50 @@ export class AuthService {
     };
   }
 
+  async refresh(refreshToken: string): Promise<any> {
+    if (!refreshToken) {
+      throw new HttpException(
+        { error: { code: 'INVALID_TOKEN', message: 'Refresh token is required' } },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+
+    if (error || !data.session || !data.user) {
+      throw new HttpException(
+        { error: { code: 'INVALID_REFRESH_TOKEN', message: error?.message || 'Invalid or expired refresh token' } },
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    let profile: any = null;
+    try {
+      const { data: p } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+      profile = p;
+    } catch {
+      // fallback to metadata
+    }
+
+    return {
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+        role: profile?.role ?? data.user.user_metadata?.role ?? 'learner',
+        fullName: data.user.user_metadata?.full_name ?? '',
+      },
+    };
+  }
+
   async logout(token: string): Promise<void> {
     const supabase = this.supabaseService.getClient();
     await supabase.auth.admin.signOut(token);

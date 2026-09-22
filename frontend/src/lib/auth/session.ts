@@ -175,6 +175,9 @@ export function saveSession({ accessToken, refreshToken, user }: SaveSessionPara
       localStorage.setItem(AUTH_TOKEN_KEY, accessToken);
       localStorage.setItem(AUTH_ROLE_KEY, user.role);
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+      if (refreshToken) {
+        localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, refreshToken);
+      }
     } catch {
       // Bỏ qua lỗi storage quota exceeded trong môi trường đặc biệt
     }
@@ -193,6 +196,23 @@ export function getStoredToken(): string | null {
   if (typeof window !== 'undefined') {
     try {
       return localStorage.getItem(AUTH_TOKEN_KEY);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Lấy refresh token hiện tại từ Cookie (ưu tiên) hoặc LocalStorage
+ */
+export function getStoredRefreshToken(): string | null {
+  const cookieToken = getCookie(AUTH_REFRESH_TOKEN_KEY);
+  if (cookieToken) return cookieToken;
+
+  if (typeof window !== 'undefined') {
+    try {
+      return localStorage.getItem(AUTH_REFRESH_TOKEN_KEY);
     } catch {
       return null;
     }
@@ -222,6 +242,7 @@ export function clearSession(): void {
       localStorage.removeItem(AUTH_TOKEN_KEY);
       localStorage.removeItem(AUTH_ROLE_KEY);
       localStorage.removeItem(AUTH_USER_KEY);
+      localStorage.removeItem(AUTH_REFRESH_TOKEN_KEY);
     } catch {
       // Bỏ qua lỗi truy cập storage
     }
