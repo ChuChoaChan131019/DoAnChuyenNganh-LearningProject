@@ -7,7 +7,7 @@ import type {
   ApiErrorResponse,
 } from '../types/auth';
 import type { Category, CategoryCourse } from '../types/learning-content';
-import { clearSession, getStoredToken } from './auth/session';
+import { clearSession, getStoredToken, getStoredRefreshToken, saveSession } from './auth/session';
 import type { ChapterOption, CourseOption, LessonOption, QuestionPayload } from '../types/question';
 import type {
   QuizItem,
@@ -35,7 +35,38 @@ export class ApiClientError extends Error {
   }
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+let refreshPromise: Promise<string | null> | null = null;
+
+async function doRefreshToken(): Promise<string | null> {
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) return null;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const data = json?.data as LoginResponse | undefined;
+    if (!data?.access_token) return null;
+
+    saveSession({
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      user: data.user,
+    });
+
+    return data.access_token;
+  } catch {
+    return null;
+  }
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}, isRetry = false): Promise<T> {
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
   const method = options.method || 'GET';
 
@@ -65,6 +96,28 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       'NETWORK_ERROR',
       0,
     );
+  }
+
+  // Tự động làm mới token khi nhận 401 và chưa phải lần retry
+  if (response.status === 401 && !isRetry && !endpoint.includes('/api/v1/auth/')) {
+    if (!refreshPromise) {
+      refreshPromise = doRefreshToken().finally(() => {
+        refreshPromise = null;
+      });
+    }
+
+    const newAccessToken = await refreshPromise;
+    if (newAccessToken) {
+      const retryHeaders = {
+        ...(options.headers as Record<string, string>),
+        Authorization: `Bearer ${newAccessToken}`,
+      };
+      return request<T>(endpoint, { ...options, headers: retryHeaders }, true);
+    }
+
+    if (typeof window !== 'undefined') {
+      clearSession();
+    }
   }
 
   let responseBody: unknown = null;
@@ -116,6 +169,12 @@ export const authApi = {
     return request<LoginResponse>('/api/v1/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload),
+    });
+  },
+  refresh: (refreshToken: string): Promise<LoginResponse> => {
+    return request<LoginResponse>('/api/v1/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refresh_token: refreshToken }),
     });
   },
   logout: (): Promise<{ message: string }> => {
