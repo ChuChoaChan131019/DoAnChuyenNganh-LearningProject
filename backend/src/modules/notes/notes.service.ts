@@ -1,13 +1,13 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../../config/supabase.service.js';
 
-export interface CreateNoteDto {
+export class CreateNoteDto {
   title?: string;
   content: string;
   lesson_id?: string;
 }
 
-export interface UpdateNoteDto {
+export class UpdateNoteDto {
   title?: string;
   content?: string;
   lesson_id?: string;
