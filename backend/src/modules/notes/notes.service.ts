@@ -42,7 +42,10 @@ export interface Note {
 }
 
 function escapeLikePattern(input: string): string {
-  return input.replace(/[%_\\]/g, '\\$&');
+  return input
+    .replace(/\\/g, '\\\\')
+    .replace(/[%_]/g, '\\$&')
+    .replace(/"/g, '\\"');
 }
 
 @Injectable()
@@ -62,7 +65,7 @@ export class NotesService {
 
     if (filter?.search) {
       const escapedSearch = escapeLikePattern(filter.search);
-      query = query.or(`title.ilike.%${escapedSearch}%,content.ilike.%${escapedSearch}%`);
+      query = query.or(`title.ilike."%${escapedSearch}%",content.ilike."%${escapedSearch}%"`);
     }
 
     const { data, error } = await query.order('updated_at', { ascending: false });

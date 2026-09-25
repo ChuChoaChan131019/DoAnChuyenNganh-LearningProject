@@ -71,6 +71,16 @@ describe('NotesService', () => {
       expect(orCall).toContain('\\%');
       expect(orCall).toContain('\\_');
     });
+
+    it('should escape commas, quotes and special characters in search pattern', async () => {
+      mockClient.order.mockResolvedValue({ data: [], error: null });
+
+      await service.findAll('user-123', { search: 'test, with "quotes" and %_special' });
+
+      expect(mockClient.or).toHaveBeenCalled();
+      const orCall = mockClient.or.mock.calls[0][0];
+      expect(orCall).toBe('title.ilike."%test, with \\"quotes\\" and \\%\\_special%",content.ilike."%test, with \\"quotes\\" and \\%\\_special%"');
+    });
   });
 
   describe('create', () => {

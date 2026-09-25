@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
-import NotesPage from '../page';
+import NotesPage, { sanitizeHtml } from '../page';
 import { notesApi } from '../../../../lib/api';
 
 vi.mock('../../../../lib/api', () => ({
@@ -54,5 +54,33 @@ describe('XSS Prevention', () => {
     expect(document.querySelector('link')).toBeNull();
     expect(document.querySelector('meta')).toBeNull();
     expect(document.querySelector('base')).toBeNull();
+  });
+
+  it('should strip advanced XSS vectors including javascript links', async () => {
+    (notesApi.list as any).mockResolvedValueOnce([{
+      id: '3',
+      title: 'Advanced XSS',
+      content: '<a href="java&#10;script:alert(1)">click me</a><iframe src="javascript:alert(1)"></iframe>',
+      updated_at: '2026-09-26'
+    }]);
+
+    render(<NotesPage />);
+    await screen.findByText('Advanced XSS');
+
+    expect(document.querySelector('iframe')).toBeNull();
+    const link = document.querySelector('a');
+    expect(link?.getAttribute('href')).toBeNull();
+  });
+
+  it('should sanitize HTML in SSR environment without window', () => {
+    const originalWindow = global.window;
+    try {
+      // @ts-ignore
+      delete global.window;
+      const result = sanitizeHtml('<script>alert("xss")</script><p>text</p>');
+      expect(result).not.toContain('<script>');
+    } finally {
+      global.window = originalWindow;
+    }
   });
 });

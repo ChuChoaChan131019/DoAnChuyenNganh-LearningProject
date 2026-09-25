@@ -4,30 +4,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { FileText, Search, Plus, Trash2, Edit2, X, Save } from 'lucide-react';
 import { notesApi } from '../../../lib/api';
 import type { Note, CreateNotePayload, UpdateNotePayload } from '../../../types/notes';
+import DOMPurify from 'isomorphic-dompurify';
 
 type NoteFormData = CreateNotePayload & Partial<Omit<UpdateNotePayload, keyof CreateNotePayload>>;
 
-function sanitizeHtml(html: string): string {
-  if (typeof window === 'undefined') return html;
-  try {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    // Remove dangerous tags
-    doc.querySelectorAll('script, iframe, object, embed, style, link, base, meta').forEach((el) => el.remove());
-    // Remove ALL attributes starting with 'on' (not just javascript: ones)
-    doc.querySelectorAll('*').forEach((el) => {
-      const attrsToRemove: string[] = [];
-      for (const attr of Array.from(el.attributes)) {
-        // Block ALL event handlers: onclick, onerror, onload, etc.
-        if (attr.name.startsWith('on') || attr.value.trim().toLowerCase().startsWith('javascript:')) {
-          attrsToRemove.push(attr.name);
-        }
-      }
-      attrsToRemove.forEach(name => el.removeAttribute(name));
-    });
-    return doc.body.innerHTML;
-  } catch {
-    return html;
-  }
+export function sanitizeHtml(html: string): string {
+  if (!html) return '';
+  return DOMPurify.sanitize(html);
 }
 
 export default function NotesPage() {
