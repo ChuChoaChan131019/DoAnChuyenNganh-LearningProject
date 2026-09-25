@@ -60,6 +60,17 @@ describe('NotesService', () => {
 
       expect(mockClient.or).toHaveBeenCalled();
     });
+
+    it('should escape special characters %, _, and \\ in search pattern', async () => {
+      mockClient.order.mockResolvedValue({ data: [], error: null });
+
+      await service.findAll('user-123', { search: '100%_match\\test' });
+
+      expect(mockClient.or).toHaveBeenCalled();
+      const orCall = mockClient.or.mock.calls[0][0];
+      expect(orCall).toContain('\\%');
+      expect(orCall).toContain('\\_');
+    });
   });
 
   describe('create', () => {

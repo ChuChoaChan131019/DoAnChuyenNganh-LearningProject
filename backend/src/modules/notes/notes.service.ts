@@ -41,6 +41,10 @@ export interface Note {
   updated_at: string;
 }
 
+function escapeLikePattern(input: string): string {
+  return input.replace(/[%_\\]/g, '\\$&');
+}
+
 @Injectable()
 export class NotesService {
   private readonly logger = new Logger(NotesService.name);
@@ -57,7 +61,8 @@ export class NotesService {
     }
 
     if (filter?.search) {
-      query = query.or(`title.ilike.%${filter.search}%,content.ilike.%${filter.search}%`);
+      const escapedSearch = escapeLikePattern(filter.search);
+      query = query.or(`title.ilike.%${escapedSearch}%,content.ilike.%${escapedSearch}%`);
     }
 
     const { data, error } = await query.order('updated_at', { ascending: false });
