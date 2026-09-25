@@ -62,4 +62,32 @@ describe('NotesPage', () => {
 
     expect(notesApi.delete).toHaveBeenCalledWith('1');
   });
+
+  it('should render HTML formatted content safely without raw tags', async () => {
+    const htmlNotes = [
+      { id: '2', title: 'HTML Note', content: '<p>Formatted <strong>bold text</strong></p><script>alert(1)</script>', updated_at: '2026-09-26' },
+    ];
+    (notesApi.list as any).mockResolvedValue(htmlNotes);
+
+    render(<NotesPage />);
+    await waitFor(() => {
+      expect(screen.getByText('bold text')).toBeInTheDocument();
+    });
+    expect(document.querySelector('script')).toBeNull();
+    expect(screen.queryByText('<p>Formatted <strong>bold text</strong></p>')).toBeNull();
+  });
+
+  it('should debounce search queries', async () => {
+    (notesApi.list as any).mockResolvedValue([]);
+    render(<NotesPage />);
+
+    const searchInput = screen.getByPlaceholderText('Search notes...');
+    await userEvent.type(searchInput, 'abc');
+
+    expect(notesApi.list).not.toHaveBeenCalledWith(expect.objectContaining({ search: 'abc' }));
+
+    await waitFor(() => {
+      expect(notesApi.list).toHaveBeenCalledWith(expect.objectContaining({ search: 'abc' }));
+    }, { timeout: 1000 });
+  });
 });

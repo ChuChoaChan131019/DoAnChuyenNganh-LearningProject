@@ -1,15 +1,33 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { IsString, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
 import { SupabaseService } from '../../config/supabase.service.js';
 
 export class CreateNoteDto {
+  @IsString()
+  @IsOptional()
   title?: string;
+
+  @IsString()
+  @IsNotEmpty()
   content: string;
+
+  @IsUUID()
+  @IsOptional()
   lesson_id?: string;
 }
 
 export class UpdateNoteDto {
+  @IsString()
+  @IsOptional()
   title?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @IsOptional()
   content?: string;
+
+  @IsUUID()
+  @IsOptional()
   lesson_id?: string;
 }
 

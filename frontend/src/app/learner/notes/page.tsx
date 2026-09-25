@@ -5,25 +5,51 @@ import { FileText, Search, Plus, Trash2, Edit2, X, Save } from 'lucide-react';
 import { notesApi } from '../../../lib/api';
 import type { Note, CreateNotePayload } from '../../../types/notes';
 
+function sanitizeHtml(html: string): string {
+  if (typeof window === 'undefined') return html;
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('script, iframe, object, embed, style').forEach((el) => el.remove());
+    doc.querySelectorAll('*').forEach((el) => {
+      for (const attr of Array.from(el.attributes)) {
+        if (attr.name.startsWith('on') || attr.value.trim().toLowerCase().startsWith('javascript:')) {
+          el.removeAttribute(attr.name);
+        }
+      }
+    });
+    return doc.body.innerHTML;
+  } catch {
+    return html;
+  }
+}
+
 export default function NotesPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [formData, setFormData] = useState<CreateNotePayload>({ title: '', content: '' });
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const fetchNotes = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await notesApi.list({ search: searchQuery || undefined });
+      const data = await notesApi.list({ search: debouncedSearch || undefined });
       setNotes(data || []);
     } catch (error) {
       console.error('Failed to fetch notes:', error);
     } finally {
       setLoading(false);
     }
-  }, [searchQuery]);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     fetchNotes();
@@ -103,7 +129,7 @@ export default function NotesPage() {
         <div className="text-center py-12 text-slate-500">Loading...</div>
       ) : notes.length === 0 ? (
         <div className="text-center py-12 text-slate-500">
-          {searchQuery ? 'No notes found.' : 'No notes yet. Create your first note!'}
+          {debouncedSearch ? 'No notes found.' : 'No notes yet. Create your first note!'}
         </div>
       ) : (
         <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
@@ -134,9 +160,10 @@ export default function NotesPage() {
                   </button>
                 </div>
               </div>
-              <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-                {note.content}
-              </p>
+              <div
+                className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap break-words"
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
+              />
               <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
                 <FileText className="h-3.5 w-3.5" />
                 {new Date(note.updated_at).toLocaleDateString()}
