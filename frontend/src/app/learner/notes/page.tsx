@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FileText, Search, Plus, Trash2, Edit2, X, Save } from 'lucide-react';
 import { notesApi } from '../../../lib/api';
-import type { Note, CreateNotePayload } from '../../../types/notes';
+import type { Note, CreateNotePayload, UpdateNotePayload } from '../../../types/notes';
+
+type NoteFormData = CreateNotePayload & Partial<Omit<UpdateNotePayload, keyof CreateNotePayload>>;
 
 function sanitizeHtml(html: string): string {
   if (typeof window === 'undefined') return html;
@@ -35,7 +37,7 @@ export default function NotesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
-  const [formData, setFormData] = useState<CreateNotePayload>({ title: '', content: '' });
+  const [formData, setFormData] = useState<NoteFormData>({ title: '', content: '' });
 
   useEffect(() => {
     const timer = setTimeout(() => {
