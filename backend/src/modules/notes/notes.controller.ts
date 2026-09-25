@@ -12,12 +12,15 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { NotesService, CreateNoteDto, UpdateNoteDto } from './notes.service.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 
 @Controller('api/v1/notes')
 @UseGuards(JwtAuthGuard)
+@UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class NotesController {
   constructor(private readonly notesService: NotesService) {}
 

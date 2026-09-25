@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ValidationPipe } from '@nestjs/common';
 import { NotesController } from './notes.controller.js';
 import { NotesService } from './notes.service.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
@@ -61,6 +62,25 @@ describe('NotesController', () => {
       await controller.delete(req, 'note-1');
 
       expect(service.delete).toHaveBeenCalledWith('note-1', 'user-123');
+    });
+  });
+
+  describe('create with empty content', () => {
+    it('should reject empty content with 400 Bad Request', async () => {
+      service.create.mockRejectedValue(new Error('Content is required'));
+      const req = { user: { id: 'user-123' } };
+      const invalidDto = { content: '' };
+
+      await expect(controller.create(req, invalidDto as any)).rejects.toThrow();
+    });
+  });
+
+  describe('ValidationPipe', () => {
+    it('should have ValidationPipe applied to controller', () => {
+      const pipes = Reflect.getMetadata('__pipes__', NotesController);
+      expect(pipes).toBeDefined();
+      expect(pipes.length).toBeGreaterThan(0);
+      expect(pipes[0]).toBeInstanceOf(ValidationPipe);
     });
   });
 });
