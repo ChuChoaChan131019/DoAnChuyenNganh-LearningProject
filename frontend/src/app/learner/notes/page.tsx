@@ -9,13 +9,18 @@ function sanitizeHtml(html: string): string {
   if (typeof window === 'undefined') return html;
   try {
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    doc.querySelectorAll('script, iframe, object, embed, style').forEach((el) => el.remove());
+    // Remove dangerous tags
+    doc.querySelectorAll('script, iframe, object, embed, style, link, base, meta').forEach((el) => el.remove());
+    // Remove ALL attributes starting with 'on' (not just javascript: ones)
     doc.querySelectorAll('*').forEach((el) => {
+      const attrsToRemove: string[] = [];
       for (const attr of Array.from(el.attributes)) {
+        // Block ALL event handlers: onclick, onerror, onload, etc.
         if (attr.name.startsWith('on') || attr.value.trim().toLowerCase().startsWith('javascript:')) {
-          el.removeAttribute(attr.name);
+          attrsToRemove.push(attr.name);
         }
       }
+      attrsToRemove.forEach(name => el.removeAttribute(name));
     });
     return doc.body.innerHTML;
   } catch {
