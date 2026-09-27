@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { courseApi } from '@/lib/api';
+import { courseApi, notesApi } from '@/lib/api';
+import type { Note } from '@/types/notes';
 import {
   ArrowLeft,
   ArrowRight,
@@ -561,6 +562,8 @@ export default function LearnerLessonPage() {
   const [noteContent, setNoteContent] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
 
   const [showOutline, setShowOutline] = useState(true);
   const outlineDialog = useRef<HTMLDialogElement>(null);
@@ -597,6 +600,19 @@ export default function LearnerLessonPage() {
     navigator.clipboard.writeText(currentLesson.initialCode);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const fetchNotes = async () => {
+    setIsLoadingNotes(true);
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activeLessonId);
+      const data = await notesApi.list(isUuid ? { lessonId: activeLessonId } : undefined);
+      setNotes(data || []);
+    } catch (err) {
+      console.error('Failed to load notes:', err);
+    } finally {
+      setIsLoadingNotes(false);
+    }
   };
 
   const handleRunCode = () => {
@@ -1023,7 +1039,10 @@ export default function LearnerLessonPage() {
 
       {/* Note FAB */}
       <button
-        onClick={() => setIsNoteOpen(true)}
+        onClick={() => {
+          setIsNoteOpen(true);
+          fetchNotes();
+        }}
         className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#0f3741] text-white shadow-lg transition hover:scale-105 hover:bg-[#145a68]"
         title="Ghi chú bài học"
       >
