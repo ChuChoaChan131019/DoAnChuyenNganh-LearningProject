@@ -559,6 +559,7 @@ export default function LearnerLessonPage() {
   const [hasRun, setHasRun] = useState(false);
   const [consoleOutput, setConsoleOutput] = useState<string>('');
   const [isNoteOpen, setIsNoteOpen] = useState(false);
+  const [newNoteTitle, setNewNoteTitle] = useState('');
   const [newNoteContent, setNewNoteContent] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -622,8 +623,10 @@ export default function LearnerLessonPage() {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activeLessonId);
       await notesApi.create({
         lesson_id: isUuid ? activeLessonId : undefined,
+        title: newNoteTitle.trim() || undefined,
         content: newNoteContent.trim(),
       });
+      setNewNoteTitle('');
       setNewNoteContent('');
       await fetchNotes();
     } catch (err) {
