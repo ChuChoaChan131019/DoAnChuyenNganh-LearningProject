@@ -559,8 +559,8 @@ export default function LearnerLessonPage() {
   const [hasRun, setHasRun] = useState(false);
   const [consoleOutput, setConsoleOutput] = useState<string>('');
   const [isNoteOpen, setIsNoteOpen] = useState(false);
-  const [noteContent, setNoteContent] = useState('');
-  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoadingNotes, setIsLoadingNotes] = useState(false);
@@ -612,6 +612,33 @@ export default function LearnerLessonPage() {
       console.error('Failed to load notes:', err);
     } finally {
       setIsLoadingNotes(false);
+    }
+  };
+
+  const handleCreateNote = async () => {
+    if (!newNoteContent.trim()) return;
+    setIsCreating(true);
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activeLessonId);
+      await notesApi.create({
+        lesson_id: isUuid ? activeLessonId : undefined,
+        content: newNoteContent.trim(),
+      });
+      setNewNoteContent('');
+      await fetchNotes();
+    } catch (err) {
+      console.error('Failed to create note:', err);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    try {
+      await notesApi.delete(id);
+      setNotes((prev) => prev.filter((n) => n.id !== id));
+    } catch (err) {
+      console.error('Failed to delete note:', err);
     }
   };
 
@@ -1054,6 +1081,7 @@ export default function LearnerLessonPage() {
         <>
           <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm transition-opacity" onClick={() => setIsNoteOpen(false)} />
           <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md border-l border-slate-200 bg-white shadow-2xl transition-transform ease-[cubic-bezier(0.32,0.72,0,1)] duration-500 flex flex-col">
+            {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
@@ -1068,28 +1096,65 @@ export default function LearnerLessonPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            
-            <div className="flex-1 p-6 flex flex-col">
-              <textarea
-                value={noteContent}
-                onChange={(e) => {
-                  setNoteContent(e.target.value);
-                  setIsSavingNote(true);
-                  setTimeout(() => setIsSavingNote(false), 1000);
-                }}
-                placeholder="Type your notes here... (Supports Markdown)"
-                className="flex-1 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 placeholder-slate-400 focus:border-[#78bcc4] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#78bcc4]/10"
-              />
+
+            {/* Notes List */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {isLoadingNotes ? (
+                <div className="flex items-center justify-center py-8 text-slate-400">
+                  <div className="h-6 w-6 border-2 border-slate-300 border-t-[#0f3741] rounded-full animate-spin" />
+                </div>
+              ) : notes.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">
+                  Chưa có ghi chú nào cho bài học này
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {notes.map((note) => (
+                    <div key={note.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="flex-1 text-sm text-slate-700 whitespace-pre-wrap">{note.content}</p>
+                        <button
+                          onClick={() => handleDeleteNote(note.id)}
+                          className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 transition"
+                          title="Xóa ghi chú"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <p className="mt-2 text-xs text-slate-400">
+                        {new Date(note.created_at).toLocaleDateString('vi-VN')}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            
-            <div className="border-t border-slate-100 px-6 py-4 flex items-center justify-between bg-slate-50">
-              <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                {isSavingNote ? (
-                  <span className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Saving...</span>
-                ) : (
-                  <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-emerald-500" /> Saved</span>
-                )}
+
+            {/* Create Note Form */}
+            <div className="border-t border-slate-100 p-4 bg-slate-50">
+              <textarea
+                value={newNoteContent}
+                onChange={(e) => setNewNoteContent(e.target.value)}
+                placeholder="Viết ghi chú mới..."
+                className="w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#78bcc4] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#78bcc4]/10"
+                rows={3}
+              />
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-xs text-slate-500">
+                  {notes.length} ghi chú
+                </span>
+                <button
+                  onClick={handleCreateNote}
+                  disabled={!newNoteContent.trim() || isCreating}
+                  className="rounded-lg bg-[#0f3741] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#145a68] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreating ? 'Đang lưu...' : 'Lưu ghi chú'}
+                </button>
               </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-slate-100 px-6 py-3 flex items-center justify-end">
               <Link href="/learner/notes" className="text-xs font-semibold text-[#f7444e] hover:text-rose-600 transition">
                 View all notes →
               </Link>
