@@ -634,6 +634,7 @@ export default function LearnerLessonPage() {
   };
 
   const handleDeleteNote = async (id: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa ghi chú này?')) return;
     try {
       await notesApi.delete(id);
       setNotes((prev) => prev.filter((n) => n.id !== id));
