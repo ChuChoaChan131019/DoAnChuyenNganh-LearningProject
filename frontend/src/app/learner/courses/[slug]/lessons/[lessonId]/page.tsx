@@ -1071,100 +1071,126 @@ export default function LearnerLessonPage() {
       {/* Note FAB */}
       <button
         onClick={() => {
-          setIsNoteOpen(true);
-          fetchNotes();
+          if (!isNoteOpen) {
+            fetchNotes();
+          }
+          setIsNoteOpen((prev) => !prev);
         }}
-        className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#0f3741] text-white shadow-lg transition hover:scale-105 hover:bg-[#145a68]"
+        className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#0f3741] text-white shadow-xl transition hover:scale-105 hover:bg-[#145a68]"
         title="Ghi chú bài học"
       >
         <Edit3 className="h-6 w-6" />
       </button>
 
-      {/* Note Drawer */}
+      {/* Note Drawer (No backdrop overlay) */}
       {isNoteOpen && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm transition-opacity" onClick={() => setIsNoteOpen(false)} />
-          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md border-l border-slate-200 bg-white shadow-2xl transition-transform ease-[cubic-bezier(0.32,0.72,0,1)] duration-500 flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                  <FileText className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-[#0f3741]">My Notes</h3>
-                  <p className="text-xs text-slate-500 line-clamp-1">{currentLesson.title}</p>
-                </div>
+        <aside
+          aria-label="Bảng ghi chú bài học"
+          className="fixed inset-y-0 right-0 z-50 w-full max-w-md border-l border-slate-200 bg-white shadow-2xl transition-transform ease-[cubic-bezier(0.32,0.72,0,1)] duration-500 flex flex-col"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5 bg-white">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                <FileText className="h-4 w-4" />
               </div>
-              <button onClick={() => setIsNoteOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition">
-                <X className="h-5 w-5" />
+              <div>
+                <h3 className="text-sm font-bold text-[#0f3741]">Ghi chú bài học</h3>
+                <p className="text-xs text-slate-500 line-clamp-1">{currentLesson.title}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsNoteOpen(false)}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+              title="Đóng ghi chú"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Editor Area (Dominant - Takes remaining vertical space) */}
+          <div className="flex-1 flex flex-col p-4 bg-white min-h-0">
+            <input
+              type="text"
+              value={newNoteTitle}
+              onChange={(e) => setNewNoteTitle(e.target.value)}
+              placeholder="Tiêu đề ghi chú (tùy chọn)..."
+              className="mb-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-medium text-slate-800 placeholder-slate-400 focus:border-[#78bcc4] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#78bcc4]/10 transition"
+            />
+            <textarea
+              value={newNoteContent}
+              onChange={(e) => setNewNoteContent(e.target.value)}
+              placeholder="Nội dung ghi chú... (Hỗ trợ Markdown)"
+              className="flex-1 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-sm text-slate-700 placeholder-slate-400 focus:border-[#78bcc4] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#78bcc4]/10 transition"
+            />
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-xs text-slate-400">
+                {newNoteContent.length} ký tự
+              </span>
+              <button
+                onClick={handleCreateNote}
+                disabled={!newNoteContent.trim() || isCreating}
+                className="rounded-lg bg-[#0f3741] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#145a68] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                {isCreating ? 'Đang lưu...' : 'Lưu ghi chú'}
               </button>
             </div>
+          </div>
 
-            {/* Notes List */}
-            <div className="flex-1 overflow-y-auto p-4">
+          {/* Compact Notes List Section (Subordinate - Max 220px height) */}
+          <div className="border-t border-slate-200 bg-slate-50 p-4 max-h-[220px] flex flex-col shrink-0">
+            <div className="flex items-center justify-between pb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Ghi chú bài này ({notes.length})
+              </span>
+              <Link
+                href="/learner/notes"
+                className="text-xs font-semibold text-[#f7444e] hover:text-rose-600 transition"
+              >
+                Xem tất cả →
+              </Link>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
               {isLoadingNotes ? (
-                <div className="flex items-center justify-center py-8 text-slate-400">
-                  <div className="h-6 w-6 border-2 border-slate-300 border-t-[#0f3741] rounded-full animate-spin" />
+                <div className="flex items-center justify-center py-6 text-slate-400">
+                  <div className="h-5 w-5 border-2 border-slate-300 border-t-[#0f3741] rounded-full animate-spin" />
                 </div>
               ) : notes.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm">
+                <div className="text-center py-5 text-slate-400 text-xs">
                   Chưa có ghi chú nào cho bài học này
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {notes.map((note) => (
-                    <div key={note.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="flex-1 text-sm text-slate-700 whitespace-pre-wrap">{note.content}</p>
-                        <button
-                          onClick={() => handleDeleteNote(note.id)}
-                          className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 transition"
-                          title="Xóa ghi chú"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                notes.map((note) => (
+                  <div key={note.id} className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-xs">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        {note.title && (
+                          <h4 className="text-xs font-bold text-slate-800 truncate mb-0.5">
+                            {note.title}
+                          </h4>
+                        )}
+                        <p className="text-xs text-slate-600 line-clamp-2 whitespace-pre-wrap">
+                          {note.content}
+                        </p>
                       </div>
-                      <p className="mt-2 text-xs text-slate-400">
-                        {new Date(note.created_at).toLocaleDateString('vi-VN')}
-                      </p>
+                      <button
+                        onClick={() => handleDeleteNote(note.id)}
+                        className="shrink-0 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 transition"
+                        title="Xóa ghi chú"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                  ))}
-                </div>
+                    <p className="mt-1 text-[10px] text-slate-400">
+                      {new Date(note.created_at).toLocaleDateString('vi-VN')}
+                    </p>
+                  </div>
+                ))
               )}
             </div>
-
-            {/* Create Note Form */}
-            <div className="border-t border-slate-100 p-4 bg-slate-50">
-              <textarea
-                value={newNoteContent}
-                onChange={(e) => setNewNoteContent(e.target.value)}
-                placeholder="Viết ghi chú mới..."
-                className="w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 placeholder-slate-400 focus:border-[#78bcc4] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#78bcc4]/10"
-                rows={3}
-              />
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-xs text-slate-500">
-                  {notes.length} ghi chú
-                </span>
-                <button
-                  onClick={handleCreateNote}
-                  disabled={!newNoteContent.trim() || isCreating}
-                  className="rounded-lg bg-[#0f3741] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#145a68] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isCreating ? 'Đang lưu...' : 'Lưu ghi chú'}
-                </button>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="border-t border-slate-100 px-6 py-3 flex items-center justify-end">
-              <Link href="/learner/notes" className="text-xs font-semibold text-[#f7444e] hover:text-rose-600 transition">
-                View all notes →
-              </Link>
-            </div>
           </div>
-        </>
+        </aside>
       )}
     </div>
   );
