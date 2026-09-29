@@ -20,6 +20,7 @@ import type {
   QuizSubmissionPayload,
   QuizStatus,
 } from '../types/quiz';
+import type { Note, CreateNotePayload, UpdateNotePayload } from '../types/notes';
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 
@@ -149,6 +150,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}, isRetry =
     }
 
     throw new ApiClientError(message, code, response.status);
+  }
+
+  if (response.status === 204 || responseBody === null || responseBody === undefined) {
+    return undefined as T;
   }
 
   const json = responseBody as ApiSuccessResponse<T>;
@@ -802,6 +807,39 @@ export const contentManagerDashboardApi = {
   get: (courseId?: string): Promise<ContentManagerDashboardData> => {
     const query = courseId ? `?course_id=${encodeURIComponent(courseId)}` : '';
     return request<ContentManagerDashboardData>(`/api/v1/dashboard/content-manager${query}`);
+  },
+};
+
+// ============ NOTES API ============
+export const notesApi = {
+  async list(filter?: { lessonId?: string; search?: string }): Promise<Note[]> {
+    const params = new URLSearchParams();
+    if (filter?.lessonId) params.append('lessonId', filter.lessonId);
+    if (filter?.search) params.append('search', filter.search);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return request<Note[]>(`/api/v1/notes${query}`);
+  },
+
+  async get(id: string): Promise<Note> {
+    return request<Note>(`/api/v1/notes/${id}`);
+  },
+
+  async create(payload: CreateNotePayload): Promise<Note> {
+    return request<Note>('/api/v1/notes', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async update(id: string, payload: UpdateNotePayload): Promise<Note> {
+    return request<Note>(`/api/v1/notes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async delete(id: string): Promise<void> {
+    await request<void>(`/api/v1/notes/${id}`, { method: 'DELETE' });
   },
 };
 
