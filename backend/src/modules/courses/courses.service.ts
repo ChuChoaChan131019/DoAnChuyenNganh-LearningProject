@@ -557,7 +557,7 @@ export class CoursesService {
     const supabase = this.supabaseService.getClient();
     const { data: course, error: courseError } = await supabase
       .from('courses')
-      .select('id, title, slug, status')
+      .select('id, title, slug, status, level, description, updated_at')
       .eq('slug', slug)
       .eq('status', 'published')
       .single();

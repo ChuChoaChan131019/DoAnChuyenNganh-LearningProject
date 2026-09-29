@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { courseApi, notesApi } from '@/lib/api';
+import { useParams, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { courseApi, notesApi, enrollmentApi, lessonProgressApi } from '@/lib/api';
 import type { Note } from '@/types/notes';
 import {
   ArrowLeft,
@@ -461,46 +462,76 @@ public class Program
 
 export default function LearnerLessonPage() {
   const params = useParams();
+  const router = useRouter();
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug || 'csharp-fundamentals';
   const lessonIdParam = Array.isArray(params?.lessonId) ? params.lessonId[0] : params?.lessonId;
 
   const [databaseCourseTitle, setDatabaseCourseTitle] = useState<string | null>(null);
+  const [databaseCourseLevel, setDatabaseCourseLevel] = useState<string | null>(null);
+  const [databaseCourseId, setDatabaseCourseId] = useState<string | null>(null);
   const [databaseChapters, setDatabaseChapters] = useState<LearnerLessonChapter[] | null>(null);
+
+  // ─── Enrollment & progress state ─────────────────────────────────────────────
+  const [isEnrolled, setIsEnrolled] = useState<boolean | null>(null); // null = đang load
+  const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
+  const [isCompletingLesson, setIsCompletingLesson] = useState(false);
 
   useEffect(() => {
     let isActive = true;
 
     courseApi.learnerLessons(slug)
-      .then((response) => {
-        if (isActive) {
-          setDatabaseCourseTitle(response.course.title);
-          setDatabaseChapters(response.chapters);
+      .then(async (response) => {
+        if (!isActive) return;
+        setDatabaseCourseTitle(response.course.title);
+        setDatabaseCourseLevel((response.course as any).level ?? null);
+        setDatabaseCourseId(response.course.id);
+        setDatabaseChapters(response.chapters);
+
+        // Phương án B: kiểm tra đã đăng ký chưa
+        const [enrollStatus, progressData] = await Promise.all([
+          enrollmentApi.check(response.course.id).catch(() => ({ isEnrolled: false, status: null })),
+          enrollmentApi.getProgress(response.course.id).catch(() => ({ completedLessons: [] })),
+        ]);
+
+        if (!isActive) return;
+
+        if (!enrollStatus.isEnrolled) {
+          // Chưa đăng ký → redirect về trang chi tiết khóa học
+          toast.error('Bạn cần đăng ký khóa học trước khi học bài này.');
+          router.replace(`/learner/courses/${slug}`);
+          return;
         }
+
+        setIsEnrolled(true);
+        setCompletedLessonIds(new Set(progressData.completedLessons));
       })
       .catch(() => {
         if (isActive) {
           setDatabaseCourseTitle(null);
+          setDatabaseCourseId(null);
           setDatabaseChapters(null);
+          setIsEnrolled(false);
         }
       });
 
     return () => {
       isActive = false;
     };
-  }, [slug]);
+  }, [slug, router]);
 
   const fallbackCourse = COURSE_MAP[slug] || COURSE_MAP['csharp-fundamentals'];
   const currentCourse = databaseChapters
     ? {
         ...fallbackCourse,
-      title: databaseCourseTitle ?? fallbackCourse.title,
+        title: databaseCourseTitle ?? fallbackCourse.title,
+        level: databaseCourseLevel ?? fallbackCourse.level,
         chapters: databaseChapters.map((chapter) => ({
           title: chapter.title,
           lessons: chapter.lessons.map((lesson) => ({
             id: lesson.id,
             title: lesson.title,
             duration: `${lesson.duration} min`,
-            completed: false,
+            completed: completedLessonIds.has(lesson.id),
           })),
         })),
       }
@@ -546,6 +577,11 @@ export default function LearnerLessonPage() {
 
   // Bài học thuộc cùng chương hiện tại
   const currentChapterLessons = allCourseLessons.filter((l) => l.chapterTitle === currentLesson.chapter);
+  // Tiến độ chương chuẩn: Số bài đã hoàn thành / Tổng số bài trong chương
+  const completedInChapterCount = currentChapterLessons.filter((l) => l.completed).length;
+  const chapterProgressPercent = currentChapterLessons.length > 0
+    ? Math.round((completedInChapterCount / currentChapterLessons.length) * 100)
+    : 0;
 
   // Điều hướng Bài trước / Bài tiếp theo
   const globalIndex = allCourseLessons.findIndex((item) => item.id === currentLessonMeta.id);
@@ -784,7 +820,7 @@ export default function LearnerLessonPage() {
                 {currentLesson.title}
               </h1>
               <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-                <span className="rounded-full border border-[#f7d0d0] bg-[#fbe7e9] px-2.5 py-0.5 text-[11px] font-bold text-[#f7444e]">
+                <span className="rounded-full border border-[#f7d0d0] bg-[#fbe7e9] px-2.5 py-0.5 text-[11px] font-bold text-[#f7444e] capitalize">
                   {currentCourse.level}
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-600">
@@ -799,14 +835,14 @@ export default function LearnerLessonPage() {
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
                   <span>Tiến độ chương</span>
                   <span className="font-bold text-slate-800">
-                    {Math.round(((currentChapterLessons.findIndex((l) => l.id === currentLessonMeta.id) + 1) / currentChapterLessons.length) * 100)}%
+                    {chapterProgressPercent}%
                   </span>
                 </div>
                 <div className="mt-1.5 h-1.5 w-32 rounded-full bg-[#f4d0d0] overflow-hidden">
                   <div
                     className="h-full rounded-full bg-[#f7444e] transition-all duration-300"
                     style={{
-                      width: `${((currentChapterLessons.findIndex((l) => l.id === currentLessonMeta.id) + 1) / currentChapterLessons.length) * 100}%`,
+                      width: `${chapterProgressPercent}%`,
                     }}
                   />
                 </div>
@@ -823,15 +859,35 @@ export default function LearnerLessonPage() {
 
               <button
                 type="button"
-                onClick={() => setIsCompleted(!isCompleted)}
+                onClick={async () => {
+                  if (isCompleted || isCompletingLesson) return;
+                  if (!databaseCourseId) {
+                    toast.error('Không tìm thấy thông tin khóa học.');
+                    return;
+                  }
+                  setIsCompletingLesson(true);
+                  try {
+                    await lessonProgressApi.complete(activeLessonId, databaseCourseId);
+                    setIsCompleted(true);
+                    setCompletedLessonIds((prev) => new Set([...prev, activeLessonId]));
+                    toast.success('Đã đánh dấu hoàn thành bài học! 🎉');
+                  } catch {
+                    toast.error('Không thể lưu tiến độ. Vui lòng thử lại.');
+                  } finally {
+                    setIsCompletingLesson(false);
+                  }
+                }}
+                disabled={isCompleted || isCompletingLesson}
                 className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold transition shadow-sm ${
                   isCompleted
-                    ? 'bg-[#dff5ea] text-[#2b9e6a] hover:bg-[#d0f0e2] border border-[#a2e5c6]'
+                    ? 'bg-[#dff5ea] text-[#2b9e6a] border border-[#a2e5c6] cursor-default'
+                    : isCompletingLesson
+                    ? 'bg-slate-200 text-slate-400 cursor-wait'
                     : 'bg-[#F7444E] text-white hover:bg-[#e33b3b]'
                 }`}
               >
                 <CheckCircle2 className="h-4 w-4" />
-                {isCompleted ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
+                {isCompleted ? 'Đã hoàn thành' : isCompletingLesson ? 'Đang lưu...' : 'Đánh dấu hoàn thành'}
               </button>
             </div>
           </div>
