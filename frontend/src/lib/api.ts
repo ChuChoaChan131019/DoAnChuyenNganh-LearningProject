@@ -843,3 +843,53 @@ export const notesApi = {
   },
 };
 
+// ============ ENROLLMENT API ============
+
+export interface EnrollmentStatus {
+  isEnrolled: boolean;
+  status: 'active' | 'left' | null;
+}
+
+export interface EnrollResult {
+  courseId: string;
+  learnerId: string;
+  status: string;
+  message: string;
+}
+
+export const enrollmentApi = {
+  /** Đăng ký khóa học */
+  enroll: (courseId: string): Promise<EnrollResult> =>
+    request<EnrollResult>(`/api/v1/enrollments/${encodeURIComponent(courseId)}`, {
+      method: 'POST',
+    }),
+
+  /** Kiểm tra trạng thái đăng ký */
+  check: (courseId: string): Promise<EnrollmentStatus> =>
+    request<EnrollmentStatus>(`/api/v1/enrollments/${encodeURIComponent(courseId)}/check`),
+
+  /** Lấy danh sách lesson_id đã hoàn thành */
+  getProgress: (courseId: string): Promise<{ completedLessons: string[] }> =>
+    request<{ completedLessons: string[] }>(`/api/v1/enrollments/${encodeURIComponent(courseId)}/progress`),
+};
+
+// ============ LESSON PROGRESS API ============
+
+export interface LessonCompleteResult {
+  lessonId: string;
+  courseId: string;
+  completedAt: string;
+  alreadyCompleted: boolean;
+}
+
+export const lessonProgressApi = {
+  /** Đánh dấu hoàn thành bài học */
+  complete: (lessonId: string, courseId: string): Promise<LessonCompleteResult> =>
+    request<LessonCompleteResult>(
+      `/api/v1/enrollments/lessons/${encodeURIComponent(lessonId)}/complete`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ courseId }),
+      },
+    ),
+};

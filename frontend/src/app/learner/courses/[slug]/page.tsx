@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, CheckCircle2, Clock3, FileText } from 'lucide-react';
-import { useParams } from 'next/navigation';
+import { ArrowLeft, BookOpen, CheckCircle2, Clock3, FileText, Loader2 } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { courseApi, quizApi } from '@/lib/api';
+import { toast } from 'sonner';
+import { courseApi, quizApi, enrollmentApi } from '@/lib/api';
 
 const COURSE_MAP: Record<string, any> = {
   'csharp-fundamentals': {
@@ -162,11 +163,15 @@ const COURSE_MAP: Record<string, any> = {
 
 export default function LearnerCourseDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
   const [databaseCourse, setDatabaseCourse] = useState<{
     id: string;
     title: string;
     slug: string;
+    level?: string;
+    description?: string;
+    updated_at?: string;
   } | null>(null);
   const [databaseChapters, setDatabaseChapters] = useState<Array<{
     id: string;
@@ -181,6 +186,11 @@ export default function LearnerCourseDetailPage() {
     total_questions: number;
     quiz_type: string;
   }> | null>(null);
+
+  // ─── Enrollment state ────────────────────────────────────────────────────────
+  const [isEnrolled, setIsEnrolled] = useState<boolean>(false);
+  const [isEnrolling, setIsEnrolling] = useState<boolean>(false);
+  const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
   if (!slug) return;
@@ -216,6 +226,14 @@ export default function LearnerCourseDetailPage() {
       );
 
       setDatabaseQuizzes(quizzesWithQuestions);
+
+      // Kiểm tra trạng thái đăng ký & lấy danh sách bài đã hoàn thành
+      const [enrollStatus, progressData] = await Promise.all([
+        enrollmentApi.check(response.course.id).catch(() => ({ isEnrolled: false, status: null })),
+        enrollmentApi.getProgress(response.course.id).catch(() => ({ completedLessons: [] })),
+      ]);
+      setIsEnrolled(enrollStatus.isEnrolled);
+      setCompletedLessonIds(new Set(progressData.completedLessons));
     })
     .catch(() => {
       setDatabaseCourse(null);
@@ -224,14 +242,47 @@ export default function LearnerCourseDetailPage() {
     });
 }, [slug]);
 
+  // ─── Enroll handler ──────────────────────────────────────────────────────────
+  const handleEnroll = async () => {
+    if (!databaseCourse) return;
+    setIsEnrolling(true);
+    try {
+      await enrollmentApi.enroll(databaseCourse.id);
+      setIsEnrolled(true);
+      toast.success('Đăng ký khóa học thành công! Bắt đầu học ngay nhé 🎉');
+    } catch {
+      toast.error('Không thể đăng ký khóa học. Vui lòng thử lại.');
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
+
+  // ─── Intercept lesson clicks when not enrolled (Instant 0s response) ─────────
+  const handleLessonClick = (e: React.MouseEvent) => {
+    if (!isEnrolled) {
+      e.preventDefault();
+      toast.info('Đăng ký để học ngay nào! 🚀');
+      const enrollBtn = document.getElementById('enroll-button');
+      if (enrollBtn) {
+        enrollBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        enrollBtn.classList.add('ring-4', 'ring-rose-400', 'scale-105');
+        setTimeout(() => {
+          enrollBtn.classList.remove('ring-4', 'ring-rose-400', 'scale-105');
+        }, 1200);
+      }
+    }
+  };
+
+
+
   const fallbackCourse = slug ? COURSE_MAP[slug] : null;
   const baseCourse = fallbackCourse ?? (databaseCourse ? {
     id: databaseCourse.id,
     slug: databaseCourse.slug,
     title: databaseCourse.title,
-    level: 'Beginner',
-    description: 'Learning content loaded from Supabase.',
-    lastUpdated: 'Updated today',
+    level: databaseCourse.level ?? 'Beginner',
+    description: databaseCourse.description || 'Chưa có mô tả cho khóa học này.',
+    lastUpdated: databaseCourse.updated_at ? `Updated ${new Date(databaseCourse.updated_at).toLocaleDateString()}` : 'Updated today',
     lessons: 0,
     questions: 0,
     hours: 0,
@@ -258,7 +309,7 @@ export default function LearnerCourseDetailPage() {
               id: lesson.id,
               title: lesson.title,
               duration: `${lesson.duration} min`,
-              completed: false,
+              completed: completedLessonIds.has(lesson.id),
             })),
           };
         }),
@@ -316,7 +367,7 @@ export default function LearnerCourseDetailPage() {
 
           <div className="px-5 py-5 sm:px-6">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex rounded-full border border-[#f7d0d0] bg-[#fbe7e9] px-2.5 py-1 text-[11px] font-bold text-[#f7444e]">
+              <span className="inline-flex rounded-full border border-[#f7d0d0] bg-[#fbe7e9] px-2.5 py-1 text-[11px] font-bold text-[#f7444e] capitalize">
                 {course.level}
               </span>
               <span className="text-[13px] text-[#5d6b73]">
@@ -353,23 +404,50 @@ export default function LearnerCourseDetailPage() {
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-between gap-3 border-t border-[#e1e6e3] pt-4">
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#f4d0d0]">
-                <div
-                  className="h-full rounded-full bg-[#f7444e]"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-              <span className="min-w-[44px] text-right text-[18px] font-bold text-slate-700">
-                {progressPercent}%
-              </span>
-              <Link
-                href="/learner/practice"
-                className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#f4b7b7] bg-[#fff3f2] px-4 py-3 text-sm font-bold text-[#f7444e] transition hover:bg-[#ffe9e7]"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                Practice questions
-              </Link>
+            <div className="mt-6 border-t border-[#e1e6e3] pt-4">
+              {!isEnrolled ? (
+                /* ── Chưa đăng ký: Hiện nút Đăng ký ── */
+                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-[14px] text-slate-500">
+                    Đăng ký để bắt đầu học và theo dõi tiến độ của bạn.
+                  </p>
+                  <button
+                    id="enroll-button"
+                    onClick={handleEnroll}
+                    disabled={isEnrolling}
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-[14px] bg-[#F7444E] px-6 py-3 text-sm font-bold text-white transition-all duration-300 hover:bg-[#e33b3b] disabled:opacity-60"
+                  >
+                    {isEnrolling ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <BookOpen className="h-4 w-4" />
+                    )}
+                    {isEnrolling ? 'Đang đăng ký...' : 'Đăng ký khóa học'}
+                  </button>
+                </div>
+              ) : (
+                /* ── Đã đăng ký: Hiện thanh tiến độ + nút Tiếp tục ── */
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-1 items-center gap-3">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#f4d0d0]">
+                      <div
+                        className="h-full rounded-full bg-[#f7444e] transition-all duration-500"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                    <span className="min-w-[44px] text-right text-[18px] font-bold text-slate-700">
+                      {progressPercent}%
+                    </span>
+                  </div>
+                  <Link
+                    href="/learner/practice"
+                    className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#f4b7b7] bg-[#fff3f2] px-4 py-3 text-sm font-bold text-[#f7444e] transition hover:bg-[#ffe9e7]"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Practice questions
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -437,6 +515,7 @@ export default function LearnerCourseDetailPage() {
                         <Link
                           key={`${chapter.title}-${lesson.title}`}
                           href={`/learner/courses/${slug}/lessons/${lessonSlug}`}
+                          onClick={handleLessonClick}
                           className={`group flex items-center justify-between gap-4 px-4 py-3.5 transition-colors hover:bg-rose-50/50 ${
                             lessonIndex !== 0 ? 'border-t border-slate-100' : ''
                           }`}
@@ -467,20 +546,8 @@ export default function LearnerCourseDetailPage() {
             </div>
           </div>
 
-          {/* Cột phải: Instructor, Tests, Resources */}
+          {/* Cột phải: Tests, Resources */}
           <div className="space-y-5">
-            <div className="rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_8px_18px_rgba(0,44,62,0.04)]">
-              <h3 className="text-[22px] font-bold tracking-tight text-slate-800">Instructor</h3>
-              <div className="mt-4 flex items-center gap-3 rounded-[12px] border border-slate-200 bg-slate-50 p-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#dfeff5] text-base font-bold text-slate-700">
-                  DL
-                </div>
-                <div>
-                  <div className="text-[15px] font-bold text-slate-800">{course.instructor}</div>
-                  <div className="text-xs text-slate-500">{course.instructorRole}</div>
-                </div>
-              </div>
-            </div>
 
             <div className="rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_8px_18px_rgba(0,44,62,0.04)]">
               <div className="mb-4 flex items-center justify-between">
@@ -500,6 +567,7 @@ export default function LearnerCourseDetailPage() {
                     </div>
                     <Link
                       href={`/learner/courses/${slug}/tests/${test.id}`}
+                      onClick={handleLessonClick}
                       className="mt-3 inline-flex w-full items-center justify-center rounded-[10px] bg-[#F7444E] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#e33b3b]"
                     >
                       Start test
