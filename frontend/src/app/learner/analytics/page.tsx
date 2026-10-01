@@ -84,19 +84,19 @@ export default function AnalyticsPage() {
                 <tbody className="divide-y divide-slate-100">
                   <tr className="transition-colors hover:bg-slate-50">
                     <td className="px-4 py-3 font-medium text-slate-800">Variables & Data Types Quiz</td>
-                    <td className="px-4 py-3">Sept 12, 2026</td>
+                    <td className="px-4 py-3">12/09/2026</td>
                     <td className="px-4 py-3 font-bold text-[#0f3741]">85% (17/20)</td>
                     <td className="px-4 py-3"><span className="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">TỐT</span></td>
                   </tr>
                   <tr className="transition-colors hover:bg-slate-50">
                     <td className="px-4 py-3 font-medium text-slate-800">C# Fundamentals Final</td>
-                    <td className="px-4 py-3">Sept 01, 2026</td>
+                    <td className="px-4 py-3">01/09/2026</td>
                     <td className="px-4 py-3 font-bold text-[#0f3741]">72% (72/100)</td>
                     <td className="px-4 py-3"><span className="inline-flex rounded-full bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700">ĐẠT</span></td>
                   </tr>
                   <tr className="transition-colors hover:bg-slate-50">
                     <td className="px-4 py-3 font-medium text-slate-800">OOP Quick Check</td>
-                    <td className="px-4 py-3">Aug 28, 2026</td>
+                    <td className="px-4 py-3">28/08/2026</td>
                     <td className="px-4 py-3 font-bold text-[#0f3741]">40% (2/5)</td>
                     <td className="px-4 py-3"><span className="inline-flex rounded-full bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700">CẢI THIỆN</span></td>
                   </tr>
@@ -115,7 +115,7 @@ export default function AnalyticsPage() {
               <span className="absolute -left-[35px] flex h-6 w-6 items-center justify-center rounded-full bg-white ring-4 ring-white border-2 border-[#f7444e] text-[#f7444e]">
                 <div className="h-2 w-2 rounded-full bg-[#f7444e]" />
               </span>
-              <h3 className="text-sm font-bold text-slate-800 mb-4">Today, Sept 12</h3>
+              <h3 className="text-sm font-bold text-slate-800 mb-4">Hôm nay, 12/09/2026</h3>
               <div className="space-y-4">
                 <div className="rounded-[16px] border border-[#dfe6df] bg-white p-4 shadow-sm flex items-start gap-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
@@ -124,7 +124,7 @@ export default function AnalyticsPage() {
                   <div>
                     <p className="font-semibold text-[#0f3741]">Completed Lesson: Primitive Data Types</p>
                     <p className="text-xs text-slate-500 mt-1">Course: C# Fundamentals • Duration: ~14 mins</p>
-                    <p className="text-[11px] font-medium text-slate-400 mt-2">10:30 AM</p>
+                    <p className="text-[11px] font-medium text-slate-400 mt-2">10:30</p>
                   </div>
                 </div>
                 <div className="rounded-[16px] border border-[#dfe6df] bg-white p-4 shadow-sm flex items-start gap-4">
@@ -134,7 +134,7 @@ export default function AnalyticsPage() {
                   <div>
                     <p className="font-semibold text-[#0f3741]">Started Lesson: Primitive Data Types</p>
                     <p className="text-xs text-slate-500 mt-1">Course: C# Fundamentals</p>
-                    <p className="text-[11px] font-medium text-slate-400 mt-2">10:15 AM</p>
+                    <p className="text-[11px] font-medium text-slate-400 mt-2">10:15</p>
                   </div>
                 </div>
               </div>
@@ -144,7 +144,7 @@ export default function AnalyticsPage() {
               <span className="absolute -left-[35px] flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 ring-4 ring-white border-2 border-slate-300">
                 <div className="h-2 w-2 rounded-full bg-slate-400" />
               </span>
-              <h3 className="text-sm font-bold text-slate-500 mb-4">Yesterday, Sept 11</h3>
+              <h3 className="text-sm font-bold text-slate-500 mb-4">Hôm qua, 11/09/2026</h3>
               <div className="space-y-4">
                 <div className="rounded-[16px] border border-[#dfe6df] bg-white p-4 shadow-sm flex items-start gap-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -153,7 +153,7 @@ export default function AnalyticsPage() {
                   <div>
                     <p className="font-semibold text-[#0f3741]">Completed Quiz: Variables Overview</p>
                     <p className="text-xs text-slate-500 mt-1">Score: 85%</p>
-                    <p className="text-[11px] font-medium text-slate-400 mt-2">8:00 PM</p>
+                    <p className="text-[11px] font-medium text-slate-400 mt-2">20:00</p>
                   </div>
                 </div>
               </div>

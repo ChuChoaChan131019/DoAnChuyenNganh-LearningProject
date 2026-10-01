@@ -3,6 +3,7 @@
 import React, { Suspense, startTransition, useEffect, useState } from 'react';
 import { Bot, History, MessageSquarePlus, Send, Sparkles, X } from 'lucide-react';
 import { aiTutorApi } from '@/lib/api';
+import { formatDate } from '@/lib/date';
 
 const SUGGESTIONS = [
   'Explain polymorphism with an example',
@@ -198,9 +199,14 @@ function AITutorContent() {
                       onClick={() => openConversation(conversation.id)}
                       className="w-full rounded-lg px-2 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                     >
-                      <span className="block truncate" title={conversation.preview || conversation.title}>
+                      <span className="block truncate font-medium" title={conversation.preview || conversation.title}>
                         {truncatePreview(conversation.preview || conversation.title)}
                       </span>
+                      {conversation.created_at && (
+                        <span className="block text-[10px] text-slate-400 mt-0.5">
+                          {formatDate(conversation.created_at)}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>

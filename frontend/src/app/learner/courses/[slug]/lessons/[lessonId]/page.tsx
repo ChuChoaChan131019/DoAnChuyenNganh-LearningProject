@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { courseApi, notesApi, enrollmentApi, lessonProgressApi } from '@/lib/api';
+import { courseApi, notesApi, enrollmentApi, lessonProgressApi, bookmarkApi } from '@/lib/api';
+import { formatDate } from '@/lib/date';
 import type { Note } from '@/types/notes';
 import {
   ArrowLeft,
@@ -599,8 +600,48 @@ export default function LearnerLessonPage() {
   const [newNoteContent, setNewNoteContent] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isBookmarking, setIsBookmarking] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+
+  // ─── Bookmark status & toggle ─────────────────────────────────────────────
+  useEffect(() => {
+    let isSubscribed = true;
+    const targetLessonId = currentLessonMeta?.id || activeLessonId;
+    if (targetLessonId) {
+      bookmarkApi
+        .check(targetLessonId)
+        .then((res) => {
+          if (isSubscribed) setIsBookmarked(res.isBookmarked);
+        })
+        .catch(() => {
+          if (isSubscribed) setIsBookmarked(false);
+        });
+    }
+    return () => {
+      isSubscribed = false;
+    };
+  }, [currentLessonMeta?.id, activeLessonId]);
+
+  const handleToggleBookmark = async () => {
+    const targetLessonId = currentLessonMeta?.id || activeLessonId;
+    if (!targetLessonId || isBookmarking) return;
+
+    setIsBookmarking(true);
+    try {
+      const res = await bookmarkApi.toggle(targetLessonId);
+      setIsBookmarked(res.isBookmarked);
+      if (res.isBookmarked) {
+        toast.success(res.message || 'Đã lưu bài học vào danh mục yêu thích! 📌');
+      } else {
+        toast.info(res.message || 'Đã bỏ lưu bài học.');
+      }
+    } catch {
+      toast.error('Không thể cập nhật bookmark. Vui lòng thử lại.');
+    } finally {
+      setIsBookmarking(false);
+    }
+  };
 
   const [showOutline, setShowOutline] = useState(true);
   const outlineDialog = useRef<HTMLDialogElement>(null);
@@ -639,11 +680,29 @@ export default function LearnerLessonPage() {
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
+  // Xác định UUID thật của bài học từ Supabase
+  const realLessonUuid = useMemo(() => {
+    const isUuid = (val?: string) =>
+      !!val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+    if (isUuid(currentLessonMeta?.id)) return currentLessonMeta.id;
+    if (isUuid(activeLessonId)) return activeLessonId;
+
+    for (const ch of databaseChapters) {
+      for (const les of ch.lessons || []) {
+        if (les.id === activeLessonId || (les as any).slug === activeLessonId || les.title === currentLessonMeta?.title) {
+          if (isUuid(les.id)) return les.id;
+        }
+      }
+    }
+    return undefined;
+  }, [currentLessonMeta?.id, currentLessonMeta?.title, activeLessonId, databaseChapters]);
+
   const fetchNotes = async () => {
+    if (!realLessonUuid) return;
     setIsLoadingNotes(true);
     try {
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activeLessonId);
-      const data = await notesApi.list(isUuid ? { lessonId: activeLessonId } : undefined);
+      const data = await notesApi.list({ lessonId: realLessonUuid });
       setNotes(data || []);
     } catch (err) {
       console.error('Failed to load notes:', err);
@@ -652,21 +711,32 @@ export default function LearnerLessonPage() {
     }
   };
 
+  useEffect(() => {
+    if (isNoteOpen && realLessonUuid) {
+      fetchNotes();
+    }
+  }, [isNoteOpen, realLessonUuid]);
+
   const handleCreateNote = async () => {
     if (!newNoteContent.trim()) return;
+    if (!realLessonUuid) {
+      toast.error('Đang tải thông tin bài học, vui lòng thử lại sau giây lát');
+      return;
+    }
     setIsCreating(true);
     try {
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activeLessonId);
       await notesApi.create({
-        lesson_id: isUuid ? activeLessonId : undefined,
+        lesson_id: realLessonUuid,
         title: newNoteTitle.trim() || undefined,
         content: newNoteContent.trim(),
       });
       setNewNoteTitle('');
       setNewNoteContent('');
+      toast.success('Đã lưu ghi chú bài học! 📝');
       await fetchNotes();
     } catch (err) {
       console.error('Failed to create note:', err);
+      toast.error('Không thể lưu ghi chú bài học.');
     } finally {
       setIsCreating(false);
     }
@@ -850,11 +920,17 @@ export default function LearnerLessonPage() {
 
               <button
                 type="button"
-                onClick={() => setIsBookmarked(!isBookmarked)}
-                className={`hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-semibold transition ${isBookmarked ? 'bg-rose-50 text-[#f7444e]' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900'}`}
+                onClick={handleToggleBookmark}
+                disabled={isBookmarking}
+                className={`hidden sm:inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition ${
+                  isBookmarked
+                    ? 'border-rose-200 bg-rose-50 text-[#f7444e]'
+                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                } ${isBookmarking ? 'cursor-wait opacity-60' : ''}`}
+                title={isBookmarked ? 'Bỏ lưu bài học' : 'Lưu bài học vào danh mục yêu thích'}
               >
-                <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-current' : ''}`} />
-                {isBookmarked ? 'Saved' : 'Bookmark'}
+                <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-current text-[#f7444e]' : ''}`} />
+                {isBookmarking ? 'Đang xử lý...' : isBookmarked ? 'Đã lưu' : 'Lưu bài học'}
               </button>
 
               <button
@@ -1239,7 +1315,7 @@ export default function LearnerLessonPage() {
                       </button>
                     </div>
                     <p className="mt-1 text-[10px] text-slate-400">
-                      {new Date(note.created_at).toLocaleDateString('vi-VN')}
+                      {formatDate(note.created_at)}
                     </p>
                   </div>
                 ))

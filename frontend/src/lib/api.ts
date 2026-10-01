@@ -893,3 +893,54 @@ export const lessonProgressApi = {
       },
     ),
 };
+
+// ============ BOOKMARKS API ============
+
+export interface BookmarkToggleResult {
+  isBookmarked: boolean;
+  message: string;
+}
+
+export interface BookmarkCheckResult {
+  isBookmarked: boolean;
+}
+
+export interface BookmarkLessonItem {
+  id: string;
+  created_at: string;
+  lesson_id: string;
+  target_type?: string;
+  target_id?: string;
+  is_completed?: boolean;
+  lessons?: {
+    id: string;
+    title: string;
+    estimated_duration_minutes?: number;
+    chapters?: {
+      id: string;
+      title: string;
+      courses?: {
+        id: string;
+        title: string;
+        slug: string;
+      };
+    };
+  };
+}
+
+export const bookmarkApi = {
+  /** Lưu hoặc bỏ lưu bài học */
+  toggle: (lessonId: string): Promise<BookmarkToggleResult> =>
+    request<BookmarkToggleResult>('/api/v1/bookmarks/toggle', {
+      method: 'POST',
+      body: JSON.stringify({ lessonId }),
+    }),
+
+  /** Kiểm tra bài học đã bookmark chưa */
+  check: (lessonId: string): Promise<BookmarkCheckResult> =>
+    request<BookmarkCheckResult>(`/api/v1/bookmarks/check/${encodeURIComponent(lessonId)}`),
+
+  /** Lấy danh sách tất cả bài học đã lưu */
+  list: (): Promise<BookmarkLessonItem[]> =>
+    request<BookmarkLessonItem[]>('/api/v1/bookmarks'),
+};
