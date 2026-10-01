@@ -11,25 +11,25 @@ import { DifficultyLevel } from '@/types/question';
 const STYLES = {
   // Container & Cards
   pageContainer: 'mx-auto max-w-7xl space-y-6 pb-12',
-  card: 'bg-card border border-border rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between',
+  card: 'bg-white border border-[#dfe6df] rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between',
 
   // Buttons
   primaryBtn:
-    'inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 active:scale-[0.98]',
+    'inline-flex items-center gap-2 rounded-xl bg-[#F7444E] hover:bg-[#db3540] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors active:scale-[0.98]',
 
   // Dynamic Badges (Pill shape)
   difficultyBadges: {
-    easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60',
-    medium: 'bg-amber-50 text-amber-700 border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60',
-    hard: 'bg-rose-50 text-rose-700 border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60',
+    easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+    medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
+    hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
   },
 
   // Icon Container
-  iconBadge: 'w-10 h-10 rounded-2xl bg-rose-50/90 dark:bg-rose-950/40 flex items-center justify-center flex-shrink-0',
+  iconBadge: 'w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center flex-shrink-0',
 
   // Progress Bar
-  progressTrack: 'h-1.5 w-full bg-muted rounded-full overflow-hidden mt-2',
-  progressBar: 'h-full bg-primary rounded-full transition-all duration-500',
+  progressTrack: 'h-1.5 w-full bg-[#f3f7f5] rounded-full overflow-hidden mt-2',
+  progressBar: 'h-full bg-[#F7444E] rounded-full transition-all duration-500',
 };
 
 // ==========================================
@@ -115,10 +115,10 @@ export default function PracticeSetsPage() {
       {/* Header & Action Button */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-[#002C3E] sm:text-3xl">
             Practice sets
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-[#637981]">
             Untimed drills students can repeat as often as they like.
           </p>
         </div>
@@ -142,26 +142,26 @@ export default function PracticeSetsPage() {
             {/* Top Row: Flask Icon & Difficulty Pill */}
             <div className="flex items-center justify-between">
               <div className={STYLES.iconBadge}>
-                <FlaskConical className="h-5 w-5 text-primary stroke-[1.75]" />
+                <FlaskConical className="h-5 w-5 text-[#F7444E] stroke-[1.75]" />
               </div>
               <DifficultyBadge level={item.difficulty} />
             </div>
 
             {/* Card Content: Title & Course / Question Count */}
             <div className="my-4">
-              <h2 className="font-bold text-foreground text-[15px] leading-snug line-clamp-1">
+              <h2 className="font-bold text-[#002C3E] text-[15px] leading-snug line-clamp-1">
                 {item.title}
               </h2>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-[#637981] mt-1">
                 {item.course} · {item.questionCount} questions
               </p>
             </div>
 
             {/* Footer: Average Score & Progress Bar */}
             <div className="pt-2">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center justify-between text-xs text-[#637981]">
                 <span>Average score</span>
-                <span className="font-medium text-foreground">
+                <span className="font-medium text-[#002C3E]">
                   {item.averageScore}%
                 </span>
               </div>

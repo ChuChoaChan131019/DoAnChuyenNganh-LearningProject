@@ -97,20 +97,20 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-12">
       <header>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Search</h1>
-        <p className="mt-2 text-sm text-muted-foreground">One search across courses, chapters, lessons, resources and questions.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-[#002C3E]">Search</h1>
+        <p className="mt-2 text-sm text-[#637981]">One search across courses, chapters, lessons, resources and questions.</p>
       </header>
 
-      <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-xs sm:flex-row">
+      <section className="flex flex-col gap-3 rounded-2xl border border-[#dfe6df] bg-white p-3 shadow-xs sm:flex-row">
         <label className="relative flex-1">
           <span className="sr-only">Search courses or lessons</span>
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#637981]" />
           <input
             autoFocus
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder='Try "polymorphism", "LINQ", "async"...'
-            className="h-11 w-full rounded-xl border border-border bg-background px-10 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground"
+            className="h-11 w-full rounded-xl border border-[#dfe6df] bg-[#fbfcf8] px-10 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20 placeholder:text-[#637981]/70"
           />
         </label>
         <FilterDropdown
@@ -137,10 +137,10 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
         />
       </section>
 
-      {loading && <p className="text-sm text-muted-foreground">Loading content...</p>}
-      {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300">{error}</p>}
+      {loading && <p className="text-sm text-[#637981]">Loading content...</p>}
+      {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}
       {!loading && !error && resultCount === 0 && !showChapters && !showQuestions && !showResources && (
-        <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center text-sm text-muted-foreground">
+        <div className="rounded-2xl border border-dashed border-[#dfe6df] bg-white p-12 text-center text-sm text-[#637981]">
           No courses or lessons match your search.
         </div>
       )}
@@ -153,10 +153,10 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
                 <Link
                   key={course.id}
                   href={learner ? `/learner/courses/${course.slug}` : `/content-manager/learning-content/courses/${course.slug}`}
-                  className="flex items-center justify-between gap-3 px-6 py-4 hover:bg-muted/40 transition-colors"
+                  className="flex items-center justify-between gap-3 px-6 py-4 hover:bg-[#f3f7f5] transition-colors"
                 >
-                  <span className="flex min-w-0 items-center gap-3 text-sm font-medium text-foreground">
-                    <BookOpen className="h-4 w-4 shrink-0 text-primary" />
+                  <span className="flex min-w-0 items-center gap-3 text-sm font-medium text-[#002C3E]">
+                    <BookOpen className="h-4 w-4 shrink-0 text-[#78BCC4]" />
                     <span className="truncate">{course.title}</span>
                   </span>
                   {!learner && <StatusBadge status={course.status} />}
@@ -171,12 +171,12 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
                 <Link
                   key={lesson.id}
                   href={learner ? `/learner/courses/${lesson.courseSlug}/lessons/${lesson.id}` : `/content-manager/learning-content/lessons/${lesson.id}`}
-                  className="flex items-center gap-3 px-6 py-4 hover:bg-muted/40 transition-colors"
+                  className="flex items-center gap-3 px-6 py-4 hover:bg-[#f3f7f5] transition-colors"
                 >
-                  <FileText className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400" />
-                  <span className="min-w-0 flex-1 text-sm font-medium text-foreground">
+                  <FileText className="h-4 w-4 shrink-0 text-[#78BCC4]" />
+                  <span className="min-w-0 flex-1 text-sm font-medium text-[#002C3E]">
                     <span className="block truncate">{lesson.title}</span>
-                    <span className="mt-1 block truncate text-xs font-normal text-muted-foreground">{lesson.courseTitle} · {lesson.chapterTitle}</span>
+                    <span className="mt-1 block truncate text-xs font-normal text-[#637981]">{lesson.courseTitle} · {lesson.chapterTitle}</span>
                   </span>
                   {!learner && <StatusBadge status={lesson.status} />}
                 </Link>
@@ -193,9 +193,9 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
 
 function ResultSection({ title, emptyMessage, children }: { title: string; emptyMessage?: string; children?: React.ReactNode }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
-      <h2 className="border-b border-border px-6 py-5 text-sm font-bold text-foreground">{title}</h2>
-      <div className="divide-y divide-border">{children || <p className="px-6 py-4 text-sm text-muted-foreground">{emptyMessage}</p>}</div>
+    <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-xs">
+      <h2 className="border-b border-[#dfe6df] px-6 py-5 text-sm font-bold text-[#002C3E]">{title}</h2>
+      <div className="divide-y divide-[#e5ebe5]">{children || <p className="px-6 py-4 text-sm text-[#637981]">{emptyMessage}</p>}</div>
     </section>
   );
 }
@@ -204,12 +204,12 @@ function StatusBadge({ status }: { status: string }) {
   const normalizedStatus = status.replace('_', ' ').toLowerCase();
   const label = normalizedStatus.replace(/\b\w/g, (letter) => letter.toUpperCase());
   const styles = normalizedStatus === 'published'
-    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300'
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
     : normalizedStatus === 'approved'
-      ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-sky-300'
+      ? 'border-sky-200 bg-sky-50 text-sky-700'
       : normalizedStatus === 'in review'
-        ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300'
-        : 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300';
+        ? 'border-amber-200 bg-amber-50 text-amber-700'
+        : 'border-[#dfe6df] bg-[#fbfcf8] text-[#637981]';
 
   return <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium ${styles}`}>{label}</span>;
 }
@@ -247,13 +247,13 @@ function FilterDropdown({
         onClick={() => setIsOpen((open) => !open)}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        className={`flex h-11 w-full items-center justify-between gap-4 rounded-xl border bg-card px-3.5 text-sm text-foreground shadow-xs outline-none transition ${isOpen ? 'border-primary ring-2 ring-primary/10' : 'border-border hover:border-primary/50'}`}
+        className={`flex h-11 w-full items-center justify-between gap-4 rounded-xl border bg-white px-3.5 text-sm text-[#002C3E] shadow-xs outline-none transition ${isOpen ? 'border-[#78BCC4] ring-2 ring-[#78BCC4]/20' : 'border-[#dfe6df] hover:border-[#78BCC4]'}`}
       >
         <span>{selectedLabel}</span>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`h-4 w-4 text-[#637981] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-30 w-full min-w-[190px] overflow-hidden rounded-2xl border border-border bg-card p-1.5 shadow-xl ring-1 ring-black/5" role="listbox">
+        <div className="absolute left-0 top-[calc(100%+6px)] z-30 w-full min-w-[190px] overflow-hidden rounded-2xl border border-[#dfe6df] bg-white p-1.5 shadow-xl ring-1 ring-black/5" role="listbox">
           {options.map(([optionValue, optionLabel]) => {
             const isSelected = optionValue === value;
             return (
@@ -266,10 +266,10 @@ function FilterDropdown({
                   onChange(optionValue);
                   setIsOpen(false);
                 }}
-                className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition ${isSelected ? 'bg-primary/10 text-primary font-semibold' : 'text-foreground hover:bg-muted'}`}
+                className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition ${isSelected ? 'bg-[#78BCC4]/15 text-[#002C3E] font-semibold' : 'text-[#002C3E] hover:bg-[#f3f7f5]'}`}
               >
                 <span>{optionLabel}</span>
-                {isSelected && <Check className="h-4 w-4" />}
+                {isSelected && <Check className="h-4 w-4 text-[#78BCC4]" />}
               </button>
             );
           })}

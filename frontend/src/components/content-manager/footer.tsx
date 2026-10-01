@@ -2,11 +2,11 @@ import { Code2, GraduationCap, Mail, Send } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="bg-sidebar px-7 py-7 text-white lg:px-8">
+    <footer className="bg-[#002C3E] px-7 py-7 text-white lg:px-8">
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-sm">
           <div className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-white">
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-[#F7444E] text-white">
               <GraduationCap className="h-5 w-5" />
             </span>
             <p className="text-lg font-bold">CSharpHub</p>

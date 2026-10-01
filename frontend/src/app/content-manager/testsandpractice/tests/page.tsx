@@ -9,31 +9,31 @@ import { quizApi, courseApi } from '@/lib/api';
 
 const STYLES = {
   pageContainer: 'mx-auto max-w-7xl space-y-6 pb-12',
-  tableCard: 'overflow-hidden rounded-2xl border border-border bg-card shadow-xs',
-  thead: 'border-b border-border bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground',
-  trHover: 'transition-colors hover:bg-muted/40 cursor-pointer',
+  tableCard: 'overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-xs',
+  thead: 'border-b border-[#dfe6df] bg-[#fbfcf8] text-xs font-semibold uppercase tracking-wider text-[#637981]',
+  trHover: 'transition-colors hover:bg-[#f3f7f5] cursor-pointer',
 
   createBtn:
-    'inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-xs transition-opacity hover:opacity-90 active:scale-[0.98]',
+    'inline-flex items-center gap-2 rounded-xl bg-[#F7444E] hover:bg-[#db3540] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors active:scale-[0.98]',
 
   difficultyBadges: {
-    easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60',
-    medium: 'bg-amber-50 text-amber-700 border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60',
-    hard: 'bg-rose-50 text-rose-700 border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60',
+    easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+    medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
+    hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
   },
   statusBadges: {
     published: {
-      bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60',
+      bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
       dot: 'bg-emerald-500',
       label: 'Published',
     },
     approved: {
-      bg: 'bg-sky-50 text-sky-700 border-sky-200/60 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/60',
+      bg: 'bg-sky-50 text-sky-700 border-sky-200/60',
       dot: 'bg-sky-500',
       label: 'Approved',
     },
     draft: {
-      bg: 'bg-muted text-muted-foreground border-border',
+      bg: 'bg-[#fbfcf8] text-[#637981] border-[#dfe6df]',
       dot: 'bg-gray-400',
       label: 'Draft',
     },
@@ -156,10 +156,10 @@ export default function TestsPage() {
       {/* Header & Action Buttons */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-[#002C3E] sm:text-3xl">
             Tests
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-[#637981]">
             Assessments built from the C# question bank.
           </p>
         </div>
@@ -179,7 +179,7 @@ export default function TestsPage() {
       {/* Data Table */}
       <div className={STYLES.tableCard}>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-foreground">
+          <table className="w-full text-left text-sm text-[#002C3E]">
             <thead className={STYLES.thead}>
               <tr>
                 <th scope="col" className="py-4 pl-6 pr-4">Test</th>
@@ -191,10 +191,10 @@ export default function TestsPage() {
                 <th scope="col" className="py-4 pl-4 pr-6">Attempts</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-[#e5ebe5]">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-muted-foreground">
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-[#637981]">
                     Loading tests from database...
                   </td>
                 </tr>
@@ -206,7 +206,7 @@ export default function TestsPage() {
                 </tr>
               ) : tests.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-muted-foreground">
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-[#637981]">
                     Chưa có bài test nào trong database. Hãy bấm &quot;Create test&quot; để tạo mới.
                   </td>
                 </tr>
@@ -218,25 +218,25 @@ export default function TestsPage() {
                     className={STYLES.trHover}
                   >
                     <td className="max-w-md py-4 pl-6 pr-4">
-                      <p className="font-semibold text-foreground line-clamp-1">
+                      <p className="font-semibold text-[#002C3E] line-clamp-1">
                         {test.title}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="text-xs text-[#637981] mt-0.5">
                         Created {test.created_at}
                       </p>
                     </td>
 
-                    <td className="whitespace-nowrap px-4 py-4 text-muted-foreground font-medium text-xs sm:text-sm">
+                    <td className="whitespace-nowrap px-4 py-4 text-[#637981] font-medium text-xs sm:text-sm">
                       {test.course_title}
                     </td>
 
-                    <td className="whitespace-nowrap px-4 py-4 text-muted-foreground font-medium">
+                    <td className="whitespace-nowrap px-4 py-4 text-[#637981] font-medium">
                       {test.questions_count}
                     </td>
 
-                    <td className="whitespace-nowrap px-4 py-4 text-muted-foreground">
+                    <td className="whitespace-nowrap px-4 py-4 text-[#637981]">
                       <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm">
-                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Clock className="h-3.5 w-3.5 text-[#637981]" />
                         {test.duration_minutes} min
                       </span>
                     </td>
@@ -249,9 +249,9 @@ export default function TestsPage() {
                       <StatusBadge status={test.status} />
                     </td>
 
-                    <td className="whitespace-nowrap py-4 pl-4 pr-6 text-muted-foreground">
+                    <td className="whitespace-nowrap py-4 pl-4 pr-6 text-[#637981]">
                       <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm">
-                        <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Users className="h-3.5 w-3.5 text-[#637981]" />
                         {test.attempts_count}
                       </span>
                     </td>

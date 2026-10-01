@@ -17,28 +17,28 @@ import { courseApi, questionApi, quizApi } from '@/lib/api';
 
 const STYLES = {
   pageContainer: 'mx-auto max-w-7xl space-y-6 pb-12',
-  card: 'bg-card border border-border rounded-2xl p-5 shadow-xs flex flex-col h-full',
-  cardHeader: 'pb-3 mb-4 border-b border-border flex items-center justify-between',
-  cardTitle: 'text-base font-semibold text-foreground',
+  card: 'bg-white border border-[#dfe6df] rounded-2xl p-5 shadow-xs flex flex-col h-full',
+  cardHeader: 'pb-3 mb-4 border-b border-[#dfe6df] flex items-center justify-between',
+  cardTitle: 'text-base font-semibold text-[#002C3E]',
 
   primaryBtn:
-    'inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-xs transition-opacity hover:opacity-90 active:scale-[0.98] disabled:opacity-50',
+    'inline-flex items-center gap-2 rounded-xl bg-[#F7444E] hover:bg-[#db3540] px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors active:scale-[0.98] disabled:opacity-50',
   secondaryBtn:
-    'inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground shadow-xs transition-colors hover:bg-muted active:scale-[0.98]',
+    'inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-semibold text-[#002C3E] shadow-xs transition-colors hover:bg-[#f3f7f5] active:scale-[0.98]',
   addBtn:
-    'inline-flex items-center gap-1 text-xs font-semibold text-foreground bg-muted hover:bg-muted/80 px-2.5 py-1 rounded-lg transition active:scale-[0.96]',
+    'inline-flex items-center gap-1 text-xs font-semibold text-[#002C3E] bg-[#f3f7f5] hover:bg-[#dfe6df] px-2.5 py-1 rounded-lg transition active:scale-[0.96]',
   removeBtn:
-    'p-1.5 text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition active:scale-[0.96]',
+    'p-1.5 text-[#637981] hover:text-rose-500 hover:bg-rose-50 rounded-lg transition active:scale-[0.96]',
 
   bankItemCard:
-    'p-3 rounded-xl border border-border hover:border-border/80 bg-muted/40 hover:bg-card transition-all space-y-2.5',
+    'p-3 rounded-xl border border-[#dfe6df] hover:border-[#78BCC4]/60 bg-[#fbfcf8] hover:bg-white transition-all space-y-2.5',
   selectedItemCard:
-    'p-3 rounded-xl border border-border bg-card hover:bg-muted/30 transition-all flex items-start gap-2.5 group',
+    'p-3 rounded-xl border border-[#dfe6df] bg-white hover:bg-[#fbfcf8] transition-all flex items-start gap-2.5 group',
 
   difficultyBadges: {
-    easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60',
-    medium: 'bg-amber-50 text-amber-700 border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60',
-    hard: 'bg-rose-50 text-rose-700 border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60',
+    easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+    medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
+    hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
   },
 };
 
@@ -242,10 +242,10 @@ function TestBuilderContent() {
       {/* Header Action Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-[#002C3E] sm:text-3xl">
             Test builder
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-[#637981]">
             Chọn các câu hỏi từ ngân hàng câu hỏi để hoàn thiện bài kiểm tra.
           </p>
         </div>
@@ -256,7 +256,7 @@ function TestBuilderContent() {
             onClick={() => alert('Opening preview modal...')}
             className={STYLES.secondaryBtn}
           >
-            <Eye className="h-4 w-4 text-muted-foreground" />
+            <Eye className="h-4 w-4 text-[#637981]" />
             <span>Preview test</span>
           </button>
           <button
@@ -278,10 +278,10 @@ function TestBuilderContent() {
           <div className={STYLES.card}>
             <div className={STYLES.cardHeader}>
               <div className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-muted-foreground" />
+                <BookOpen className="w-4 h-4 text-[#637981]" />
                 <h2 className={STYLES.cardTitle}>Question bank</h2>
               </div>
-              <span className="text-xs text-muted-foreground font-medium">
+              <span className="text-xs text-[#637981] font-medium">
                 {availableQuestions.length} available
               </span>
             </div>
@@ -291,24 +291,24 @@ function TestBuilderContent() {
               <select
                 value={selectedCourseId}
                 onChange={(e) => setSelectedCourseId(e.target.value)}
-                className="w-full text-xs bg-card border border-border rounded-xl px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-teal-600 cursor-pointer"
+                className="w-full text-xs bg-white border border-[#dfe6df] rounded-xl px-3 py-2 text-[#002C3E] focus:outline-none focus:border-[#78BCC4] focus:ring-1 focus:ring-[#78BCC4]/20 cursor-pointer"
               >
-                <option value="" className="bg-card text-foreground">All courses</option>
+                <option value="" className="bg-white text-[#002C3E]">All courses</option>
                 {courses.map((c) => (
-                  <option key={c.id} value={c.id} className="bg-card text-foreground">
+                  <option key={c.id} value={c.id} className="bg-white text-[#002C3E]">
                     {c.title}
                   </option>
                 ))}
               </select>
 
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#637981]" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search questions..."
-                  className="w-full text-xs bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-teal-600 transition"
+                  className="w-full text-xs bg-[#fbfcf8] border border-[#dfe6df] rounded-xl pl-8 pr-3 py-2 text-[#002C3E] placeholder-[#637981]/70 focus:outline-none focus:border-[#78BCC4] focus:ring-1 focus:ring-[#78BCC4]/20 transition"
                 />
               </div>
             </div>
@@ -317,13 +317,13 @@ function TestBuilderContent() {
               {availableQuestions.length > 0 ? (
                 availableQuestions.map((q) => (
                   <div key={q.id} className={STYLES.bankItemCard}>
-                    <p className="text-xs font-medium text-foreground leading-snug line-clamp-2">
+                    <p className="text-xs font-medium text-[#002C3E] leading-snug line-clamp-2">
                       {q.title}
                     </p>
                     <div className="flex items-center justify-between pt-1">
                       <div className="flex items-center gap-1.5">
                         <DifficultyBadge level={q.difficulty} />
-                        <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                        <span className="text-[10px] text-[#637981] truncate max-w-[120px]">
                           {TYPE_LABELS[q.type]}
                         </span>
                       </div>
@@ -339,7 +339,7 @@ function TestBuilderContent() {
                   </div>
                 ))
               ) : (
-                <div className="py-12 text-center text-xs text-muted-foreground">
+                <div className="py-12 text-center text-xs text-[#637981]">
                   No available questions found.
                 </div>
               )}
@@ -352,10 +352,10 @@ function TestBuilderContent() {
           <div className={STYLES.card}>
             <div className={STYLES.cardHeader}>
               <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-muted-foreground" />
+                <Layers className="w-4 h-4 text-[#637981]" />
                 <h2 className={STYLES.cardTitle}>Selected questions</h2>
               </div>
-              <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-full">
                 {selectedQuestions.length} in this test
               </span>
             </div>
@@ -364,20 +364,20 @@ function TestBuilderContent() {
               {selectedQuestions.length > 0 ? (
                 selectedQuestions.map((q, index) => (
                   <div key={q.id} className={STYLES.selectedItemCard}>
-                    <div className="flex items-center gap-1 text-muted-foreground pt-0.5">
-                      <GripVertical className="w-4 h-4 cursor-grab text-muted-foreground/60 group-hover:text-foreground" />
-                      <span className="text-xs font-bold text-muted-foreground w-4 text-center">
+                    <div className="flex items-center gap-1 text-[#637981] pt-0.5">
+                      <GripVertical className="w-4 h-4 cursor-grab text-[#637981]/60 group-hover:text-[#002C3E]" />
+                      <span className="text-xs font-bold text-[#637981] w-4 text-center">
                         {index + 1}
                       </span>
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-foreground leading-snug">
+                      <p className="text-xs font-semibold text-[#002C3E] leading-snug">
                         {q.title}
                       </p>
                       <div className="flex items-center gap-2 mt-1.5">
                         <DifficultyBadge level={q.difficulty} />
-                        <span className="text-[11px] text-muted-foreground truncate">
+                        <span className="text-[11px] text-[#637981] truncate">
                           {TYPE_LABELS[q.type]} · {q.lesson}
                         </span>
                       </div>
@@ -394,12 +394,12 @@ function TestBuilderContent() {
                   </div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-border rounded-xl">
-                  <Layers className="w-8 h-8 text-muted-foreground/40 mb-2" />
-                  <p className="text-xs font-medium text-muted-foreground">
+                <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-[#dfe6df] rounded-xl">
+                  <Layers className="w-8 h-8 text-[#637981]/40 mb-2" />
+                  <p className="text-xs font-medium text-[#637981]">
                     No questions selected
                   </p>
-                  <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                  <p className="text-[11px] text-[#637981]/70 mt-0.5">
                     Click + Add on any question from the bank
                   </p>
                 </div>
