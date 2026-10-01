@@ -80,10 +80,10 @@ const resources: LearningResource[] = [
 ];
 
 const statusStyles: Record<ContentStatus, string> = {
-  Published: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
-  Approved: "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300",
-  "In review": "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
-  Draft: "border-border bg-muted text-muted-foreground",
+  Published: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  Approved: "border-cyan-200 bg-cyan-50 text-cyan-700",
+  "In review": "border-amber-200 bg-amber-50 text-amber-700",
+  Draft: "border-slate-200 bg-slate-100 text-slate-600",
 };
 
 const typeIcons: Record<ResourceType, typeof FileText> = {
@@ -125,16 +125,16 @@ export default function ResourcesPage() {
     <div className="mx-auto max-w-[1240px] space-y-6 pb-12">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-[#002C3E]">
             Learning resources
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-[#637981]">
             Supplementary material attached to C# lessons.
           </p>
         </div>
         <button
           type="button"
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white shadow-xs hover:opacity-90 transition-opacity"
+          className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#F7444E] px-4 text-sm font-semibold text-white shadow-xs hover:bg-[#db3540] transition-opacity"
         >
           <Plus className="h-4 w-4" />
           Add resource
@@ -142,12 +142,12 @@ export default function ResourcesPage() {
       </header>
       <label className="relative block max-w-[390px]">
         <span className="sr-only">Search resources</span>
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#637981]" />
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search resources..."
-          className="h-11 w-full rounded-xl border border-border bg-card pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground shadow-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          className="h-11 w-full rounded-xl border border-[#dfe6df] bg-white pl-10 pr-3 text-sm text-[#002C3E] placeholder:text-[#637981]/70 shadow-xs outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
         />
       </label>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -156,21 +156,21 @@ export default function ResourcesPage() {
           return (
             <article
               key={resource.id}
-              className="rounded-2xl border border-border bg-card p-5 shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
+              className="rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="flex items-start justify-between gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-full bg-primary/10 text-primary dark:bg-primary/20">
+                <span className="grid h-11 w-11 place-items-center rounded-full bg-[#F7444E]/10 text-[#F7444E]">
                   <Icon className="h-5 w-5" />
                 </span>
                 <StatusBadge status={resource.status} />
               </div>
-              <h2 className="mt-4 text-[17px] font-semibold leading-tight text-foreground">
+              <h2 className="mt-4 text-[17px] font-semibold leading-tight text-[#002C3E]">
                 {resource.title}
               </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-[#637981]">
                 {resource.course} · {resource.lesson}
               </p>
-              <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-sm text-muted-foreground">
+              <div className="mt-4 flex items-center justify-between border-t border-[#dfe6df] pt-4 text-sm text-[#637981]">
                 <span>
                   {resource.type} · {resource.size}
                 </span>
@@ -181,7 +181,7 @@ export default function ResourcesPage() {
         })}
       </div>
       {filteredResources.length === 0 && (
-        <p className="rounded-2xl border border-dashed border-border bg-card px-5 py-14 text-center text-sm text-muted-foreground">
+        <p className="rounded-2xl border border-dashed border-[#dfe6df] bg-white px-5 py-14 text-center text-sm text-[#637981]">
           No resources found.
         </p>
       )}

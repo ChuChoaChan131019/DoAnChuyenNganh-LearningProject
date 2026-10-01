@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { courseApi, quizApi, enrollmentApi } from '@/lib/api';
+import { formatDate } from '@/lib/date';
 
 const COURSE_MAP: Record<string, any> = {
   'csharp-fundamentals': {
@@ -15,7 +16,7 @@ const COURSE_MAP: Record<string, any> = {
     level: 'Beginner',
     description:
       'Start from zero: install the .NET SDK, write your first program, and master variables, data types, operators and control flow.',
-    lastUpdated: 'Updated 2026-08-02',
+    lastUpdated: '02/08/2026',
     lessons: 24,
     questions: 148,
     hours: 5,
@@ -95,7 +96,7 @@ const COURSE_MAP: Record<string, any> = {
     level: 'Intermediate',
     description:
       'Model real problems with classes and objects. Learn encapsulation, inheritance, polymorphism, and design clean solutions.',
-    lastUpdated: 'Updated 2026-08-11',
+    lastUpdated: '11/08/2026',
     lessons: 31,
     questions: 206,
     hours: 6,
@@ -282,7 +283,7 @@ export default function LearnerCourseDetailPage() {
     title: databaseCourse.title,
     level: databaseCourse.level ?? 'Beginner',
     description: databaseCourse.description || 'Chưa có mô tả cho khóa học này.',
-    lastUpdated: databaseCourse.updated_at ? `Updated ${new Date(databaseCourse.updated_at).toLocaleDateString()}` : 'Updated today',
+    lastUpdated: databaseCourse.updated_at ? formatDate(databaseCourse.updated_at) : formatDate(new Date()),
     lessons: 0,
     questions: 0,
     hours: 0,
@@ -371,7 +372,7 @@ export default function LearnerCourseDetailPage() {
                 {course.level}
               </span>
               <span className="text-[13px] text-[#5d6b73]">
-                Updated {course.lastUpdated.split('Updated ')[1]}
+                Cập nhật: {course.lastUpdated.includes('Updated ') ? (formatDate(course.lastUpdated.replace('Updated ', '')) || course.lastUpdated.replace('Updated ', '')) : (formatDate(course.lastUpdated) || course.lastUpdated)}
               </span>
             </div>
 

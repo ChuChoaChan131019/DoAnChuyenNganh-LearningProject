@@ -197,7 +197,7 @@ export default function StudyPlanPage() {
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-slate-100">
                 <span className="flex items-center gap-2"><Target className="h-4 w-4 text-slate-400"/> Goal Date</span>
-                <span className="font-semibold text-slate-800">Nov 15, 2026</span>
+                <span className="font-semibold text-slate-800">15/11/2026</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="flex items-center gap-2"><Clock className="h-4 w-4 text-slate-400"/> Daily Session</span>
