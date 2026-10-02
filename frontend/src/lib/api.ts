@@ -613,6 +613,74 @@ export const notificationsApi = {
   },
 };
 
+export type AdminNotificationType = 'General' | 'Warning' | 'Maintenance';
+export type AdminNotificationAudience = 'all' | 'learner' | 'content_manager' | 'admin';
+export type AdminNotificationRecipientAudience = Exclude<AdminNotificationAudience, 'admin'>;
+export type AdminNotificationStatus = 'scheduled' | 'sent' | 'cancelled';
+
+export interface CreateAdminNotificationPayload {
+  title: string;
+  content: string;
+  type: AdminNotificationType;
+  audience: AdminNotificationRecipientAudience;
+  scheduledAt?: string;
+  sendEmail?: boolean;
+}
+
+export interface AdminNotification {
+  id: string;
+  title: string;
+  content: string;
+  type: AdminNotificationType;
+  audience: AdminNotificationAudience;
+  recipients: number;
+  read: number;
+  status: AdminNotificationStatus;
+  sentAt: string | null;
+  scheduledAt: string | null;
+  createdAt: string;
+  sendEmail: boolean;
+}
+
+export interface LearnerNotification {
+  id: string;
+  recipientId: string;
+  title: string;
+  content: string;
+  sentAt: string;
+  readAt: string | null;
+}
+
+export const adminNotificationsApi = {
+  list: (): Promise<AdminNotification[]> =>
+    request<AdminNotification[]>('/api/v1/admin/notifications'),
+  create: (payload: CreateAdminNotificationPayload): Promise<{
+    notification: AdminNotification;
+    recipientCount: number;
+  }> =>
+    request('/api/v1/admin/notifications', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  revoke: (notificationId: string): Promise<{
+    id: string;
+    status: 'cancelled';
+    previousStatus: AdminNotificationStatus;
+  }> =>
+    request(`/api/v1/admin/notifications/${encodeURIComponent(notificationId)}`, {
+      method: 'DELETE',
+    }),
+};
+
+export const learnerNotificationsApi = {
+  list: (): Promise<{ notifications: LearnerNotification[]; unreadCount: number }> =>
+    request('/api/v1/learner/notifications'),
+  markRead: (notificationId: string): Promise<{ notificationId: string; readAt: string }> =>
+    request(`/api/v1/learner/notifications/${encodeURIComponent(notificationId)}/read`, {
+      method: 'PATCH',
+    }),
+};
+
 export interface FeedbackItem {
   id: string;
   managerId: string;

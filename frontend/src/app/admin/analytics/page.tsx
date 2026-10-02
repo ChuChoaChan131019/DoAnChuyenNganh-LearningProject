@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ChartTooltip, AXIS_PROPS } from '@/components/admin/chart-parts';
+import { ChartTooltip } from '@/components/admin/chart-parts';
 import {
   ENROLLMENT_FUNNEL,
   fmtDelta,
