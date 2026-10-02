@@ -45,9 +45,12 @@ export class AuthService {
       const errorMessage = authError?.message || 'Registration failed';
       this.logger.error(`Registration failed: ${errorMessage}`);
 
+      // Chỉ detect duplicate khi message chứa 'already registered' cụ thể
+      // Không dùng status 422 vì nó cover quá nhiều loại lỗi (validation, rate limit, etc.)
       const isDuplicate =
-        errorMessage.toLowerCase().includes('already') ||
-        (authError as any)?.status === 422;
+        errorMessage.toLowerCase().includes('already registered') ||
+        errorMessage.toLowerCase().includes('already been registered') ||
+        errorMessage.toLowerCase().includes('email address is already');
 
       if (isDuplicate) {
         throw new HttpException(
