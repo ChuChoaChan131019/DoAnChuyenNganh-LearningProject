@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Activity,
@@ -9,10 +9,8 @@ import {
   AlertTriangle,
   Bell,
   FileText,
-  LogOut,
+  X,
 } from 'lucide-react';
-import { toast } from 'sonner';
-import { clearSession } from '@/lib/auth/session';
 
 const MENUS = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -27,21 +25,29 @@ function isActive(pathname: string, href: string) {
   return href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
 }
 
-export function Sidebar() {
+export function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
-  const router = useRouter();
-
-  const handleLogout = () => {
-    clearSession();
-    toast.success('Đã đăng xuất');
-    router.push('/login');
-  };
 
   return (
-    <aside className="sidebar-font flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar">
-      <div className="border-b border-sidebar-border p-6">
-        <h2 className="text-lg font-bold tracking-tight text-brand">Hệ thống tự học</h2>
-        <p className="mt-0.5 text-sm text-muted-foreground">Bảng điều khiển quản trị</p>
+    <aside
+      aria-label="Điều hướng quản trị"
+      className={`sidebar-font fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-sidebar-border bg-sidebar shadow-xl transition-transform duration-200 ease-out lg:translate-x-0 lg:shadow-none ${
+        open ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
+      <div className="flex min-h-20 items-start justify-between border-b border-sidebar-border p-5">
+        <div>
+          <h2 className="text-lg font-bold tracking-tight text-brand">Hệ thống tự học</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">Bảng điều khiển quản trị</p>
+        </div>
+        <button
+          type="button"
+          aria-label="Đóng menu"
+          onClick={onClose}
+          className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
       <nav className="flex-1 px-3 py-4">
@@ -54,10 +60,11 @@ export function Sidebar() {
                 <Link
                   href={menu.href}
                   aria-current={active ? 'page' : undefined}
-                  className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  onClick={onClose}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     active
-                      ? 'bg-brand-soft text-brand'
-                      : 'text-sidebar-foreground hover:bg-muted hover:text-foreground'
+                      ? 'bg-brand-soft text-brand shadow-[inset_3px_0_0_var(--brand)]'
+                      : 'text-sidebar-foreground hover:translate-x-0.5 hover:bg-muted hover:text-foreground'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -68,16 +75,6 @@ export function Sidebar() {
           })}
         </ul>
       </nav>
-
-      <div className="border-t border-sidebar-border p-4">
-        <button
-          onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
-        >
-          <LogOut className="h-4 w-4" />
-          Đăng xuất
-        </button>
-      </div>
     </aside>
   );
 }

@@ -113,7 +113,7 @@ Email:
 - optional.
 
 Sent:
-- immutable.
+- có thể thu hồi khỏi inbox người nhận; bản ghi được giữ lại với trạng thái `cancelled` để audit.
 
 Read metrics:
 - total recipients;
