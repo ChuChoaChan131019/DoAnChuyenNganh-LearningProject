@@ -24,9 +24,11 @@ import { QuestionsModule } from './modules/questions/questions.module.js';
 import { PracticeModule } from './modules/practice/practice.module.js';
 import { QuizzesModule } from './modules/quizzes/quizzes.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
+import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module.js';
 
 @Module({
   imports: [
+    AdminDashboardModule,
     DashboardModule,
     ConfigModule.forRoot({
       isGlobal: true,

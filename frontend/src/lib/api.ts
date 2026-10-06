@@ -753,7 +753,43 @@ export const feedbacksApi = {
   },
 };
 
-// Dashboard API
+// Admin Dashboard API
+export interface AdminDashboardData {
+  rangeDays: 7 | 30 | 90;
+  generatedAt: string;
+  accounts: {
+    total: number;
+    byRole: { learner: number; contentManager: number; admin: number };
+    newInRange: number;
+  };
+  activity: {
+    source: 'learning_history';
+    coverage: 'learner_learning_activity_only';
+    activeUsers: number;
+    meaningfulActivities: number;
+    dau: number;
+    wau: number;
+    mau: number;
+    daily: Array<{ date: string; activities: number; activeUsers: number }>;
+  };
+  aiUsage: { totalCalls: number | null; reason?: 'telemetry_not_available' };
+  systemStatus: { apiAvailable: boolean; uptime30d: number | null };
+  notifications: { sent: number; scheduled: number; cancelled: number; readRecipients: number };
+  recentRegistrations: Array<{
+    id: string;
+    name: string;
+    email: string | null;
+    role: 'learner' | 'content_manager' | 'admin';
+    createdAt: string;
+  }>;
+}
+
+export const adminDashboardApi = {
+  get: (days: 7 | 30 | 90): Promise<AdminDashboardData> =>
+    request<AdminDashboardData>(`/api/v1/admin/dashboard?days=${days}`),
+};
+
+// Learner Dashboard API
 export interface ContinueLearningStudyPlan {
   id: string;
   name: string;

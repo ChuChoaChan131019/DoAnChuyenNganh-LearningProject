@@ -807,7 +807,7 @@ COMMENT ON COLUMN notifications.notification_type IS 'reminder | learning | mess
 COMMENT ON COLUMN notifications.scope_type IS 'all | role | course | individual';
 COMMENT ON COLUMN notifications.scope_value IS 'Giá trị scope: role name, course_id, hoặc user_id';
 COMMENT ON COLUMN notifications.status IS 'scheduled | sent | cancelled';
-COMMENT ON COLUMN notifications.status IS 'scheduled (sửa/hủy được) | sent (immutable) | cancelled';
+COMMENT ON COLUMN notifications.status IS 'scheduled (sửa/hủy được) | sent (có thể thu hồi, giữ audit) | cancelled';
 
 -- ============================================================
 -- 19. BẢNG NGƯỜI NHẬN THÔNG BÁO (NOTIFICATION RECIPIENTS)

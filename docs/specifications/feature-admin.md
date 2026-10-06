@@ -356,7 +356,7 @@ System Notification cho phép Admin gửi thông báo đến người dùng tron
 
 | Trạng thái | Mô tả |
 |-------------|--------|
-| Sent | Đã gửi - **immutable**, không thể sửa hoặc xóa |
+| Sent | Đã gửi - có thể thu hồi khỏi inbox; bản ghi giữ trạng thái `cancelled` để audit |
 
 ### 6.7. Metrics đọc (Read Metrics)
 
@@ -396,7 +396,7 @@ System Notification cho phép Admin gửi thông báo đến người dùng tron
 | AC-A21 | Gửi cho role cụ thể → Chỉ user đúng role nhận | Automated |
 | AC-A22 | Scheduled notification → Gửi đúng thời điểm | Automated |
 | AC-A23 | Email optional → Gửi khi được chọn | Manual |
-| AC-A24 | Notification đã Sent → Không sửa/xóa được | Automated |
+| AC-A24 | Admin có thể hủy notification đã Scheduled hoặc thu hồi notification đã Sent; bản ghi vẫn giữ để audit | Automated |
 | AC-A25 | Read metrics hiển thị đúng | Automated |
 
 ---
