@@ -1,18 +1,34 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Flame, Sun, Bell, LogOut, Settings, ChevronDown } from 'lucide-react';
 import { QuickContentSearch } from '@/components/search/quick-content-search';
+import { learnerNotificationsApi, type LearnerNotification } from '@/lib/api';
+
+function notificationTime(value: string) {
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
 
 export function LearnerTopbar() {
   const router = useRouter();
   const { user, role, logout } = useAuth();
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<LearnerNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
 
   const displayName = user?.fullName || user?.email || 'Learner';
   const initial = (user?.fullName?.[0] || user?.email?.[0] || 'L').toUpperCase();
@@ -22,11 +38,86 @@ export function LearnerTopbar() {
     window.setTimeout(() => router.push('/login'), 0);
   };
 
+  const loadNotifications = useCallback(async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
+    if (!user?.id || role !== 'learner') return;
+
+    try {
+      if (showLoading) {
+        setIsLoadingNotifications(true);
+        setNotificationsError(null);
+      }
+      const result = await learnerNotificationsApi.list();
+      setNotifications(result.notifications);
+      setUnreadCount(result.unreadCount);
+    } catch (error) {
+      if (showLoading) {
+        setNotificationsError(
+          error instanceof Error ? error.message : 'Không thể tải thông báo',
+        );
+      }
+    } finally {
+      if (showLoading) setIsLoadingNotifications(false);
+    }
+  }, [role, user?.id]);
+
+  useEffect(() => {
+    if (role !== 'learner') return;
+
+    const initialRefreshTimer = window.setTimeout(() => {
+      void loadNotifications();
+    }, 0);
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void loadNotifications({ showLoading: false });
+      }
+    };
+
+    const refreshTimer = window.setInterval(refreshWhenVisible, 10_000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+
+    return () => {
+      window.clearTimeout(initialRefreshTimer);
+      window.clearInterval(refreshTimer);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [loadNotifications, role]);
+
+  const toggleNotifications = () => {
+    const nextOpen = !isNotificationsOpen;
+    setIsNotificationsOpen(nextOpen);
+    if (nextOpen) {
+      void loadNotifications();
+    }
+  };
+
+  const markNotificationRead = async (notification: LearnerNotification) => {
+    if (notification.readAt) return;
+
+    try {
+      const result = await learnerNotificationsApi.markRead(notification.id);
+      setNotifications((current) =>
+        current.map((item) =>
+          item.id === notification.id ? { ...item, readAt: result.readAt } : item,
+        ),
+      );
+      setUnreadCount((current) => Math.max(0, current - 1));
+    } catch (error) {
+      setNotificationsError(
+        error instanceof Error ? error.message : 'Không thể cập nhật thông báo',
+      );
+    }
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
         setIsDropdownOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(target)) {
+        setIsNotificationsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -67,14 +158,78 @@ export function LearnerTopbar() {
         </button>
 
         {/* Notifications */}
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
-        </button>
+        <div className="relative" ref={notificationsRef}>
+          <button
+            type="button"
+            aria-label="Thông báo"
+            aria-expanded={isNotificationsOpen}
+            onClick={toggleNotifications}
+            className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Bell className="h-4 w-4" />
+            {unreadCount > 0 && (
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
+            )}
+          </button>
+
+          {isNotificationsOpen && (
+            <div
+              role="dialog"
+              aria-label="Thông báo mới nhất"
+              className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-card shadow-lg ring-1 ring-black/5"
+            >
+              <div className="flex items-baseline justify-between border-b border-border px-4 py-3">
+                <p className="text-sm font-semibold text-foreground">Thông báo</p>
+                <span className="text-xs text-muted-foreground">Tối đa 5 gần nhất</span>
+              </div>
+
+              <div className="max-h-96 overflow-y-auto p-1.5">
+                {isLoadingNotifications && (
+                  <p className="px-3 py-5 text-center text-sm text-muted-foreground">
+                    Đang tải thông báo...
+                  </p>
+                )}
+                {!isLoadingNotifications && notificationsError && (
+                  <p className="px-3 py-5 text-center text-sm text-destructive">
+                    {notificationsError}
+                  </p>
+                )}
+                {!isLoadingNotifications && !notificationsError && notifications.length === 0 && (
+                  <p className="px-3 py-5 text-center text-sm text-muted-foreground">
+                    Bạn chưa có thông báo nào.
+                  </p>
+                )}
+                {!isLoadingNotifications && !notificationsError && notifications.map((notification) => (
+                  <button
+                    key={notification.id}
+                    type="button"
+                    onClick={() => void markNotificationRead(notification)}
+                    className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                      notification.readAt
+                        ? 'border-transparent hover:bg-muted/80'
+                        : 'border-primary/20 bg-primary/10 hover:bg-primary/15'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="line-clamp-1 text-sm font-medium text-foreground">
+                        {notification.title}
+                      </p>
+                      {!notification.readAt && (
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                      {notification.content}
+                    </p>
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">
+                      {notificationTime(notification.sentAt)}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* User Profile Dropdown */}
         <div className="relative border-l border-border pl-4" ref={dropdownRef}>

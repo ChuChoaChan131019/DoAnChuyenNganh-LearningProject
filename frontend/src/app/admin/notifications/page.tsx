@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useCallback, useEffect, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
@@ -28,16 +28,28 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ACCOUNT_COUNTS, NOTIFICATIONS, fmtInt, type NotificationRow } from '@/lib/admin-mock';
+import {
+  adminNotificationsApi,
+  type AdminNotification,
+  type AdminNotificationAudience,
+  type AdminNotificationRecipientAudience,
+  type AdminNotificationType,
+} from '@/lib/api';
 
-const AUDIENCE_LABEL: Record<NotificationRow['audience'], string> = {
-  all: 'Tất cả người dùng',
+const AUDIENCE_LABEL: Record<AdminNotificationAudience, string> = {
+  all: 'Learner & Content Manager',
   learner: 'Learner',
   content_manager: 'Content Manager',
-  admin: 'Admin',
+  admin: 'Admin (lịch sử)',
 };
 
-const TYPE_LABEL: Record<NotificationRow['type'], string> = {
+const RECIPIENT_AUDIENCES: AdminNotificationRecipientAudience[] = [
+  'all',
+  'learner',
+  'content_manager',
+];
+
+const TYPE_LABEL: Record<AdminNotificationType, string> = {
   General: 'General',
   Warning: 'Warning',
   Maintenance: 'Maintenance',
@@ -48,24 +60,31 @@ const notificationSchema = z
     title: z.string().min(3, 'Tiêu đề cần ít nhất 3 ký tự'),
     content: z.string().min(10, 'Nội dung cần ít nhất 10 ký tự'),
     type: z.enum(['General', 'Warning', 'Maintenance']),
-    audience: z.enum(['all', 'learner', 'content_manager', 'admin']),
+    audience: z.enum(['all', 'learner', 'content_manager']),
     timing: z.enum(['now', 'scheduled']),
     scheduledAt: z.string().optional(),
-    email: z.boolean(),
   })
   .superRefine((data, ctx) => {
-    if (data.timing === 'scheduled' && !data.scheduledAt) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['scheduledAt'],
-        message: 'Chọn thời điểm gửi khi đặt lịch',
-      });
+    if (data.timing === 'scheduled') {
+      if (!data.scheduledAt) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['scheduledAt'],
+          message: 'Chọn thời điểm gửi khi đặt lịch',
+        });
+      } else if (new Date(data.scheduledAt).getTime() <= Date.now()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['scheduledAt'],
+          message: 'Thời điểm gửi phải ở trong tương lai',
+        });
+      }
     }
   });
 
 type NotificationForm = z.infer<typeof notificationSchema>;
 
-function readRate(row: NotificationRow) {
+function readRate(row: AdminNotification) {
   if (!row.recipients) return 0;
   return (row.read / row.recipients) * 100;
 }
@@ -78,14 +97,48 @@ function rateClass(rate: number) {
 
 export default function NotificationsPage() {
   const [isCreating, setIsCreating] = useState(false);
-  const [rows, setRows] = useState<NotificationRow[]>(NOTIFICATIONS);
+  const [rows, setRows] = useState<AdminNotification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [selectedNotification, setSelectedNotification] = useState<AdminNotification | null>(null);
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const notifications = await adminNotificationsApi.list();
+      setRows(notifications);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể tải thông báo');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadNotifications();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadNotifications]);
+
+  useEffect(() => {
+    if (!selectedNotification) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedNotification(null);
+    };
+
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [selectedNotification]);
 
   const {
     register,
     handleSubmit,
     reset,
     setValue,
-    watch,
+    control,
     formState: { errors },
   } = useForm<NotificationForm>({
     resolver: zodResolver(notificationSchema),
@@ -93,40 +146,67 @@ export default function NotificationsPage() {
       type: 'General',
       audience: 'all',
       timing: 'now',
-      email: false,
     },
   });
 
-  const timing = watch('timing');
-  const type = watch('type');
-  const audience = watch('audience');
+  const timing = useWatch({ control, name: 'timing' });
+  const type = useWatch({ control, name: 'type' });
+  const audience = useWatch({ control, name: 'audience' });
 
-  const onSubmit = handleSubmit((data) => {
-    const recipients =
-      data.audience === 'all'
-        ? ACCOUNT_COUNTS.total
-        : ACCOUNT_COUNTS[data.audience as 'learner' | 'content_manager' | 'admin'];
+  const onSubmit = handleSubmit(async (data) => {
+    try {
+      setIsSubmitting(true);
+      const result = await adminNotificationsApi.create({
+        title: data.title,
+        content: data.content,
+        type: data.type,
+        audience: data.audience,
+        scheduledAt:
+          data.timing === 'scheduled'
+            ? new Date(data.scheduledAt!).toISOString()
+            : undefined,
+      });
 
-    const row: NotificationRow = {
-      id: `ntf-${Date.now()}`,
-      title: data.title,
-      type: data.type,
-      audience: data.audience,
-      recipients,
-      read: 0,
-      sentAt: data.timing === 'now' ? new Date() : new Date(data.scheduledAt!),
-      status: data.timing === 'now' ? 'sent' : 'scheduled',
-    };
-
-    setRows((current) => [row, ...current]);
-    toast.success(
-      data.timing === 'now'
-        ? `Đã gửi "${data.title}" đến ${AUDIENCE_LABEL[data.audience]} (${fmtInt(recipients)} người)`
-        : `Đã lên lịch gửi "${data.title}" lúc ${format(row.sentAt!, 'dd/MM HH:mm')}`,
-    );
-    reset();
-    setIsCreating(false);
+      toast.success(
+        data.timing === 'now'
+          ? `Đã gửi "${data.title}" đến ${AUDIENCE_LABEL[data.audience]} (${result.recipientCount.toLocaleString('vi-VN')} người)`
+          : `Đã lên lịch gửi "${data.title}" lúc ${format(new Date(result.notification.scheduledAt!), 'dd/MM HH:mm')}`,
+      );
+      reset();
+      setIsCreating(false);
+      await loadNotifications();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể tạo thông báo');
+    } finally {
+      setIsSubmitting(false);
+    }
   });
+
+  const revokeNotification = async (row: AdminNotification) => {
+    const action = row.status === 'scheduled' ? 'hủy lịch' : 'thu hồi';
+    if (!window.confirm(`Bạn có chắc muốn ${action} thông báo “${row.title}”?`)) {
+      return;
+    }
+
+    try {
+      setRevokingId(row.id);
+      await adminNotificationsApi.revoke(row.id);
+      setRows((current) =>
+        current.map((item) =>
+          item.id === row.id ? { ...item, status: 'cancelled' } : item,
+        ),
+      );
+      toast.success(
+        row.status === 'scheduled'
+          ? 'Đã hủy thông báo đã lên lịch'
+          : 'Đã thu hồi thông báo khỏi chuông người nhận',
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể thu hồi thông báo');
+    } finally {
+      setRevokingId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -134,7 +214,7 @@ export default function NotificationsPage() {
         <div>
           <h2 className="admin-page-title">System Notifications</h2>
           <p className="admin-page-copy">
-            Thông báo đã gửi là bất biến, không thể sửa hay thu hồi.
+            Thông báo đã gửi có thể thu hồi; dữ liệu vẫn được giữ lại để kiểm tra lịch sử.
           </p>
         </div>
         <Button
@@ -178,12 +258,19 @@ export default function NotificationsPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Loại thông báo</Label>
-                  <Select value={type} onValueChange={(value) => setValue('type', value as NotificationForm['type'])}>
+                  <Select
+                    value={type}
+                    items={(Object.keys(TYPE_LABEL) as AdminNotificationType[]).map((value) => ({
+                      value,
+                      label: TYPE_LABEL[value],
+                    }))}
+                    onValueChange={(value) => setValue('type', value as NotificationForm['type'])}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn loại thông báo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {(Object.keys(TYPE_LABEL) as NotificationRow['type'][]).map((option) => (
+                      {(Object.keys(TYPE_LABEL) as AdminNotificationType[]).map((option) => (
                         <SelectItem key={option} value={option}>
                           {TYPE_LABEL[option]}
                         </SelectItem>
@@ -195,13 +282,16 @@ export default function NotificationsPage() {
                   <Label>Đối tượng nhận</Label>
                   <Select
                     value={audience}
+                    items={RECIPIENT_AUDIENCES.map(
+                      (value) => ({ value, label: AUDIENCE_LABEL[value] }),
+                    )}
                     onValueChange={(value) => setValue('audience', value as NotificationForm['audience'])}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn người nhận" />
                     </SelectTrigger>
                     <SelectContent>
-                      {(Object.keys(AUDIENCE_LABEL) as NotificationRow['audience'][]).map((option) => (
+                      {RECIPIENT_AUDIENCES.map((option) => (
                         <SelectItem key={option} value={option}>
                           {AUDIENCE_LABEL[option]}
                         </SelectItem>
@@ -242,21 +332,13 @@ export default function NotificationsPage() {
                 )}
               </div>
 
-              <div className="flex items-center space-x-2">
-                <input
-                  id="ntf-email"
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-input accent-[var(--primary)]"
-                  {...register('email')}
-                />
-                <Label htmlFor="ntf-email" className="font-normal">
-                  Gửi kèm qua email (không bắt buộc)
-                </Label>
-              </div>
-
               <div className="flex justify-end border-t border-border pt-4">
-                <Button type="submit">
-                  {timing === 'now' ? 'Gửi thông báo' : 'Lên lịch gửi'}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting
+                    ? 'Đang lưu...'
+                    : timing === 'now'
+                      ? 'Gửi thông báo'
+                      : 'Lên lịch gửi'}
                 </Button>
               </div>
             </form>
@@ -283,9 +365,24 @@ export default function NotificationsPage() {
                 <TableHead className="text-right">Tỷ lệ đọc</TableHead>
                 <TableHead>Thời gian</TableHead>
                 <TableHead>Trạng thái</TableHead>
+                <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
+              {isLoading && (
+                <TableRow>
+                  <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
+                    Đang tải thông báo...
+                  </TableCell>
+                </TableRow>
+              )}
+              {!isLoading && rows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
+                    Chưa có thông báo hệ thống nào.
+                  </TableCell>
+                </TableRow>
+              )}
               {rows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell className="max-w-[240px] truncate font-medium">{row.title}</TableCell>
@@ -304,16 +401,16 @@ export default function NotificationsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm">{AUDIENCE_LABEL[row.audience]}</TableCell>
-                  <TableCell className="text-right tabular-nums">{fmtInt(row.recipients)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{fmtInt(row.read)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{row.recipients.toLocaleString('vi-VN')}</TableCell>
+                  <TableCell className="text-right tabular-nums">{row.read.toLocaleString('vi-VN')}</TableCell>
                   <TableCell className={`text-right font-medium tabular-nums ${rateClass(readRate(row))}`}>
                     {row.status === 'sent' ? `${readRate(row).toFixed(1)}%` : '-'}
                   </TableCell>
                   <TableCell className="text-sm tabular-nums">
                     {row.status === 'scheduled'
-                      ? `Dự kiến ${row.sentAt ? format(row.sentAt, 'dd/MM HH:mm', { locale: vi }) : ''}`
+                      ? `Dự kiến ${row.scheduledAt ? format(new Date(row.scheduledAt), 'dd/MM HH:mm', { locale: vi }) : ''}`
                       : row.sentAt
-                        ? format(row.sentAt, 'dd/MM HH:mm', { locale: vi })
+                        ? format(new Date(row.sentAt), 'dd/MM HH:mm', { locale: vi })
                         : ''}
                   </TableCell>
                   <TableCell>
@@ -321,11 +418,43 @@ export default function NotificationsPage() {
                       <Badge variant="outline" className="border-success text-success">
                         Đã gửi
                       </Badge>
-                    ) : (
+                    ) : row.status === 'scheduled' ? (
                       <Badge variant="outline" className="border-warning text-warning">
                         Đã lên lịch
                       </Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-muted-foreground text-muted-foreground">
+                        {row.sentAt ? 'Đã thu hồi' : 'Đã hủy'}
+                      </Badge>
                     )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedNotification(row)}
+                      >
+                        Xem nội dung
+                      </Button>
+                      {row.status !== 'cancelled' ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={revokingId === row.id}
+                          onClick={() => void revokeNotification(row)}
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          {revokingId === row.id
+                            ? 'Đang xử lý'
+                            : row.status === 'scheduled'
+                              ? 'Hủy lịch'
+                              : 'Thu hồi'}
+                        </Button>
+                      ) : null}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -333,6 +462,56 @@ export default function NotificationsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {selectedNotification && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4"
+          onMouseDown={() => setSelectedNotification(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="notification-detail-title"
+            className="w-full max-w-lg rounded-xl border border-border bg-card p-5 shadow-2xl"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Nội dung thông báo</p>
+                <h3 id="notification-detail-title" className="mt-1 text-lg font-semibold text-foreground">
+                  {selectedNotification.title}
+                </h3>
+              </div>
+              <Badge variant="outline" className="shrink-0 border-border text-muted-foreground">
+                {TYPE_LABEL[selectedNotification.type]}
+              </Badge>
+            </div>
+
+            <div className="mt-5 rounded-lg border border-border bg-muted/35 px-4 py-3">
+              <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">
+                {selectedNotification.content}
+              </p>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>{AUDIENCE_LABEL[selectedNotification.audience]}</span>
+              <span>
+                {selectedNotification.sentAt
+                  ? format(new Date(selectedNotification.sentAt), 'dd/MM/yyyy HH:mm', { locale: vi })
+                  : selectedNotification.scheduledAt
+                    ? `Dự kiến ${format(new Date(selectedNotification.scheduledAt), 'dd/MM/yyyy HH:mm', { locale: vi })}`
+                    : ''}
+              </span>
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <Button type="button" variant="outline" onClick={() => setSelectedNotification(null)}>
+                Đóng
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

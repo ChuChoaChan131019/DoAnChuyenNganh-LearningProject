@@ -613,6 +613,74 @@ export const notificationsApi = {
   },
 };
 
+export type AdminNotificationType = 'General' | 'Warning' | 'Maintenance';
+export type AdminNotificationAudience = 'all' | 'learner' | 'content_manager' | 'admin';
+export type AdminNotificationRecipientAudience = Exclude<AdminNotificationAudience, 'admin'>;
+export type AdminNotificationStatus = 'scheduled' | 'sent' | 'cancelled';
+
+export interface CreateAdminNotificationPayload {
+  title: string;
+  content: string;
+  type: AdminNotificationType;
+  audience: AdminNotificationRecipientAudience;
+  scheduledAt?: string;
+  sendEmail?: boolean;
+}
+
+export interface AdminNotification {
+  id: string;
+  title: string;
+  content: string;
+  type: AdminNotificationType;
+  audience: AdminNotificationAudience;
+  recipients: number;
+  read: number;
+  status: AdminNotificationStatus;
+  sentAt: string | null;
+  scheduledAt: string | null;
+  createdAt: string;
+  sendEmail: boolean;
+}
+
+export interface LearnerNotification {
+  id: string;
+  recipientId: string;
+  title: string;
+  content: string;
+  sentAt: string;
+  readAt: string | null;
+}
+
+export const adminNotificationsApi = {
+  list: (): Promise<AdminNotification[]> =>
+    request<AdminNotification[]>('/api/v1/admin/notifications'),
+  create: (payload: CreateAdminNotificationPayload): Promise<{
+    notification: AdminNotification;
+    recipientCount: number;
+  }> =>
+    request('/api/v1/admin/notifications', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  revoke: (notificationId: string): Promise<{
+    id: string;
+    status: 'cancelled';
+    previousStatus: AdminNotificationStatus;
+  }> =>
+    request(`/api/v1/admin/notifications/${encodeURIComponent(notificationId)}`, {
+      method: 'DELETE',
+    }),
+};
+
+export const learnerNotificationsApi = {
+  list: (): Promise<{ notifications: LearnerNotification[]; unreadCount: number }> =>
+    request('/api/v1/learner/notifications'),
+  markRead: (notificationId: string): Promise<{ notificationId: string; readAt: string }> =>
+    request(`/api/v1/learner/notifications/${encodeURIComponent(notificationId)}/read`, {
+      method: 'PATCH',
+    }),
+};
+
 export interface FeedbackItem {
   id: string;
   managerId: string;
@@ -685,7 +753,113 @@ export const feedbacksApi = {
   },
 };
 
-// Dashboard API
+// Admin Dashboard API
+export interface AdminDashboardData {
+  rangeDays: 7 | 30 | 90;
+  generatedAt: string;
+  accounts: {
+    total: number;
+    byRole: { learner: number; contentManager: number; admin: number };
+    newInRange: number;
+  };
+  activity: {
+    source: 'learning_history';
+    coverage: 'learner_learning_activity_only';
+    activeUsers: number;
+    meaningfulActivities: number;
+    dau: number;
+    wau: number;
+    mau: number;
+    daily: Array<{ date: string; activities: number; activeUsers: number }>;
+  };
+  aiUsage: { totalCalls: number | null; reason?: 'telemetry_not_available' };
+  systemStatus: { apiAvailable: boolean; uptime30d: number | null };
+  notifications: { sent: number; scheduled: number; cancelled: number; readRecipients: number };
+  recentRegistrations: Array<{
+    id: string;
+    name: string;
+    email: string | null;
+    role: 'learner' | 'content_manager' | 'admin';
+    createdAt: string;
+  }>;
+}
+
+export const adminDashboardApi = {
+  get: (days: 7 | 30 | 90): Promise<AdminDashboardData> =>
+    request<AdminDashboardData>(`/api/v1/admin/dashboard?days=${days}`),
+};
+
+// Admin-only analytics; không chứa user list hoặc thông tin cá nhân.
+export type AdminAnalyticsRole = 'all' | 'learner' | 'content_manager' | 'admin';
+export type AdminAnalyticsFilter =
+  | { days: 7 | 30 | 90; role: AdminAnalyticsRole }
+  | { from: string; to: string; role: AdminAnalyticsRole };
+
+export interface AdminAnalyticsRange {
+  from: string;
+  to: string;
+  days: number;
+  timezone: 'Asia/Ho_Chi_Minh';
+}
+
+export interface AdminUsageData {
+  range: AdminAnalyticsRange;
+  role: AdminAnalyticsRole;
+  generatedAt: string;
+  source: 'analytics_events' | 'learning_history' | 'combined';
+  coverage: 'instrumented_events_only' | 'learner_learning_activity_only' | 'partial_recorded_activity';
+  available: boolean;
+  metrics: {
+    activeUsers: number | null;
+    meaningfulActivities: number | null;
+    dau: number | null;
+    wau: number | null;
+    mau: number | null;
+    activeUsersDelta: number | null;
+    activitiesDelta: number | null;
+    dauDelta: number | null;
+    wauDelta: number | null;
+    mauDelta: number | null;
+  };
+  daily: Array<{ date: string; dau: number; wau: number; mau: number; activities: number }>;
+}
+
+export interface AdminFeatureAnalyticsData {
+  range: AdminAnalyticsRange;
+  role: AdminAnalyticsRole;
+  generatedAt: string;
+  source: 'analytics_events';
+  coverage: 'instrumented_events_only';
+  events: Array<{
+    event: string;
+    uniqueUsers: number;
+    totalActions: number;
+    deltaPct: number | null;
+  }>;
+  funnel: {
+    available: boolean;
+    stages: Array<{ stage: string; users: number; conversionPct: number | null }>;
+  };
+}
+
+function adminAnalyticsQuery(filter: AdminAnalyticsFilter): string {
+  const params = new URLSearchParams({ role: filter.role });
+  if ('days' in filter) params.set('days', String(filter.days));
+  else {
+    params.set('from', filter.from);
+    params.set('to', filter.to);
+  }
+  return params.toString();
+}
+
+export const adminAnalyticsApi = {
+  getUsage: (filter: AdminAnalyticsFilter): Promise<AdminUsageData> =>
+    request<AdminUsageData>(`/api/v1/admin/usage?${adminAnalyticsQuery(filter)}`),
+  getFeatures: (filter: AdminAnalyticsFilter): Promise<AdminFeatureAnalyticsData> =>
+    request<AdminFeatureAnalyticsData>(`/api/v1/admin/analytics?${adminAnalyticsQuery(filter)}`),
+};
+
+// Learner Dashboard API
 export interface ContinueLearningStudyPlan {
   id: string;
   name: string;
