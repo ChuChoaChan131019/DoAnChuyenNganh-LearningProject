@@ -789,6 +789,76 @@ export const adminDashboardApi = {
     request<AdminDashboardData>(`/api/v1/admin/dashboard?days=${days}`),
 };
 
+// Admin-only analytics; không chứa user list hoặc thông tin cá nhân.
+export type AdminAnalyticsRole = 'all' | 'learner' | 'content_manager' | 'admin';
+export type AdminAnalyticsFilter =
+  | { days: 7 | 30 | 90; role: AdminAnalyticsRole }
+  | { from: string; to: string; role: AdminAnalyticsRole };
+
+export interface AdminAnalyticsRange {
+  from: string;
+  to: string;
+  days: number;
+  timezone: 'Asia/Ho_Chi_Minh';
+}
+
+export interface AdminUsageData {
+  range: AdminAnalyticsRange;
+  role: AdminAnalyticsRole;
+  generatedAt: string;
+  source: 'analytics_events' | 'learning_history' | 'combined';
+  coverage: 'instrumented_events_only' | 'learner_learning_activity_only' | 'partial_recorded_activity';
+  available: boolean;
+  metrics: {
+    activeUsers: number | null;
+    meaningfulActivities: number | null;
+    dau: number | null;
+    wau: number | null;
+    mau: number | null;
+    activeUsersDelta: number | null;
+    activitiesDelta: number | null;
+    dauDelta: number | null;
+    wauDelta: number | null;
+    mauDelta: number | null;
+  };
+  daily: Array<{ date: string; dau: number; wau: number; mau: number; activities: number }>;
+}
+
+export interface AdminFeatureAnalyticsData {
+  range: AdminAnalyticsRange;
+  role: AdminAnalyticsRole;
+  generatedAt: string;
+  source: 'analytics_events';
+  coverage: 'instrumented_events_only';
+  events: Array<{
+    event: string;
+    uniqueUsers: number;
+    totalActions: number;
+    deltaPct: number | null;
+  }>;
+  funnel: {
+    available: boolean;
+    stages: Array<{ stage: string; users: number; conversionPct: number | null }>;
+  };
+}
+
+function adminAnalyticsQuery(filter: AdminAnalyticsFilter): string {
+  const params = new URLSearchParams({ role: filter.role });
+  if ('days' in filter) params.set('days', String(filter.days));
+  else {
+    params.set('from', filter.from);
+    params.set('to', filter.to);
+  }
+  return params.toString();
+}
+
+export const adminAnalyticsApi = {
+  getUsage: (filter: AdminAnalyticsFilter): Promise<AdminUsageData> =>
+    request<AdminUsageData>(`/api/v1/admin/usage?${adminAnalyticsQuery(filter)}`),
+  getFeatures: (filter: AdminAnalyticsFilter): Promise<AdminFeatureAnalyticsData> =>
+    request<AdminFeatureAnalyticsData>(`/api/v1/admin/analytics?${adminAnalyticsQuery(filter)}`),
+};
+
 // Learner Dashboard API
 export interface ContinueLearningStudyPlan {
   id: string;

@@ -25,10 +25,12 @@ import { PracticeModule } from './modules/practice/practice.module.js';
 import { QuizzesModule } from './modules/quizzes/quizzes.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module.js';
+import { AdminAnalyticsModule } from './modules/admin-analytics/admin-analytics.module.js';
 
 @Module({
   imports: [
     AdminDashboardModule,
+    AdminAnalyticsModule,
     DashboardModule,
     ConfigModule.forRoot({
       isGlobal: true,
