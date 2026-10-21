@@ -31,7 +31,6 @@ export interface QuestionItem {
   course?: { id: string; title: string } | null;
   chapter?: { id: string; title: string } | null;
   lesson?: { title: string } | null;
-  topics?: string[];
 
   // Các trường DTO/UI phục vụ hiển thị trên page.tsx
   subtopic?: string;
@@ -49,14 +48,13 @@ export interface QuestionFilters {
 
 export type QuestionPayload = {
   course_id: string;
-  chapter_id: string | null;
+  chapter_id: string;
   lesson_id: string | null;
   question_type: QuestionType;
   difficulty: DifficultyLevel;
   content: string;
   explanation?: string | null;
   status: QuestionStatus;
-  topic_ids: string[];
   options: QuestionOption[];
 };
 

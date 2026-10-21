@@ -51,6 +51,7 @@ export class QuestionsService {
   async create(dto: QuestionDto, actorId: string) {
     await this.assertQuestionManager(actorId);
     this.validateOptions(dto);
+    await this.validatePlacement(dto);
 
     const supabase = this.supabaseService.getClient();
     const { data: question, error: questionError } = await supabase
@@ -83,22 +84,13 @@ export class QuestionsService {
       this.throwMutationError(optionsError);
     }
 
-    if (dto.topic_ids.length > 0) {
-      const { error: topicsError } = await supabase.from('question_topics').insert(
-        dto.topic_ids.map((topicId) => ({
-          question_id: questionId,
-          topic_id: topicId,
-        })),
-      );
-      this.throwMutationError(topicsError);
-    }
-
     return { id: questionId, status: dto.status };
   }
 
   async update(id: string, dto: QuestionDto, actorId: string) {
     await this.assertQuestionManager(actorId);
     this.validateOptions(dto);
+    await this.validatePlacement(dto);
 
     const supabase = this.supabaseService.getClient();
     const { data: question, error: questionError } = await supabase
@@ -137,27 +129,12 @@ export class QuestionsService {
       this.throwMutationError(optionsError);
     }
 
-    const { error: deleteTopicsError } = await supabase
-      .from('question_topics')
-      .delete()
-      .eq('question_id', id);
-    this.throwMutationError(deleteTopicsError);
-
-    if (dto.topic_ids.length > 0) {
-      const { error: topicsError } = await supabase.from('question_topics').insert(
-        dto.topic_ids.map((topicId) => ({
-          question_id: id,
-          topic_id: topicId,
-        })),
-      );
-      this.throwMutationError(topicsError);
-    }
-
     return { id: question.id, status: dto.status };
   }
 
   async updateStatus(id: string, status: QuestionStatus, actorId: string) {
     await this.assertQuestionManager(actorId);
+    if (status === QuestionStatus.APPROVED) await this.assertQuestionHasChapter(id);
 
     const { data, error } = await this.supabaseService
       .getClient()
@@ -174,6 +151,7 @@ export class QuestionsService {
   async submitForReview(id: string, actorId: string, _role: string) {
     const actorRole = await this.assertQuestionManager(actorId);
     const status = actorRole === 'admin' ? QuestionStatus.APPROVED : QuestionStatus.DRAFT;
+    if (status === QuestionStatus.APPROVED) await this.assertQuestionHasChapter(id);
     const { data, error } = await this.supabaseService
       .getClient()
       .from('questions')
@@ -195,8 +173,7 @@ export class QuestionsService {
         course:courses(id, title),
         chapter:chapters(id, title),
         lesson:lessons(id, title),
-        options:question_options(*),
-        topics:question_topics(topic_id)
+        options:question_options(*)
       `)
       .eq('id', id)
       .maybeSingle();
@@ -290,6 +267,46 @@ export class QuestionsService {
     return profile.role;
   }
 
+  private async validatePlacement(dto: QuestionDto) {
+    if (!dto.chapter_id) throw new BadRequestException('A chapter is required');
+    const supabase = this.supabaseService.getClient();
+    const { data: chapter, error: chapterError } = await supabase
+      .from('chapters')
+      .select('id')
+      .eq('id', dto.chapter_id)
+      .eq('course_id', dto.course_id)
+      .maybeSingle();
+    this.throwQueryError(chapterError);
+    if (!chapter) throw new BadRequestException('Chapter does not belong to this course');
+
+    if (dto.lesson_id) {
+      const { data: lesson, error: lessonError } = await supabase
+        .from('lessons')
+        .select('id')
+        .eq('id', dto.lesson_id)
+        .eq('chapter_id', dto.chapter_id)
+        .maybeSingle();
+      this.throwQueryError(lessonError);
+      if (!lesson) throw new BadRequestException('Lesson does not belong to this chapter');
+    }
+  }
+
+  private async assertQuestionHasChapter(id: string) {
+    const { data, error } = await this.supabaseService.getClient()
+      .from('questions')
+      .select('id, course_id, chapter_id, lesson_id')
+      .eq('id', id)
+      .maybeSingle();
+    this.throwQueryError(error);
+    if (!data) throw new NotFoundException('Question not found');
+    if (!data.chapter_id) throw new BadRequestException('Select a chapter before approving this question');
+    await this.validatePlacement({
+      course_id: data.course_id,
+      chapter_id: data.chapter_id,
+      lesson_id: data.lesson_id,
+    } as QuestionDto);
+  }
+
   private validateOptions(dto: QuestionDto) {
     if (dto.question_type === QuestionType.FILL_IN_BLANK) {
       if (dto.options.length > 0) {
@@ -343,11 +360,13 @@ export class QuestionsService {
       explanation,
       is_ai_generated,
       created_at,
+      course_id,
+      chapter_id,
+      lesson_id,
       course:courses(id, title),
       chapter:chapters(id, title),
       lesson:lessons(id, title),
-      options:question_options(id, option_text, is_correct, order_index),
-      topics:question_topics(topic:topics(id, name))
+      options:question_options(id, option_text, is_correct, order_index)
     `)
     .order('created_at', { ascending: false });
 
@@ -371,40 +390,6 @@ export class QuestionsService {
   return (data ?? []).map((question) => ({
     ...question,
     lesson: question.lesson ?? null,
-    topics: (question.topics ?? []).flatMap((item) => item.topic ?? []).map((topic) => topic.name).filter(Boolean),
   }));
-  }
-
-  async listTopics() {
-    const { data, error } = await this.supabaseService
-      .getClient()
-      .from('topics')
-      .select('id, name, slug, description')
-      .order('name');
-    this.throwQueryError(error);
-    return data ?? [];
-  }
-
-  async createTopic(name: string, description?: string) {
-    const slug = name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)+/g, '');
-
-    const { data, error } = await this.supabaseService
-      .getClient()
-      .from('topics')
-      .insert({
-        name,
-        slug: `${slug}-${Date.now().toString().slice(-4)}`,
-        description: description ?? null,
-      })
-      .select('id, name, slug, description')
-      .single();
-
-    this.throwMutationError(error);
-    return data;
   }
 }

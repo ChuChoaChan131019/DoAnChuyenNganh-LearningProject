@@ -468,15 +468,6 @@ export const quizApi = {
     request<QuizResultResponse>(`/api/v1/quiz-results/latest?quiz_id=${encodeURIComponent(quizId)}`),
 };
 
-export const topicApi = {
-  list: () => request<Array<{ id: string; name: string; slug: string }>>('/api/v1/topics'),
-  create: (name: string, description?: string) =>
-    request<{ id: string; name: string; slug: string }>('/api/v1/topics', {
-      method: 'POST',
-      body: JSON.stringify({ name, description }),
-    }),
-};
-
 export const practiceApi = {
   overview: (): Promise<import('../types/practice').PracticeOverview> =>
     request('/api/v1/practice/overview'),
@@ -488,14 +479,14 @@ export const practiceApi = {
     if (courseId) params.set('course_id', courseId);
     return request(`/api/v1/practice/questions?${params.toString()}`);
   },
-  ai: (courseId?: string, count = 10, prompt?: string): Promise<{
+  ai: (courseId?: string, count = 10, prompt?: string, chapterId?: string): Promise<{
     mode: string;
     difficulty: string;
     rationale: string;
-    questions: { mode: string; questions: import('../types/practice').PracticeQuestion[] };
+    questions: { mode: string; questions: import('../types/practice').PracticeQuestion[] } | import('../types/practice').PracticeQuestion[];
   }> => request('/api/v1/practice/ai', {
     method: 'POST',
-    body: JSON.stringify({ course_id: courseId, count, prompt }),
+    body: JSON.stringify({ course_id: courseId, chapter_id: chapterId, count, prompt }),
   }),
   createAttempt: (payload: { mode: 'quick' | 'weak' | 'course' | 'ai'; course_id?: string; total_questions: number }) =>
     request<{ id: string }>('/api/v1/practice/attempts', {

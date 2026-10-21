@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
@@ -56,19 +56,6 @@ export class QuestionsController {
   @Delete('questions/:id')
   remove(@Param('id') id: string, @Req() request: any) {
     return this.questionsService.remove(id, request.user.id);
-  }
-
-  @Get('topics')
-  listTopics() {
-    return this.questionsService.listTopics();
-  }
-
-  @Post('topics')
-  createTopic(@Body() body: { name: string; description?: string }) {
-    if (!body.name?.trim()) {
-      throw new BadRequestException('Topic name is required');
-    }
-    return this.questionsService.createTopic(body.name.trim(), body.description?.trim());
   }
 
 }

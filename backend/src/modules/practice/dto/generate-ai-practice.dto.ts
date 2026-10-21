@@ -1,9 +1,13 @@
-import { IsInt, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class GenerateAiPracticeDto {
   @IsOptional()
   @IsString()
   course_id?: string;
+
+  @IsOptional()
+  @IsUUID()
+  chapter_id?: string;
 
   @IsOptional()
   @IsInt()

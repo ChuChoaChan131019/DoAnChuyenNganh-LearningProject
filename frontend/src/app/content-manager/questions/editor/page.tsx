@@ -15,7 +15,7 @@ import {
   FileText,
   AlertCircle
 } from 'lucide-react';
-import { ApiClientError, questionApi, topicApi } from '@/lib/api';
+import { ApiClientError, questionApi } from '@/lib/api';
 import { ChapterOption, CourseOption, LessonOption, QuestionPayload } from '@/types/question';
 
 // ==========================================
@@ -81,7 +81,6 @@ export interface QuestionFormData {
   course: string;
   chapter: string;
   lesson: string;
-  topic: string;
   type: QuestionType;
   difficulty: Difficulty;
   content: string;
@@ -111,7 +110,6 @@ function QuestionEditorContent() {
     course: '',
     chapter: '',
     lesson: '',
-    topic: '',
     type: 'single_choice',
     difficulty: 'easy',
     content: '',
@@ -135,9 +133,6 @@ function QuestionEditorContent() {
   const [isLoadingChapters, setIsLoadingChapters] = useState(false);
   const [isLoadingLessons, setIsLoadingLessons] = useState(false);
   const [placementError, setPlacementError] = useState<string | null>(null);
-  const [topics, setTopics] = useState<Array<{ id: string; name: string; slug: string }>>([]);
-  const [newTopicName, setNewTopicName] = useState('');
-  const [isCreatingTopic, setIsCreatingTopic] = useState(false);
 
   useEffect(() => {
     if (!questionId) return;
@@ -164,9 +159,6 @@ function QuestionEditorContent() {
             text: option.option_text ?? '',
             isCorrect: Boolean(option.is_correct),
           }));
-        const topic = Array.isArray(question.topics) ? question.topics[0] : null;
-        const topicId = typeof topic === 'string' ? topic : String(topic?.topic_id ?? topic?.id ?? '');
-
         if (!active) return;
         setChapters(loadedChapters);
         setLessons(loadedLessons);
@@ -175,7 +167,6 @@ function QuestionEditorContent() {
           course: courseId,
           chapter: chapterId,
           lesson: lessonId,
-          topic: topicId,
           type: question.question_type,
           difficulty: question.difficulty,
           content: question.content ?? '',
@@ -252,29 +243,6 @@ function QuestionEditorContent() {
     void loadCourses();
   }, []);
 
-  useEffect(() => {
-    topicApi.list().then(setTopics).catch((error: unknown) => {
-      alert(getApiErrorMessage(error));
-    });
-  }, []);
-
-  const handleCreateTopic = async () => {
-    const name = newTopicName.trim();
-    if (!name || isCreatingTopic) return;
-
-    setIsCreatingTopic(true);
-    try {
-      const createdTopic = await topicApi.create(name);
-      setTopics((current) => [...current, createdTopic]);
-      setFormData((current) => ({ ...current, topic: createdTopic.id }));
-      setNewTopicName('');
-    } catch (error: unknown) {
-      alert(getApiErrorMessage(error));
-    } finally {
-      setIsCreatingTopic(false);
-    }
-  };
-
   const handleOptionTextChange = (id: string, text: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -340,14 +308,13 @@ function QuestionEditorContent() {
 
   const buildPayload = (status: 'draft' | 'approved'): QuestionPayload => ({
     course_id: formData.course,
-    chapter_id: normalizeNullableId(formData.chapter),
+    chapter_id: formData.chapter,
     lesson_id: normalizeNullableId(formData.lesson),
     question_type: formData.type,
     difficulty: formData.difficulty,
     content: formData.content,
     explanation: formData.explanation || null,
     status,
-    topic_ids: formData.topic ? [formData.topic] : [],
     options: formData.type === 'fill_in_blank' ? [] : formData.options.map((option, index) => ({
       option_text: option.text,
       is_correct: option.isCorrect,
@@ -360,8 +327,8 @@ function QuestionEditorContent() {
       alert('Vui lòng chọn Course');
       return false;
     }
-    if (!formData.topic.trim()) {
-      alert('Please select a topic.');
+    if (!formData.chapter.trim()) {
+      alert('Please select a chapter.');
       return false;
     }
     if (!formData.content.trim()) {
@@ -532,7 +499,7 @@ function QuestionEditorContent() {
                   {isLoadingChapters ? (
                     <option value="">Loading chapters...</option>
                   ) : (
-                    <option value="">None</option>
+                    <option value="">Select chapter...</option>
                   )}
                   {!isLoadingChapters && formData.course && chapters.length === 0 && <option value="">No chapters found</option>}
                   {chapters.map((chap) => (
@@ -573,7 +540,7 @@ function QuestionEditorContent() {
               <h2 className={STYLES.sectionTitle}>Question</h2>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label className={STYLES.label}>Question type</label>
                 <select
@@ -601,19 +568,6 @@ function QuestionEditorContent() {
                 </select>
               </div>
 
-              <div>
-                <label className={STYLES.label}>Topic</label>
-                <select
-                  value={formData.topic}
-                  onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
-                  className={STYLES.select}
-                >
-                  <option value="">Select a topic...</option>
-                  {topics.map((topic) => (
-                    <option key={topic.id} value={topic.id}>{topic.name}</option>
-                  ))}
-                </select>
-              </div>
             </div>
 
             <div>
@@ -803,53 +757,12 @@ function QuestionEditorContent() {
 
           <div className={`${STYLES.sectionCard} space-y-4`}>
             <div>
-              <h2 className={STYLES.sectionTitle}>Topics &amp; Tags</h2>
-              <p className="mt-1 text-xs text-gray-400">Select or add knowledge topics for this question</p>
+              <h2 className={STYLES.sectionTitle}>Chapter</h2>
+              <p className="mt-1 text-xs text-gray-400">Questions are grouped by chapter for practice and progress.</p>
             </div>
-
-            <div className="flex flex-wrap gap-2">
-              {topics.map((topic) => {
-                const isSelected = formData.topic === topic.id;
-                return (
-                  <button
-                    key={topic.id}
-                    type="button"
-                    onClick={() => setFormData((current) => ({ ...current, topic: topic.id }))}
-                    className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${isSelected
-                      ? 'border-[#F7444E] bg-[#F7444E] text-white'
-                      : 'border-gray-200 bg-gray-100 text-gray-700 hover:border-gray-300'
-                      }`}
-                  >
-                    {topic.name}
-                  </button>
-                );
-              })}
-              {topics.length === 0 && <span className="text-xs text-gray-400">No topics found.</span>}
-            </div>
-
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                void handleCreateTopic();
-              }}
-              className="flex items-center gap-2"
-            >
-              <input
-                type="text"
-                value={newTopicName}
-                onChange={(event) => setNewTopicName(event.target.value)}
-                placeholder="Enter new topic name..."
-                className="min-w-0 flex-1 rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:border-[#F7444E] focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20"
-              />
-              <button
-                type="submit"
-                disabled={!newTopicName.trim() || isCreatingTopic}
-                className="inline-flex items-center gap-1 rounded-xl bg-[#F7444E] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#c93f3a] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add
-              </button>
-            </form>
+            <p className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
+              {chapters.find((chapter) => chapter.id === formData.chapter)?.title ?? 'Select a chapter in Placement.'}
+            </p>
           </div>
         </aside>
       </main>

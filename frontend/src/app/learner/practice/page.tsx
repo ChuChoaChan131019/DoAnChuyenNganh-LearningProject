@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Brain, CheckCircle2, Loader2, Target, XCircle, Zap } from 'lucide-react';
 import { practiceApi } from '@/lib/api';
-import type { PracticeOverview, PracticeQuestion } from '@/types/practice';
+import type { PracticeChapter, PracticeOverview, PracticeQuestion } from '@/types/practice';
 
 type PracticeMode = 'quick' | 'weak' | 'course' | 'ai';
 
@@ -13,7 +13,7 @@ type AnswerResult = {
 };
 
 export default function PracticePage() {
-  const [overview, setOverview] = useState<PracticeOverview>({ courses: [], weakTopics: [] });
+  const [overview, setOverview] = useState<PracticeOverview>({ courses: [], chapters: [], weakChapters: [] });
   const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
   const [mode, setMode] = useState<PracticeMode | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -46,7 +46,7 @@ export default function PracticePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const startPractice = async (nextMode: PracticeMode, courseId?: string, prompt?: string) => {
+  const startPractice = async (nextMode: PracticeMode, courseId?: string, prompt?: string, chapterId?: string) => {
     setStarting(true);
     setError('');
     setResult(null);
@@ -58,9 +58,9 @@ export default function PracticePage() {
     try {
       let nextQuestions: PracticeQuestion[];
       if (nextMode === 'ai') {
-        const response = await practiceApi.ai(courseId, 10, prompt);
+        const response = await practiceApi.ai(courseId, 10, prompt, chapterId);
         nextQuestions = Array.isArray(response.questions) 
-          ? (response.questions as unknown as PracticeQuestion[]) 
+          ? response.questions
           : response.questions.questions;
       } else {
         const response = await practiceApi.questions(nextMode, courseId);
@@ -142,7 +142,7 @@ export default function PracticePage() {
           <div>
             <p className="text-sm font-medium text-[#145a68]">Practice session</p>
             <h1 className="text-2xl font-bold text-[#0f3741]">
-              {mode === 'ai' ? 'AI Practice' : mode === 'weak' ? 'Weak topics' : mode === 'course' ? 'Course practice' : 'Quick drill'}
+              {mode === 'ai' ? 'AI Practice' : mode === 'weak' ? 'Chương cần ôn' : mode === 'course' ? 'Course practice' : 'Quick drill'}
             </h1>
           </div>
           <span className="text-sm font-semibold text-slate-500">{currentIndex + 1} / {questions.length}</span>
@@ -217,8 +217,8 @@ export default function PracticePage() {
       {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
       <div className="grid grid-cols-1 gap-[22px] md:grid-cols-3">
         <PracticeCard icon={<Zap className="h-5 w-5" />} title="Quick drill" description="10 câu hỏi trộn từ tất cả khóa học bạn đang tham gia." onClick={() => startPractice('quick')} disabled={loading || starting} />
-        <PracticeCard icon={<Brain className="h-5 w-5" />} title="Weak topics" description="Tập trung vào các chủ đề có độ chính xác thấp nhất trong 30 ngày qua." onClick={() => startPractice('weak')} disabled={loading || starting || overview.weakTopics.length === 0} />
-        <AiPracticeCard icon={<Target className="h-5 w-5" />} title="AI Practice" description="Bộ câu hỏi cá nhân hóa. Nhập yêu cầu để luyện tập chủ đề cụ thể." onStart={(prompt) => startPractice('ai', undefined, prompt)} disabled={loading || starting} />
+        <PracticeCard icon={<Brain className="h-5 w-5" />} title="Chương cần ôn" description="Tập trung vào các chương có độ chính xác thấp nhất trong 30 ngày qua." onClick={() => startPractice('weak')} disabled={loading || starting || overview.weakChapters.length === 0} />
+        <AiPracticeCard icon={<Target className="h-5 w-5" />} title="AI Practice" description="Chọn chương khi nhập yêu cầu tạo câu hỏi mới." chapters={overview.chapters} courseNames={Object.fromEntries(overview.courses.map((course) => [course.id, course.title]))} onStart={(prompt, chapterId) => startPractice('ai', undefined, prompt, chapterId)} disabled={loading || starting} />
       </div>
       <div className="grid grid-cols-1 gap-[22px] md:grid-cols-2">
         <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">
@@ -229,9 +229,9 @@ export default function PracticePage() {
           </div>
         </section>
         <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-[#fbfdf9] shadow-sm">
-          <div className="border-b border-[#dfe6df] px-[18px] py-[15px]"><h2 className="text-[15px] font-bold text-[#0f3741]">Your weakest topics</h2><p className="mt-0.5 text-[13px] text-slate-500">Accuracy over the last 30 days</p></div>
-          <div className="space-y-3 p-[18px]">{overview.weakTopics.map((topic) => <div key={topic.id} className="flex items-center justify-between"><span className="text-sm font-medium text-[#145a68]">{topic.name}</span><span className="text-sm font-bold text-[#0f3741]">{topic.accuracy}%</span></div>)}{!loading && overview.weakTopics.length === 0 && <p className="text-sm text-slate-500">Làm vài bài quiz để hệ thống nhận diện chủ đề cần củng cố.</p>}</div>
-          <button onClick={() => startPractice('weak')} disabled={starting || !overview.weakTopics.length} className="mx-[18px] mb-[18px] w-[calc(100%-36px)] rounded-xl border border-slate-300 py-2 text-sm font-semibold text-[#0f3741] disabled:opacity-50">Drill weak topics</button>
+          <div className="border-b border-[#dfe6df] px-[18px] py-[15px]"><h2 className="text-[15px] font-bold text-[#0f3741]">Chương cần ôn</h2><p className="mt-0.5 text-[13px] text-slate-500">Độ chính xác trong 30 ngày qua</p></div>
+          <div className="space-y-3 p-[18px]">{overview.weakChapters.map((chapter) => <div key={chapter.id} className="flex items-center justify-between"><span className="text-sm font-medium text-[#145a68]">{chapter.name}</span><span className="text-sm font-bold text-[#0f3741]">{chapter.accuracy}%</span></div>)}{!loading && overview.weakChapters.length === 0 && <p className="text-sm text-slate-500">Làm quiz hoặc luyện tập với câu hỏi đã gắn chương để hệ thống nhận diện chương cần ôn.</p>}</div>
+          <button onClick={() => startPractice('weak')} disabled={starting || !overview.weakChapters.length} className="mx-[18px] mb-[18px] w-[calc(100%-36px)] rounded-xl border border-slate-300 py-2 text-sm font-semibold text-[#0f3741] disabled:opacity-50">Luyện chương cần ôn</button>
         </section>
       </div>
       {starting && <div className="flex items-center justify-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Đang tạo bộ câu hỏi...</div>}
@@ -243,8 +243,9 @@ function PracticeCard({ icon, title, description, onClick, disabled }: { icon: R
   return <section className="flex flex-col rounded-2xl border border-[#dfe6df] bg-white p-[18px] shadow-sm"><div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-[#f7444e]">{icon}</div><h2 className="mb-1 text-[15px] font-bold text-[#0f3741]">{title}</h2><p className="mb-4 flex-1 text-sm leading-relaxed text-slate-500">{description}</p><button onClick={onClick} disabled={disabled} className="w-full rounded-xl bg-[#f7444e] py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50">Start</button></section>;
 }
 
-function AiPracticeCard({ icon, title, description, onStart, disabled }: { icon: React.ReactNode; title: string; description: string; onStart: (prompt?: string) => void; disabled: boolean }) {
+function AiPracticeCard({ icon, title, description, chapters, courseNames, onStart, disabled }: { icon: React.ReactNode; title: string; description: string; chapters: PracticeChapter[]; courseNames: Record<string, string>; onStart: (prompt?: string, chapterId?: string) => void; disabled: boolean }) {
   const [prompt, setPrompt] = useState('');
+  const [chapterId, setChapterId] = useState('');
   return (
     <section className="flex flex-col rounded-2xl border border-[#dfe6df] bg-white p-[18px] shadow-sm">
       <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-[#f7444e]">{icon}</div>
@@ -258,7 +259,11 @@ function AiPracticeCard({ icon, title, description, onStart, disabled }: { icon:
         className="mb-4 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#f7444e]"
         disabled={disabled}
       />
-      <button onClick={() => onStart(prompt)} disabled={disabled} className="w-full rounded-xl bg-[#f7444e] py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50">Start</button>
+      <select value={chapterId} onChange={(event) => setChapterId(event.target.value)} disabled={disabled} className="mb-4 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#f7444e]" aria-label="Chương cho bài luyện tập AI">
+        <option value="">{prompt.trim() ? 'Chọn chương để tạo câu hỏi...' : 'Không chọn chương'}</option>
+        {chapters.map((chapter) => <option key={chapter.id} value={chapter.id}>{courseNames[chapter.course_id] ?? 'Course'} / {chapter.title}</option>)}
+      </select>
+      <button onClick={() => onStart(prompt, chapterId || undefined)} disabled={disabled || Boolean(prompt.trim() && !chapterId)} className="w-full rounded-xl bg-[#f7444e] py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50">Start</button>
     </section>
   );
 }
