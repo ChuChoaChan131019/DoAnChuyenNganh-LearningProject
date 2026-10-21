@@ -11,11 +11,11 @@ import { DifficultyLevel } from '@/types/question';
 const STYLES = {
   // Container & Cards
   pageContainer: 'mx-auto max-w-7xl space-y-6 pb-12',
-  card: 'bg-white border border-[#dfe6df] rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between',
+  card: 'bg-[#FFFAFC]/50 border border-gray-200/80 rounded-2xl p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between',
 
   // Buttons
   primaryBtn:
-    'inline-flex items-center gap-2 rounded-xl bg-[#F7444E] hover:bg-[#db3540] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors active:scale-[0.98]',
+    'inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#c93f3a] active:scale-[0.98]',
 
   // Dynamic Badges (Pill shape)
   difficultyBadges: {
@@ -25,10 +25,10 @@ const STYLES = {
   },
 
   // Icon Container
-  iconBadge: 'w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center flex-shrink-0',
+  iconBadge: 'w-10 h-10 rounded-2xl bg-rose-50/90 flex items-center justify-center flex-shrink-0',
 
   // Progress Bar
-  progressTrack: 'h-1.5 w-full bg-[#f3f7f5] rounded-full overflow-hidden mt-2',
+  progressTrack: 'h-1.5 w-full bg-rose-100/70 rounded-full overflow-hidden mt-2',
   progressBar: 'h-full bg-[#F7444E] rounded-full transition-all duration-500',
 };
 
@@ -115,10 +115,10 @@ export default function PracticeSetsPage() {
       {/* Header & Action Button */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#002C3E] sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
             Practice sets
           </h1>
-          <p className="mt-1 text-sm text-[#637981]">
+          <p className="mt-1 text-sm text-gray-500">
             Untimed drills students can repeat as often as they like.
           </p>
         </div>
@@ -149,19 +149,19 @@ export default function PracticeSetsPage() {
 
             {/* Card Content: Title & Course / Question Count */}
             <div className="my-4">
-              <h2 className="font-bold text-[#002C3E] text-[15px] leading-snug line-clamp-1">
+              <h2 className="font-bold text-gray-900 text-[15px] leading-snug line-clamp-1">
                 {item.title}
               </h2>
-              <p className="text-xs text-[#637981] mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 {item.course} · {item.questionCount} questions
               </p>
             </div>
 
             {/* Footer: Average Score & Progress Bar */}
             <div className="pt-2">
-              <div className="flex items-center justify-between text-xs text-[#637981]">
+              <div className="flex items-center justify-between text-xs text-gray-500">
                 <span>Average score</span>
-                <span className="font-medium text-[#002C3E]">
+                <span className="font-medium text-gray-600">
                   {item.averageScore}%
                 </span>
               </div>

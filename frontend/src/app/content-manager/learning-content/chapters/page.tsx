@@ -273,7 +273,7 @@ export default function ChaptersPage() {
             className="h-full w-full appearance-none rounded-xl border border-[#dfe6df] bg-white px-3 pr-9 text-sm text-[#526f78] outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
           >
             {courseOptions.map((course) => (
-              <option key={course.id} value={course.id} className="bg-white text-[#526f78]">{course.title}</option>
+              <option key={course.id} value={course.id}>{course.title}</option>
             ))}
           </select>
           <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-[#71878c]" />
@@ -302,7 +302,7 @@ export default function ChaptersPage() {
               key={chapter.id}
               onDragOver={(event) => event.preventDefault()}
               onDrop={() => void reorderChapter(String(chapter.id))}
-              className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-xs"
+              className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-[0_8px_18px_rgba(0,44,62,0.04)]"
             >
               <div className="flex items-center gap-3 border-b border-[#dfe6df] px-5 py-4">
                 <span
@@ -312,9 +312,9 @@ export default function ChaptersPage() {
                   title="Drag to reorder chapter"
                   className="cursor-grab touch-none active:cursor-grabbing"
                 >
-                  <GripVertical className="h-4 w-4 shrink-0 text-[#a6b7b8]" />
+                  <GripVertical className="h-4 w-4 shrink-0 text-[#71878c]" />
                 </span>
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-rose-50 font-mono text-xs font-semibold text-[#F7444E]">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#ffe0df] font-mono text-xs font-semibold text-[#F7444E]">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div className="min-w-0 flex-1">
@@ -330,7 +330,7 @@ export default function ChaptersPage() {
                     type="button"
                     aria-label={`Edit ${chapter.title}`}
                     onClick={() => openEditChapter(chapter)}
-                    className="rounded-lg p-2 hover:bg-[#eaf4f3] text-[#527983] transition-colors"
+                    className="rounded-lg p-2 hover:bg-[#eaf4f3]"
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
@@ -338,7 +338,7 @@ export default function ChaptersPage() {
                     type="button"
                     aria-label={`Delete ${chapter.title}`}
                     onClick={() => void deleteChapter(chapter)}
-                    className="rounded-lg p-2 hover:bg-[#fff1f0] hover:text-[#F7444E] text-[#527983] transition-colors"
+                    className="rounded-lg p-2 hover:bg-[#fff1f0] hover:text-[#F7444E]"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -352,7 +352,7 @@ export default function ChaptersPage() {
                           : [...current, chapter.id],
                       )
                     }
-                    className="rounded-lg p-2 hover:bg-[#eaf4f3] text-[#527983] transition-colors"
+                    className="rounded-lg p-2 hover:bg-[#eaf4f3]"
                   >
                     {isExpanded ? (
                       <ChevronUp className="h-4 w-4" />
@@ -393,7 +393,7 @@ export default function ChaptersPage() {
                         {lesson.title}
                       </span>
                       <div className="flex shrink-0 items-center gap-3">
-                        <span className="hidden items-center gap-1 text-xs text-[#71878c] sm:flex">
+                        <span className="hidden items-center gap-1 text-xs text-[#637981] sm:flex">
                           <Clock3 className="h-3.5 w-3.5" />
                           {lesson.duration}
                         </span>
@@ -412,7 +412,7 @@ export default function ChaptersPage() {
                       setFormError("");
                       setLessonChapterId(String(chapter.id));
                     }}
-                    className="flex items-center gap-2 px-9 py-3 text-sm text-[#71878c] hover:text-[#F7444E] transition-colors"
+                    className="flex items-center gap-2 px-9 py-3 text-sm text-[#526f78] hover:text-[#F7444E]"
                   >
                     <Plus className="h-4 w-4" />
                     Add lesson
@@ -426,16 +426,16 @@ export default function ChaptersPage() {
       <button
         type="button"
         onClick={openAddChapter}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[#dfe6df] bg-white py-3 text-sm font-medium text-[#002C3E] hover:border-[#78BCC4] hover:bg-[#fbfcf8] transition-colors"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[#dfe6df] bg-white py-3 text-sm font-medium text-[#002C3E] hover:border-[#78BCC4] hover:bg-[#f8fbf9]"
       >
         <Plus className="h-4 w-4" />
         Add chapter
       </button>
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-xs px-4" role="dialog" aria-modal="true" aria-labelledby="add-chapter-title">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[#002c3e]/40 px-4" role="dialog" aria-modal="true" aria-labelledby="add-chapter-title">
           <form
             onSubmit={(event) => { event.preventDefault(); void saveChapter(); }}
-            className="w-full max-w-lg rounded-2xl border border-[#dfe6df] bg-white p-6 shadow-2xl"
+            className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
           >
             <h2 id="add-chapter-title" className="text-xl font-bold text-[#002C3E]">{editingChapter ? "Edit chapter" : "Add chapter"}</h2>
             <p className="mt-1 text-sm text-[#637981]">{editingChapter ? "Update this chapter." : `Create a draft chapter for ${selectedCourse}.`}</p>
@@ -446,25 +446,25 @@ export default function ChaptersPage() {
                 onChange={(event) => setChapterTitle(event.target.value)}
                 maxLength={160}
                 autoFocus
-                className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
+                className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
                 placeholder="e.g. Object-oriented programming"
               />
             </label>
             <label className="mt-4 block text-sm font-medium text-[#002C3E]">
-              Description <span className="font-normal text-[#637981]">(optional)</span>
+              Description <span className="font-normal text-[#71878c]">(optional)</span>
               <textarea
                 value={chapterDescription}
                 onChange={(event) => setChapterDescription(event.target.value)}
                 maxLength={2000}
                 rows={4}
-                className="mt-2 w-full resize-none rounded-xl border border-[#dfe6df] bg-white px-3 py-2 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
+                className="mt-2 w-full resize-none rounded-xl border border-[#dfe6df] px-3 py-2 text-sm outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
                 placeholder="What will learners study in this chapter?"
               />
             </label>
             {formError && <p className="mt-3 text-sm text-[#d9363e]">{formError}</p>}
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => { setEditingChapter(null); setIsModalOpen(false); }} className="rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#526f78] hover:bg-[#f3f7f5] transition-colors">Cancel</button>
-              <button type="submit" disabled={isSaving} className="rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db3540] transition-colors disabled:cursor-not-allowed disabled:opacity-60">
+              <button type="button" onClick={() => { setEditingChapter(null); setIsModalOpen(false); }} className="rounded-xl px-4 py-2 text-sm font-medium text-[#526f78] hover:bg-[#f3f7f5]">Cancel</button>
+              <button type="submit" disabled={isSaving} className="rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db3540] disabled:cursor-not-allowed disabled:opacity-60">
                 {isSaving ? "Saving..." : editingChapter ? "Save changes" : "Create chapter"}
               </button>
             </div>
@@ -472,10 +472,10 @@ export default function ChaptersPage() {
         </div>
       )}
       {lessonChapterId && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-xs px-4" role="dialog" aria-modal="true" aria-labelledby="add-lesson-title">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[#002c3e]/40 px-4" role="dialog" aria-modal="true" aria-labelledby="add-lesson-title">
           <form
             onSubmit={(event) => { event.preventDefault(); void addLesson(); }}
-            className="w-full max-w-lg rounded-2xl border border-[#dfe6df] bg-white p-6 shadow-2xl"
+            className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
           >
             <h2 id="add-lesson-title" className="text-xl font-bold text-[#002C3E]">Add lesson</h2>
             <label className="mt-5 block text-sm font-medium text-[#002C3E]">
@@ -485,7 +485,7 @@ export default function ChaptersPage() {
                 onChange={(event) => setLessonTitle(event.target.value)}
                 maxLength={160}
                 autoFocus
-                className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
+                className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
                 placeholder="e.g. Defining a class"
               />
             </label>
@@ -497,13 +497,13 @@ export default function ChaptersPage() {
                 max="1440"
                 value={lessonDuration}
                 onChange={(event) => setLessonDuration(event.target.value)}
-                className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
+                className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
               />
             </label>
             {formError && <p className="mt-3 text-sm text-[#d9363e]">{formError}</p>}
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setLessonChapterId(null)} className="rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#526f78] hover:bg-[#f3f7f5] transition-colors">Cancel</button>
-              <button type="submit" disabled={isSaving} className="rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db3540] transition-colors disabled:cursor-not-allowed disabled:opacity-60">
+              <button type="button" onClick={() => setLessonChapterId(null)} className="rounded-xl px-4 py-2 text-sm font-medium text-[#526f78] hover:bg-[#f3f7f5]">Cancel</button>
+              <button type="submit" disabled={isSaving} className="rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db3540] disabled:cursor-not-allowed disabled:opacity-60">
                 {isSaving ? "Saving..." : "Create lesson"}
               </button>
             </div>

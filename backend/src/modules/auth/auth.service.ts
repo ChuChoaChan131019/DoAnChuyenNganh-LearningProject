@@ -45,12 +45,9 @@ export class AuthService {
       const errorMessage = authError?.message || 'Registration failed';
       this.logger.error(`Registration failed: ${errorMessage}`);
 
-      // Chỉ detect duplicate khi message chứa 'already registered' cụ thể
-      // Không dùng status 422 vì nó cover quá nhiều loại lỗi (validation, rate limit, etc.)
       const isDuplicate =
-        errorMessage.toLowerCase().includes('already registered') ||
-        errorMessage.toLowerCase().includes('already been registered') ||
-        errorMessage.toLowerCase().includes('email address is already');
+        errorMessage.toLowerCase().includes('already') ||
+        (authError as any)?.status === 422;
 
       if (isDuplicate) {
         throw new HttpException(
@@ -185,50 +182,6 @@ export class AuthService {
         email: data.user?.email,
         role: profile?.role ?? data.user?.user_metadata?.role ?? 'learner',
         fullName: data.user?.user_metadata?.full_name ?? '',
-      },
-    };
-  }
-
-  async refresh(refreshToken: string): Promise<any> {
-    if (!refreshToken) {
-      throw new HttpException(
-        { error: { code: 'INVALID_TOKEN', message: 'Refresh token is required' } },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const supabase = this.supabaseService.getClient();
-    const { data, error } = await supabase.auth.refreshSession({
-      refresh_token: refreshToken,
-    });
-
-    if (error || !data.session || !data.user) {
-      throw new HttpException(
-        { error: { code: 'INVALID_REFRESH_TOKEN', message: error?.message || 'Invalid or expired refresh token' } },
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
-
-    let profile: any = null;
-    try {
-      const { data: p } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-      profile = p;
-    } catch {
-      // fallback to metadata
-    }
-
-    return {
-      access_token: data.session.access_token,
-      refresh_token: data.session.refresh_token,
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-        role: profile?.role ?? data.user.user_metadata?.role ?? 'learner',
-        fullName: data.user.user_metadata?.full_name ?? '',
       },
     };
   }

@@ -57,24 +57,6 @@ export class AiService {
     );
   }
 
-  /**
-   * L-A01: Đề xuất kế hoạch học tập (AI Learning Plan)
-   */
-  async generateLearningPlanSuggestion(params: {
-    courseId: string;
-    goal: string;
-    availableDays: number[];
-    sessionDurationMinutes: number;
-  }): Promise<any> {
-    this.logger.log(`Generating AI learning plan for course: ${params.courseId}`);
-    return {
-      suggested_sessions_per_week: params.availableDays.length,
-      estimated_weeks: 4,
-      pace: 'moderate',
-      message: 'Kế hoạch học tập tối ưu được AI đề xuất dựa trên quỹ thời gian của bạn.',
-    };
-  }
-
   private encryptTutorMessage(value: string): string {
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', this.tutorEncryptionKey, iv);

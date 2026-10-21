@@ -235,22 +235,22 @@ export default function CategoriesPage() {
         <button
           type="button"
           onClick={() => setIsCreateOpen(true)}
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#F7444E] px-4 text-sm font-semibold text-white shadow-xs transition hover:bg-[#db3540]"
+          className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#F7444E] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#df3540]"
         >
           <Plus className="h-4 w-4" />
           New category
         </button>
       </header>
-      <section className="overflow-visible rounded-2xl border border-[#dfe6df] bg-white shadow-xs">
+      <section className="overflow-visible rounded-2xl border border-[#dfe6df] bg-white shadow-[0_8px_24px_rgba(0,44,62,0.06)]">
         <div className="flex items-center justify-between gap-4 border-b border-[#dfe6df] px-4 py-4 sm:px-5">
           <label className="relative block w-full max-w-[342px]">
             <span className="sr-only">Search categories</span>
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#637981]" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71878c]" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search categories..."
-              className="h-10 w-full rounded-xl border border-[#dfe6df] bg-white pl-10 pr-3 text-sm text-[#002C3E] placeholder:text-[#637981]/70 shadow-xs outline-none transition focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
+              className="h-10 w-full rounded-xl border border-[#dfe6df] bg-[#fffefb] pl-10 pr-3 text-sm text-[#002C3E] shadow-sm outline-none transition focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
             />
           </label>
           <span className="shrink-0 text-xs text-[#637981]">
@@ -260,8 +260,8 @@ export default function CategoriesPage() {
         </div>
         <div className="h-[390px] min-h-[330px] overflow-auto">
           <table className="w-full min-w-[900px] border-collapse text-left">
-            <thead className="sticky top-0 z-10 bg-[#fbfcf8]">
-              <tr className="border-b border-[#dfe6df] text-sm text-[#637981]">
+            <thead className="sticky top-0 z-10 bg-white">
+              <tr className="border-b border-[#dfe6df] text-sm text-[#526f78]">
                 <th className="px-4 py-3 font-medium sm:px-5">Name</th>
                 <th className="px-4 py-3 font-medium">Slug</th>
                 <th className="px-4 py-3 font-medium">Description</th>
@@ -286,11 +286,11 @@ export default function CategoriesPage() {
                 filteredCategories.map((category) => (
                 <tr
                   key={category.id}
-                  className="group border-b border-[#e5ebe5] last:border-b-0 hover:bg-[#f3f7f5]"
+                  className="group border-b border-[#dfe6df] last:border-b-0 hover:bg-[#f8fbf9]"
                 >
                   <td className="px-4 py-2 sm:px-5">
                     <div className="flex items-center gap-3">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F7444E]/10 text-[#F7444E]">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#ffe0df] text-[#F7444E]">
                         <FolderTree className="h-4 w-4" />
                       </span>
                       <Link
@@ -329,7 +329,7 @@ export default function CategoriesPage() {
                       type="button"
                       aria-label={`Actions for ${category.name}`}
                       onClick={(event) => toggleCategoryMenu(category.id, event)}
-                      className="rounded-lg p-2 text-[#637981] transition hover:bg-[#dfe6df]/50 hover:text-[#002C3E]"
+                      className="rounded-lg p-2 text-[#002C3E] transition hover:bg-[#eaf4f3]"
                     >
                       <MoreHorizontal className="h-4 w-4" />
                     </button>
@@ -360,13 +360,13 @@ export default function CategoriesPage() {
             return (
               <div
                 data-category-menu
-                className="fixed z-[100] w-32 rounded-lg border border-[#dfe6df] bg-white p-1 text-left text-xs text-[#002C3E] shadow-lg"
+                className="fixed z-[100] w-32 rounded-lg border border-[#dfe6df] bg-white p-1 text-left text-xs shadow-lg"
                 style={{ top: menuPosition.top, left: menuPosition.left }}
               >
                 <Link
                   href={`/content-manager/learning-content/categories/${category.slug}`}
                   onClick={() => setOpenMenu(null)}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[#002C3E] hover:bg-[#f3f7f5]"
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[#002C3E] hover:bg-[#eaf4f3]"
                 >
                   <Eye className="h-3.5 w-3.5" />
                   View
@@ -374,7 +374,7 @@ export default function CategoriesPage() {
                 <button
                   type="button"
                   onClick={() => openEditModal(category)}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[#002C3E] hover:bg-[#f3f7f5]"
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[#002C3E] hover:bg-[#eaf4f3]"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                   Edit
@@ -383,7 +383,7 @@ export default function CategoriesPage() {
                   type="button"
                   onClick={() => handleDeleteCategory(category)}
                   disabled={deletingCategoryId === category.id}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[#F7444E] hover:bg-rose-50 disabled:opacity-50"
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[#F7444E] hover:bg-[#fff1f0] disabled:opacity-50"
                 >
                   <X className="h-3.5 w-3.5" />
                   {deletingCategoryId === category.id ? "Deleting..." : "Delete"}
@@ -395,7 +395,7 @@ export default function CategoriesPage() {
         )}
       {isCreateOpen && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-xs px-4 py-8"
+          className="fixed inset-0 z-50 grid place-items-center bg-[#00151d]/75 px-4 py-8"
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeCreateModal();
@@ -403,7 +403,7 @@ export default function CategoriesPage() {
         >
           <form
             onSubmit={handleCreateCategory}
-            className="max-h-full w-full max-w-[640px] overflow-y-auto rounded-2xl border border-[#dfe6df] bg-white p-6 shadow-2xl sm:p-8 text-[#002C3E]"
+            className="max-h-full w-full max-w-[640px] overflow-y-auto rounded-2xl border border-[#dfe6df] bg-[#fffefb] p-6 shadow-2xl sm:p-8"
             aria-labelledby="create-category-title"
           >
             <div className="flex items-start justify-between gap-4">
@@ -422,7 +422,7 @@ export default function CategoriesPage() {
                 type="button"
                 onClick={closeCreateModal}
                 aria-label="Close create category form"
-                className="rounded-lg p-1 text-[#637981] transition hover:bg-[#dfe6df]/50 hover:text-[#002C3E]"
+                className="rounded-lg p-1 text-[#526f78] transition hover:bg-[#eaf4f3] hover:text-[#002C3E]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -436,7 +436,7 @@ export default function CategoriesPage() {
                   onChange={(event) => handleNameChange(event.target.value)}
                   placeholder="e.g. Object-Oriented Programming"
                   autoFocus
-                  className={`mt-2 h-12 w-full rounded-xl border bg-white px-4 text-base text-[#002C3E] outline-none transition placeholder:text-[#637981]/70 focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20 ${
+                  className={`mt-2 h-12 w-full rounded-xl border bg-[#fffefb] px-4 text-base text-[#002C3E] outline-none transition placeholder:text-[#8aa0a5] focus:border-[#F7444E] focus:ring-2 focus:ring-[#F7444E]/15 ${
                     formError && name.trim().length < 3
                       ? "border-[#F7444E]"
                       : "border-[#dfe6df]"
@@ -449,9 +449,9 @@ export default function CategoriesPage() {
                 <input
                   value={slug}
                   readOnly
-                  className="mt-2 h-12 w-full rounded-xl border border-[#dfe6df] bg-[#fbfcf8] px-4 font-mono text-sm text-[#637981] outline-none"
+                  className="mt-2 h-12 w-full rounded-xl border border-[#dfe6df] bg-[#f5f7f3] px-4 font-mono text-sm text-[#637981] outline-none"
                 />
-                <span className="mt-1.5 block text-xs text-[#637981]">
+                <span className="mt-1.5 block text-xs text-[#71878c]">
                   Generated automatically from the name.
                 </span>
               </label>
@@ -463,7 +463,7 @@ export default function CategoriesPage() {
                   onChange={(event) => setDescription(event.target.value)}
                   placeholder="Describe the courses in this category..."
                   rows={4}
-                  className="mt-2 w-full resize-y rounded-xl border border-[#dfe6df] bg-white px-4 py-3 text-sm leading-6 text-[#002C3E] outline-none transition placeholder:text-[#637981]/70 focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
+                  className="mt-2 w-full resize-y rounded-xl border border-[#dfe6df] bg-[#fffefb] px-4 py-3 text-sm leading-6 text-[#002C3E] outline-none transition placeholder:text-[#8aa0a5] focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
                 />
               </label>
             </div>
@@ -479,14 +479,14 @@ export default function CategoriesPage() {
                 type="button"
                 onClick={closeCreateModal}
                 disabled={isSubmitting}
-                className="h-11 rounded-xl border border-[#dfe6df] bg-white px-5 text-sm font-semibold text-[#002C3E] shadow-xs transition hover:bg-[#f3f7f5]"
+                className="h-11 rounded-xl border border-[#dfe6df] bg-white px-5 text-sm font-semibold text-[#002C3E] shadow-sm transition hover:bg-[#f5f7f3]"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="h-11 rounded-xl bg-[#F7444E] px-5 text-sm font-semibold text-white shadow-xs transition hover:bg-[#db3540] disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 rounded-xl bg-[#F7444E] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#df3540] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSubmitting
                   ? "Saving..."

@@ -1,12 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { courseApi, notesApi, enrollmentApi, lessonProgressApi, bookmarkApi } from '@/lib/api';
-import { formatDate } from '@/lib/date';
-import type { Note } from '@/types/notes';
+import { useParams } from 'next/navigation';
+import { courseApi } from '@/lib/api';
 import {
   ArrowLeft,
   ArrowRight,
@@ -23,8 +20,6 @@ import {
   Terminal,
   Trophy,
   Zap,
-  Bookmark,
-  Edit3,
   X,
   Layers,
   PanelLeft,
@@ -463,76 +458,46 @@ public class Program
 
 export default function LearnerLessonPage() {
   const params = useParams();
-  const router = useRouter();
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug || 'csharp-fundamentals';
   const lessonIdParam = Array.isArray(params?.lessonId) ? params.lessonId[0] : params?.lessonId;
 
   const [databaseCourseTitle, setDatabaseCourseTitle] = useState<string | null>(null);
-  const [databaseCourseLevel, setDatabaseCourseLevel] = useState<string | null>(null);
-  const [databaseCourseId, setDatabaseCourseId] = useState<string | null>(null);
   const [databaseChapters, setDatabaseChapters] = useState<LearnerLessonChapter[] | null>(null);
-
-  // ─── Enrollment & progress state ─────────────────────────────────────────────
-  const [isEnrolled, setIsEnrolled] = useState<boolean | null>(null); // null = đang load
-  const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
-  const [isCompletingLesson, setIsCompletingLesson] = useState(false);
 
   useEffect(() => {
     let isActive = true;
 
     courseApi.learnerLessons(slug)
-      .then(async (response) => {
-        if (!isActive) return;
-        setDatabaseCourseTitle(response.course.title);
-        setDatabaseCourseLevel((response.course as any).level ?? null);
-        setDatabaseCourseId(response.course.id);
-        setDatabaseChapters(response.chapters);
-
-        // Phương án B: kiểm tra đã đăng ký chưa
-        const [enrollStatus, progressData] = await Promise.all([
-          enrollmentApi.check(response.course.id).catch(() => ({ isEnrolled: false, status: null })),
-          enrollmentApi.getProgress(response.course.id).catch(() => ({ completedLessons: [] })),
-        ]);
-
-        if (!isActive) return;
-
-        if (!enrollStatus.isEnrolled) {
-          // Chưa đăng ký → redirect về trang chi tiết khóa học
-          toast.error('Bạn cần đăng ký khóa học trước khi học bài này.');
-          router.replace(`/learner/courses/${slug}`);
-          return;
+      .then((response) => {
+        if (isActive) {
+          setDatabaseCourseTitle(response.course.title);
+          setDatabaseChapters(response.chapters);
         }
-
-        setIsEnrolled(true);
-        setCompletedLessonIds(new Set(progressData.completedLessons));
       })
       .catch(() => {
         if (isActive) {
           setDatabaseCourseTitle(null);
-          setDatabaseCourseId(null);
           setDatabaseChapters(null);
-          setIsEnrolled(false);
         }
       });
 
     return () => {
       isActive = false;
     };
-  }, [slug, router]);
+  }, [slug]);
 
   const fallbackCourse = COURSE_MAP[slug] || COURSE_MAP['csharp-fundamentals'];
   const currentCourse = databaseChapters
     ? {
         ...fallbackCourse,
-        title: databaseCourseTitle ?? fallbackCourse.title,
-        level: databaseCourseLevel ?? fallbackCourse.level,
+      title: databaseCourseTitle ?? fallbackCourse.title,
         chapters: databaseChapters.map((chapter) => ({
           title: chapter.title,
           lessons: chapter.lessons.map((lesson) => ({
             id: lesson.id,
             title: lesson.title,
             duration: `${lesson.duration} min`,
-            completed: completedLessonIds.has(lesson.id),
+            completed: false,
           })),
         })),
       }
@@ -578,11 +543,6 @@ export default function LearnerLessonPage() {
 
   // Bài học thuộc cùng chương hiện tại
   const currentChapterLessons = allCourseLessons.filter((l) => l.chapterTitle === currentLesson.chapter);
-  // Tiến độ chương chuẩn: Số bài đã hoàn thành / Tổng số bài trong chương
-  const completedInChapterCount = currentChapterLessons.filter((l) => l.completed).length;
-  const chapterProgressPercent = currentChapterLessons.length > 0
-    ? Math.round((completedInChapterCount / currentChapterLessons.length) * 100)
-    : 0;
 
   // Điều hướng Bài trước / Bài tiếp theo
   const globalIndex = allCourseLessons.findIndex((item) => item.id === currentLessonMeta.id);
@@ -590,58 +550,10 @@ export default function LearnerLessonPage() {
   const nextLesson = globalIndex < allCourseLessons.length - 1 ? allCourseLessons[globalIndex + 1] : null;
 
   // Trạng thái tương tác
-  const [isCompleted, setIsCompleted] = useState(currentLessonMeta.completed);
   const [copiedCode, setCopiedCode] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [hasRun, setHasRun] = useState(false);
   const [consoleOutput, setConsoleOutput] = useState<string>('');
-  const [isNoteOpen, setIsNoteOpen] = useState(false);
-  const [newNoteTitle, setNewNoteTitle] = useState('');
-  const [newNoteContent, setNewNoteContent] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const [isBookmarking, setIsBookmarking] = useState(false);
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
-
-  // ─── Bookmark status & toggle ─────────────────────────────────────────────
-  useEffect(() => {
-    let isSubscribed = true;
-    const targetLessonId = currentLessonMeta?.id || activeLessonId;
-    if (targetLessonId) {
-      bookmarkApi
-        .check(targetLessonId)
-        .then((res) => {
-          if (isSubscribed) setIsBookmarked(res.isBookmarked);
-        })
-        .catch(() => {
-          if (isSubscribed) setIsBookmarked(false);
-        });
-    }
-    return () => {
-      isSubscribed = false;
-    };
-  }, [currentLessonMeta?.id, activeLessonId]);
-
-  const handleToggleBookmark = async () => {
-    const targetLessonId = currentLessonMeta?.id || activeLessonId;
-    if (!targetLessonId || isBookmarking) return;
-
-    setIsBookmarking(true);
-    try {
-      const res = await bookmarkApi.toggle(targetLessonId);
-      setIsBookmarked(res.isBookmarked);
-      if (res.isBookmarked) {
-        toast.success(res.message || 'Đã lưu bài học vào danh mục yêu thích! 📌');
-      } else {
-        toast.info(res.message || 'Đã bỏ lưu bài học.');
-      }
-    } catch {
-      toast.error('Không thể cập nhật bookmark. Vui lòng thử lại.');
-    } finally {
-      setIsBookmarking(false);
-    }
-  };
 
   const [showOutline, setShowOutline] = useState(true);
   const outlineDialog = useRef<HTMLDialogElement>(null);
@@ -671,85 +583,12 @@ export default function LearnerLessonPage() {
     setHasRun(false);
     setIsRunning(false);
     setConsoleOutput('');
-    setIsCompleted(currentLessonMeta.completed);
-  }, [activeLessonId, currentLessonMeta.completed]);
+  }, [activeLessonId]);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(currentLesson.initialCode);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
-  };
-
-  // Xác định UUID thật của bài học từ Supabase
-  const realLessonUuid = useMemo(() => {
-    const isUuid = (val?: string) =>
-      !!val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
-
-    if (isUuid(currentLessonMeta?.id)) return currentLessonMeta.id;
-    if (isUuid(activeLessonId)) return activeLessonId;
-
-    for (const ch of databaseChapters) {
-      for (const les of ch.lessons || []) {
-        if (les.id === activeLessonId || (les as any).slug === activeLessonId || les.title === currentLessonMeta?.title) {
-          if (isUuid(les.id)) return les.id;
-        }
-      }
-    }
-    return undefined;
-  }, [currentLessonMeta?.id, currentLessonMeta?.title, activeLessonId, databaseChapters]);
-
-  const fetchNotes = async () => {
-    if (!realLessonUuid) return;
-    setIsLoadingNotes(true);
-    try {
-      const data = await notesApi.list({ lessonId: realLessonUuid });
-      setNotes(data || []);
-    } catch (err) {
-      console.error('Failed to load notes:', err);
-    } finally {
-      setIsLoadingNotes(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isNoteOpen && realLessonUuid) {
-      fetchNotes();
-    }
-  }, [isNoteOpen, realLessonUuid]);
-
-  const handleCreateNote = async () => {
-    if (!newNoteContent.trim()) return;
-    if (!realLessonUuid) {
-      toast.error('Đang tải thông tin bài học, vui lòng thử lại sau giây lát');
-      return;
-    }
-    setIsCreating(true);
-    try {
-      await notesApi.create({
-        lesson_id: realLessonUuid,
-        title: newNoteTitle.trim() || undefined,
-        content: newNoteContent.trim(),
-      });
-      setNewNoteTitle('');
-      setNewNoteContent('');
-      toast.success('Đã lưu ghi chú bài học! 📝');
-      await fetchNotes();
-    } catch (err) {
-      console.error('Failed to create note:', err);
-      toast.error('Không thể lưu ghi chú bài học.');
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  const handleDeleteNote = async (id: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa ghi chú này?')) return;
-    try {
-      await notesApi.delete(id);
-      setNotes((prev) => prev.filter((n) => n.id !== id));
-    } catch (err) {
-      console.error('Failed to delete note:', err);
-    }
   };
 
   const handleRunCode = () => {
@@ -792,17 +631,11 @@ export default function LearnerLessonPage() {
                       className={`flex items-start gap-3 rounded-xl p-2.5 text-xs transition-all ${
                         isCurrent
                           ? 'border border-[#f4b7b7] bg-[#fff3f2] font-semibold text-[#f7444e] shadow-sm'
-                          : item.completed
-                          ? 'text-slate-700 hover:bg-slate-50 cursor-pointer'
                           : 'text-slate-600 hover:bg-slate-50 cursor-pointer'
                       }`}
                     >
                       <span className="mt-0.5 shrink-0">
-                        {item.completed && !isCurrent ? (
-                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#dff5ea] text-[#2b9e6a]">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                          </span>
-                        ) : isCurrent ? (
+                        {isCurrent ? (
                           <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#F7444E] text-[10px] font-bold text-white">
                             {index + 1}
                           </span>
@@ -890,7 +723,7 @@ export default function LearnerLessonPage() {
                 {currentLesson.title}
               </h1>
               <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-                <span className="rounded-full border border-[#f7d0d0] bg-[#fbe7e9] px-2.5 py-0.5 text-[11px] font-bold text-[#f7444e] capitalize">
+                <span className="rounded-full border border-[#f7d0d0] bg-[#fbe7e9] px-2.5 py-0.5 text-[11px] font-bold text-[#f7444e]">
                   {currentCourse.level}
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-600">
@@ -900,72 +733,6 @@ export default function LearnerLessonPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              <div className="flex flex-col items-end">
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                  <span>Tiến độ chương</span>
-                  <span className="font-bold text-slate-800">
-                    {chapterProgressPercent}%
-                  </span>
-                </div>
-                <div className="mt-1.5 h-1.5 w-32 rounded-full bg-[#f4d0d0] overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-[#f7444e] transition-all duration-300"
-                    style={{
-                      width: `${chapterProgressPercent}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleToggleBookmark}
-                disabled={isBookmarking}
-                className={`hidden sm:inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition ${
-                  isBookmarked
-                    ? 'border-rose-200 bg-rose-50 text-[#f7444e]'
-                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                } ${isBookmarking ? 'cursor-wait opacity-60' : ''}`}
-                title={isBookmarked ? 'Bỏ lưu bài học' : 'Lưu bài học vào danh mục yêu thích'}
-              >
-                <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-current text-[#f7444e]' : ''}`} />
-                {isBookmarking ? 'Đang xử lý...' : isBookmarked ? 'Đã lưu' : 'Lưu bài học'}
-              </button>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  if (isCompleted || isCompletingLesson) return;
-                  if (!databaseCourseId) {
-                    toast.error('Không tìm thấy thông tin khóa học.');
-                    return;
-                  }
-                  setIsCompletingLesson(true);
-                  try {
-                    await lessonProgressApi.complete(activeLessonId, databaseCourseId);
-                    setIsCompleted(true);
-                    setCompletedLessonIds((prev) => new Set([...prev, activeLessonId]));
-                    toast.success('Đã đánh dấu hoàn thành bài học! 🎉');
-                  } catch {
-                    toast.error('Không thể lưu tiến độ. Vui lòng thử lại.');
-                  } finally {
-                    setIsCompletingLesson(false);
-                  }
-                }}
-                disabled={isCompleted || isCompletingLesson}
-                className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold transition shadow-sm ${
-                  isCompleted
-                    ? 'bg-[#dff5ea] text-[#2b9e6a] border border-[#a2e5c6] cursor-default'
-                    : isCompletingLesson
-                    ? 'bg-slate-200 text-slate-400 cursor-wait'
-                    : 'bg-[#F7444E] text-white hover:bg-[#e33b3b]'
-                }`}
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                {isCompleted ? 'Đã hoàn thành' : isCompletingLesson ? 'Đang lưu...' : 'Đánh dấu hoàn thành'}
-              </button>
-            </div>
           </div>
         </div>
 
@@ -1200,130 +967,6 @@ export default function LearnerLessonPage() {
         </footer>
       </div>
 
-      {/* Note FAB */}
-      <button
-        onClick={() => {
-          if (!isNoteOpen) {
-            fetchNotes();
-          }
-          setIsNoteOpen((prev) => !prev);
-        }}
-        className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#0f3741] text-white shadow-xl transition hover:scale-105 hover:bg-[#145a68]"
-        title="Ghi chú bài học"
-      >
-        <Edit3 className="h-6 w-6" />
-      </button>
-
-      {/* Note Drawer (No backdrop overlay) */}
-      {isNoteOpen && (
-        <aside
-          aria-label="Bảng ghi chú bài học"
-          className="fixed inset-y-0 right-0 z-50 w-full max-w-md border-l border-slate-200 bg-white shadow-2xl transition-transform ease-[cubic-bezier(0.32,0.72,0,1)] duration-500 flex flex-col"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5 bg-white">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-                <FileText className="h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-[#0f3741]">Ghi chú bài học</h3>
-                <p className="text-xs text-slate-500 line-clamp-1">{currentLesson.title}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setIsNoteOpen(false)}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
-              title="Đóng ghi chú"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Editor Area (Dominant - Takes remaining vertical space) */}
-          <div className="flex-1 flex flex-col p-4 bg-white min-h-0">
-            <input
-              type="text"
-              value={newNoteTitle}
-              onChange={(e) => setNewNoteTitle(e.target.value)}
-              placeholder="Tiêu đề ghi chú (tùy chọn)..."
-              className="mb-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-medium text-slate-800 placeholder-slate-400 focus:border-[#78bcc4] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#78bcc4]/10 transition"
-            />
-            <textarea
-              value={newNoteContent}
-              onChange={(e) => setNewNoteContent(e.target.value)}
-              placeholder="Nội dung ghi chú... (Hỗ trợ Markdown)"
-              className="flex-1 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-sm text-slate-700 placeholder-slate-400 focus:border-[#78bcc4] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#78bcc4]/10 transition"
-            />
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-xs text-slate-400">
-                {newNoteContent.length} ký tự
-              </span>
-              <button
-                onClick={handleCreateNote}
-                disabled={!newNoteContent.trim() || isCreating}
-                className="rounded-lg bg-[#0f3741] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#145a68] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-              >
-                {isCreating ? 'Đang lưu...' : 'Lưu ghi chú'}
-              </button>
-            </div>
-          </div>
-
-          {/* Compact Notes List Section (Subordinate - Max 220px height) */}
-          <div className="border-t border-slate-200 bg-slate-50 p-4 max-h-[220px] flex flex-col shrink-0">
-            <div className="flex items-center justify-between pb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Ghi chú bài này ({notes.length})
-              </span>
-              <Link
-                href="/learner/notes"
-                className="text-xs font-semibold text-[#f7444e] hover:text-rose-600 transition"
-              >
-                Xem tất cả →
-              </Link>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-              {isLoadingNotes ? (
-                <div className="flex items-center justify-center py-6 text-slate-400">
-                  <div className="h-5 w-5 border-2 border-slate-300 border-t-[#0f3741] rounded-full animate-spin" />
-                </div>
-              ) : notes.length === 0 ? (
-                <div className="text-center py-5 text-slate-400 text-xs">
-                  Chưa có ghi chú nào cho bài học này
-                </div>
-              ) : (
-                notes.map((note) => (
-                  <div key={note.id} className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-xs">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        {note.title && (
-                          <h4 className="text-xs font-bold text-slate-800 truncate mb-0.5">
-                            {note.title}
-                          </h4>
-                        )}
-                        <p className="text-xs text-slate-600 line-clamp-2 whitespace-pre-wrap">
-                          {note.content}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteNote(note.id)}
-                        className="shrink-0 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 transition"
-                        title="Xóa ghi chú"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <p className="mt-1 text-[10px] text-slate-400">
-                      {formatDate(note.created_at)}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </aside>
-      )}
     </div>
   );
 }

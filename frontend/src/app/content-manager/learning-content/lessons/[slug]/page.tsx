@@ -174,7 +174,7 @@ export default function LessonEditorPage() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#002C3E] shadow-xs hover:bg-[#f3f7f5]"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#002C3E] shadow-sm hover:bg-[#f8fbf9]"
           >
             <Eye className="h-4 w-4" />
             Preview
@@ -183,14 +183,14 @@ export default function LessonEditorPage() {
             type="button"
             onClick={() => saveLesson("draft")}
             disabled={isLoading || isSaving}
-            className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#002C3E] shadow-xs hover:bg-[#f3f7f5]"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#002C3E] shadow-sm hover:bg-[#f8fbf9]"
           >
             <Save className="h-4 w-4" />
             Save draft
           </button>
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#002C3E] shadow-xs hover:bg-[#f3f7f5]"
+            className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#002C3E] shadow-sm hover:bg-[#f8fbf9]"
           >
             <WandSparkles className="h-4 w-4" />
             Generate with AI
@@ -199,7 +199,7 @@ export default function LessonEditorPage() {
             type="button"
             onClick={() => saveLesson("in_review")}
             disabled={isLoading || isSaving}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-xs transition hover:bg-[#db3540]"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#df3540]"
           >
             <Send className="h-4 w-4" />
             Submit for review
@@ -208,7 +208,7 @@ export default function LessonEditorPage() {
       </div>
       <header>
         <div className="flex items-center gap-2 text-xs text-[#637981]">
-          <span className="rounded-full border border-[#dfe6df] bg-[#fbfcf8] px-2.5 py-1 font-semibold text-[#002C3E]">
+          <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
             {status}
           </span>
           <span>{chapterTitle}</span>
@@ -223,7 +223,7 @@ export default function LessonEditorPage() {
         </p>
       )}
       {loadError && (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-[#F7444E]">
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {loadError}
         </p>
       )}
@@ -233,7 +233,7 @@ export default function LessonEditorPage() {
         </p>
       )}
       <div className="grid items-start gap-4 xl:grid-cols-[250px_minmax(0,1fr)_290px]">
-        <aside className="rounded-2xl border border-[#dfe6df] bg-white p-3 shadow-xs">
+        <aside className="rounded-2xl border border-[#dfe6df] bg-white p-3 shadow-sm">
           <p className="px-2 py-2 text-xs font-bold uppercase tracking-wider text-[#637981]">
             Structure
           </p>
@@ -242,7 +242,7 @@ export default function LessonEditorPage() {
               <Link
                 key={lesson.slug}
                 href={`/content-manager/learning-content/lessons/${lesson.slug}`}
-                className={`block w-full rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${selectedSlug === lesson.slug ? "border border-[#F7444E]/40 bg-[#F7444E]/10 font-semibold text-[#F7444E]" : "text-[#637981] hover:bg-[#f3f7f5] hover:text-[#002C3E]"}`}
+                className={`block w-full rounded-xl px-3 py-2.5 text-left text-sm ${selectedSlug === lesson.slug ? "border border-[#002C3E] bg-[#ffe0df] font-semibold text-[#F7444E]" : "text-[#526f78] hover:bg-[#f8fbf9]"}`}
               >
                 {lesson.title}
               </Link>
@@ -250,7 +250,7 @@ export default function LessonEditorPage() {
           </nav>
         </aside>
         <main className="space-y-4">
-          <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-xs">
+          <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">
             <div className="flex flex-wrap items-center gap-4 border-b border-[#dfe6df] px-5 py-3 text-[#637981]">
               <Type className="h-4 w-4" />
               <span className="font-semibold">H2</span>
@@ -265,10 +265,10 @@ export default function LessonEditorPage() {
             <textarea
               value={content}
               onChange={(event) => setContent(event.target.value)}
-              className="min-h-[265px] w-full resize-y border-0 bg-white p-5 text-[16px] leading-relaxed text-[#002C3E] outline-none focus:ring-2 focus:ring-[#78BCC4]/20"
+              className="min-h-[265px] w-full resize-y border-0 p-5 text-[16px] leading-relaxed text-[#16485a] outline-none focus:ring-2 focus:ring-[#78BCC4]/20"
             />
           </section>
-          <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-xs">
+          <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">
             <div className="border-b border-[#dfe6df] px-5 py-4">
               <h2 className="font-semibold text-[#002C3E]">C# example</h2>
               <p className="text-xs text-[#637981]">
@@ -279,10 +279,10 @@ export default function LessonEditorPage() {
               value={codeExample}
               onChange={(event) => setCodeExample(event.target.value)}
               placeholder="Add a C# code example..."
-              className="mx-4 my-4 min-h-[180px] w-[calc(100%-2rem)] resize-y rounded-xl border border-[#dfe6df] bg-[#fbfcf8] p-5 font-mono text-sm leading-7 text-[#002C3E] outline-none focus:ring-2 focus:ring-[#78BCC4]/40 placeholder:text-[#637981]/70"
+              className="mx-4 my-4 min-h-[180px] w-[calc(100%-2rem)] resize-y rounded-xl bg-[#061d26] p-5 font-mono text-sm leading-7 text-[#d8e9e8] outline-none focus:ring-2 focus:ring-[#78BCC4]/40"
             />
           </section>
-          <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-xs">
+          <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">
             <div className="border-b border-[#dfe6df] px-5 py-4">
               <h2 className="font-semibold text-[#002C3E]">Exercises</h2>
             </div>
@@ -291,7 +291,7 @@ export default function LessonEditorPage() {
                 {exercises.map((exercise, index) => (
                   <div
                     key={exercise.id}
-                    className="flex items-start gap-3 rounded-xl border border-[#dfe6df] bg-[#fbfcf8] px-3 py-3 text-sm text-[#002C3E]"
+                    className="flex items-start gap-3 rounded-xl bg-[#f4f5f0] px-3 py-3 text-sm text-[#16485a]"
                   >
                     <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#F7444E] text-[11px] font-bold text-white">
                       {index + 1}
@@ -313,58 +313,58 @@ export default function LessonEditorPage() {
           </section>
         </main>
         <aside className="space-y-4">
-          <section className="rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-xs">
+          <section className="rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-sm">
             <h2 className="border-b border-[#dfe6df] pb-4 font-semibold text-[#002C3E]">
               Lesson settings
             </h2>
-            <label className="mt-4 block text-xs font-semibold text-[#637981]">
+            <label className="mt-4 block text-xs font-semibold text-[#526f78]">
               Title
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-1 focus:ring-[#78BCC4]"
+                className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] px-3 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4]"
               />
             </label>
-            <label className="mt-4 block text-xs font-semibold text-[#637981]">
+            <label className="mt-4 block text-xs font-semibold text-[#526f78]">
               Lesson ID
               <input
                 value={slug}
                 readOnly
-                className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] bg-[#fbfcf8] px-3 font-mono text-sm text-[#637981] outline-none"
+                className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] bg-slate-50 px-3 font-mono text-sm text-[#637981] outline-none"
               />
             </label>
-            <label className="mt-4 block text-xs font-semibold text-[#637981]">
+            <label className="mt-4 block text-xs font-semibold text-[#526f78]">
               Chapter
-              <select value={chapterTitle} onChange={(event) => setChapterTitle(event.target.value)} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-1 focus:ring-[#78BCC4] cursor-pointer">
-                <option className="bg-white text-[#002C3E]">{chapterTitle}</option>
+              <select value={chapterTitle} onChange={(event) => setChapterTitle(event.target.value)} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E]">
+                <option>{chapterTitle}</option>
               </select>
             </label>
-            <label className="mt-4 block text-xs font-semibold text-[#637981]">
+            <label className="mt-4 block text-xs font-semibold text-[#526f78]">
               Status
-              <select value={status} onChange={(event) => setStatus(event.target.value)} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-1 focus:ring-[#78BCC4] cursor-pointer">
-                <option className="bg-white text-[#002C3E]">Published</option>
-                <option className="bg-white text-[#002C3E]">Approved</option>
-                <option className="bg-white text-[#002C3E]">Draft</option>
-                <option className="bg-white text-[#002C3E]">In review</option>
+              <select value={status} onChange={(event) => setStatus(event.target.value)} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E]">
+                <option>Published</option>
+                <option>Approved</option>
+                <option>Draft</option>
+                <option>In review</option>
               </select>
             </label>
-            <label className="mt-5 flex items-center justify-between text-sm text-[#637981]">
+            <label className="mt-5 flex items-center justify-between text-sm text-[#526f78]">
               Show code playground
               <button
                 type="button"
                 role="switch"
                 aria-checked={showPlayground}
                 onClick={() => setShowPlayground(!showPlayground)}
-                className={`relative h-5 w-9 rounded-full transition-colors ${showPlayground ? "bg-[#F7444E]" : "bg-[#dfe6df]"}`}
+                className={`relative h-5 w-9 rounded-full ${showPlayground ? "bg-[#F7444E]" : "bg-[#dfe6df]"}`}
               >
                 <span
-                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${showPlayground ? "right-0.5" : "left-0.5"}`}
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${showPlayground ? "right-0.5" : "left-0.5"}`}
                 />
               </button>
             </label>
           </section>
-          <section className="rounded-2xl border border-rose-200/60 bg-white p-5 shadow-xs">
-            <h2 className="font-semibold text-[#F7444E]">Danger zone</h2>
+          <section className="rounded-2xl border border-rose-200 bg-white p-5 shadow-sm">
+            <h2 className="font-semibold text-rose-700">Danger zone</h2>
             <p className="mt-2 text-xs leading-5 text-[#637981]">
               A lesson with related learning data cannot be deleted.
             </p>
@@ -372,20 +372,20 @@ export default function LessonEditorPage() {
               type="button"
               onClick={deleteLesson}
               disabled={isLoading || isSaving}
-              className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 text-sm font-semibold text-[#F7444E] hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+              className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Trash2 className="h-4 w-4" />
               Delete lesson
             </button>
           </section>
-          <section className="rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-xs">
+          <section className="rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-sm">
             <h2 className="font-semibold text-[#002C3E]">Publishing</h2>
             <p className="mt-2 text-xs text-[#637981]">Last saved just now</p>
             <button
               type="button"
               onClick={() => saveLesson("published")}
               disabled={isLoading || isSaving}
-              className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#F7444E] text-sm font-semibold text-white hover:bg-[#db3540] shadow-xs transition-opacity"
+              className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#F7444E] text-sm font-semibold text-white hover:bg-[#df3540]"
             >
               <Play className="h-4 w-4" />
               {isSaving ? "Saving..." : "Publish"}

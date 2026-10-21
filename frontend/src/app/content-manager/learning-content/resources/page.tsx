@@ -134,7 +134,7 @@ export default function ResourcesPage() {
         </div>
         <button
           type="button"
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#F7444E] px-4 text-sm font-semibold text-white shadow-xs hover:bg-[#db3540] transition-opacity"
+          className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#F7444E] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#df3540]"
         >
           <Plus className="h-4 w-4" />
           Add resource
@@ -142,12 +142,12 @@ export default function ResourcesPage() {
       </header>
       <label className="relative block max-w-[390px]">
         <span className="sr-only">Search resources</span>
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#637981]" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71878c]" />
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search resources..."
-          className="h-11 w-full rounded-xl border border-[#dfe6df] bg-white pl-10 pr-3 text-sm text-[#002C3E] placeholder:text-[#637981]/70 shadow-xs outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
+          className="h-11 w-full rounded-xl border border-[#dfe6df] bg-white pl-10 pr-3 text-sm text-[#002C3E] shadow-sm outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
         />
       </label>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -156,10 +156,10 @@ export default function ResourcesPage() {
           return (
             <article
               key={resource.id}
-              className="rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
+              className="rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-[0_8px_18px_rgba(0,44,62,0.05)] transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="flex items-start justify-between gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-full bg-[#F7444E]/10 text-[#F7444E]">
+                <span className="grid h-11 w-11 place-items-center rounded-full bg-[#d3f3f5] text-[#3caabd]">
                   <Icon className="h-5 w-5" />
                 </span>
                 <StatusBadge status={resource.status} />
@@ -181,7 +181,7 @@ export default function ResourcesPage() {
         })}
       </div>
       {filteredResources.length === 0 && (
-        <p className="rounded-2xl border border-dashed border-[#dfe6df] bg-white px-5 py-14 text-center text-sm text-[#637981]">
+        <p className="rounded-2xl border border-dashed border-[#dfe6df] px-5 py-14 text-center text-sm text-[#637981]">
           No resources found.
         </p>
       )}

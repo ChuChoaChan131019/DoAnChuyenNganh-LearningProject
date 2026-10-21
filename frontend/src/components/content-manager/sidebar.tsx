@@ -21,8 +21,6 @@ import {
   Sparkles,
   Inbox,
   Search,
-  Bell,
-  MessageSquare,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -174,16 +172,6 @@ const MENU_DATA: NavGroup[] = [
     group: "SYSTEM",
     items: [
       { label: "Search", href: "/content-manager/search", icon: Search },
-      {
-        label: "Notifications",
-        href: "/content-manager/notifications",
-        icon: Bell,
-      },
-      {
-        label: "Feedback",
-        href: "/content-manager/feedback",
-        icon: MessageSquare,
-      },
     ],
   },
 ];

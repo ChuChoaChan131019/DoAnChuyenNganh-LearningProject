@@ -17,7 +17,7 @@ export class PracticeService {
   ) {}
 
   async getOverview(userId: string) {
-    const courseIds = await this.getActiveCourseIds(userId);
+    const courseIds = await this.getAvailableCourseIds();
     if (courseIds.length === 0) return { courses: [], weakTopics: [] };
 
     const supabase = this.supabaseService.getClient();
@@ -39,9 +39,9 @@ export class PracticeService {
       throw new BadRequestException('Unsupported practice mode');
     }
 
-    const courseIds = await this.getActiveCourseIds(userId);
+    const courseIds = await this.getAvailableCourseIds();
     if (courseId && !courseIds.includes(courseId)) {
-      throw new ForbiddenException('You are not enrolled in this course');
+      throw new ForbiddenException('This course is not available');
     }
 
     const weakTopics = mode === 'weak' ? await this.getWeakTopics(userId, courseIds) : [];
@@ -54,16 +54,16 @@ export class PracticeService {
   }
 
   async generateAiPractice(userId: string, body: { course_id?: string; count?: number; prompt?: string }) {
-    const courseIds = await this.getActiveCourseIds(userId);
+    const courseIds = await this.getAvailableCourseIds();
     if (body.course_id && !courseIds.includes(body.course_id)) {
-      throw new ForbiddenException('You are not enrolled in this course');
+      throw new ForbiddenException('This course is not available');
     }
 
     if (body.prompt?.trim()) {
       const supabase = this.supabaseService.getClient();
       const targetCourseIds = body.course_id ? [body.course_id] : courseIds;
       if (targetCourseIds.length === 0) {
-        throw new ForbiddenException('You are not enrolled in any courses');
+        throw new ForbiddenException('No published courses are available');
       }
       
       const { data: courses } = await supabase.from('courses').select('id, title, description').in('id', targetCourseIds);
@@ -154,9 +154,9 @@ export class PracticeService {
       throw new BadRequestException('Unsupported practice mode');
     }
 
-    const courseIds = await this.getActiveCourseIds(userId);
+    const courseIds = await this.getAvailableCourseIds();
     if (body.course_id && !courseIds.includes(body.course_id)) {
-      throw new ForbiddenException('You are not enrolled in this course');
+      throw new ForbiddenException('This course is not available');
     }
 
     const { data, error } = await this.supabaseService.getClient()
@@ -177,7 +177,7 @@ export class PracticeService {
     userId: string,
     body: { question_id: string; option_ids?: string[]; answer_text?: string; attempt_id?: string },
   ) {
-    const courseIds = await this.getActiveCourseIds(userId);
+    const courseIds = await this.getAvailableCourseIds();
     const supabase = this.supabaseService.getClient();
     const { data: question, error: questionError } = await supabase
       .from('questions')
@@ -250,7 +250,7 @@ export class PracticeService {
 
     const { data: details, error: detailsError } = await supabase
       .from('practice_attempt_details')
-      .select('course_id, is_correct')
+      .select('is_correct')
       .eq('attempt_id', attemptId);
     if (detailsError) throw new InternalServerErrorException('Unable to load practice answers');
 
@@ -270,32 +270,17 @@ export class PracticeService {
       .single();
     if (updateError || !completedAttempt) throw new InternalServerErrorException('Unable to complete practice attempt');
 
-    const courseIds = [...new Set(rows.map((detail) => detail.course_id))];
-    if (courseIds.length) {
-      const { error: historyError } = await supabase.from('learning_history').insert(courseIds.map((courseId) => ({
-        learner_id: userId,
-        course_id: courseId,
-        activity_type: 'practice_completed',
-        activity_id: attemptId,
-        event_type: 'practice_completed',
-        occurred_at: completedAt,
-        source: 'user_module',
-      })));
-      if (historyError) throw new InternalServerErrorException('Unable to save practice history');
-    }
-
     return { ...completedAttempt, score: correctAnswers, percentage: scorePercentage };
   }
 
-  private async getActiveCourseIds(userId: string): Promise<string[]> {
+  private async getAvailableCourseIds(): Promise<string[]> {
     const { data, error } = await this.supabaseService
       .getClient()
-      .from('course_enrollments')
-      .select('course_id')
-      .eq('learner_id', userId)
-      .eq('status', 'active');
-    if (error) throw new InternalServerErrorException('Unable to load enrolled courses');
-    return [...new Set((data ?? []).map((row) => row.course_id))];
+      .from('courses')
+      .select('id')
+      .eq('status', 'published');
+    if (error) throw new InternalServerErrorException('Unable to load published courses');
+    return (data ?? []).map((row) => row.id);
   }
 
   private async getWeakTopics(userId: string, courseIds: string[]) {

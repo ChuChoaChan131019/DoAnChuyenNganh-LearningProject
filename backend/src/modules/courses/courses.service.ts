@@ -691,12 +691,9 @@ export class CoursesService {
     if (!lesson) throw new NotFoundException('Lesson not found');
 
     const relatedTables = [
-      'lesson_progress',
       'lesson_topics',
       'materials',
-      'notes',
       'questions',
-      'study_plan_items',
     ] as const;
     const relatedResults = await Promise.all(
       relatedTables.map((table) =>

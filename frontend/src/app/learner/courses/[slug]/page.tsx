@@ -1,12 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, CheckCircle2, Clock3, FileText, Loader2 } from 'lucide-react';
-import { useParams, useRouter } from 'next/navigation';
+import { ArrowLeft, BookOpen, CheckCircle2, Clock3, FileText } from 'lucide-react';
+import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
-import { courseApi, quizApi, enrollmentApi } from '@/lib/api';
-import { formatDate } from '@/lib/date';
+import { courseApi, quizApi } from '@/lib/api';
 
 const COURSE_MAP: Record<string, any> = {
   'csharp-fundamentals': {
@@ -16,7 +14,7 @@ const COURSE_MAP: Record<string, any> = {
     level: 'Beginner',
     description:
       'Start from zero: install the .NET SDK, write your first program, and master variables, data types, operators and control flow.',
-    lastUpdated: '02/08/2026',
+    lastUpdated: 'Updated 2026-08-02',
     lessons: 24,
     questions: 148,
     hours: 5,
@@ -96,7 +94,7 @@ const COURSE_MAP: Record<string, any> = {
     level: 'Intermediate',
     description:
       'Model real problems with classes and objects. Learn encapsulation, inheritance, polymorphism, and design clean solutions.',
-    lastUpdated: '11/08/2026',
+    lastUpdated: 'Updated 2026-08-11',
     lessons: 31,
     questions: 206,
     hours: 6,
@@ -164,15 +162,11 @@ const COURSE_MAP: Record<string, any> = {
 
 export default function LearnerCourseDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
   const [databaseCourse, setDatabaseCourse] = useState<{
     id: string;
     title: string;
     slug: string;
-    level?: string;
-    description?: string;
-    updated_at?: string;
   } | null>(null);
   const [databaseChapters, setDatabaseChapters] = useState<Array<{
     id: string;
@@ -187,11 +181,6 @@ export default function LearnerCourseDetailPage() {
     total_questions: number;
     quiz_type: string;
   }> | null>(null);
-
-  // ─── Enrollment state ────────────────────────────────────────────────────────
-  const [isEnrolled, setIsEnrolled] = useState<boolean>(false);
-  const [isEnrolling, setIsEnrolling] = useState<boolean>(false);
-  const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
   if (!slug) return;
@@ -227,14 +216,6 @@ export default function LearnerCourseDetailPage() {
       );
 
       setDatabaseQuizzes(quizzesWithQuestions);
-
-      // Kiểm tra trạng thái đăng ký & lấy danh sách bài đã hoàn thành
-      const [enrollStatus, progressData] = await Promise.all([
-        enrollmentApi.check(response.course.id).catch(() => ({ isEnrolled: false, status: null })),
-        enrollmentApi.getProgress(response.course.id).catch(() => ({ completedLessons: [] })),
-      ]);
-      setIsEnrolled(enrollStatus.isEnrolled);
-      setCompletedLessonIds(new Set(progressData.completedLessons));
     })
     .catch(() => {
       setDatabaseCourse(null);
@@ -243,47 +224,14 @@ export default function LearnerCourseDetailPage() {
     });
 }, [slug]);
 
-  // ─── Enroll handler ──────────────────────────────────────────────────────────
-  const handleEnroll = async () => {
-    if (!databaseCourse) return;
-    setIsEnrolling(true);
-    try {
-      await enrollmentApi.enroll(databaseCourse.id);
-      setIsEnrolled(true);
-      toast.success('Đăng ký khóa học thành công! Bắt đầu học ngay nhé 🎉');
-    } catch {
-      toast.error('Không thể đăng ký khóa học. Vui lòng thử lại.');
-    } finally {
-      setIsEnrolling(false);
-    }
-  };
-
-  // ─── Intercept lesson clicks when not enrolled (Instant 0s response) ─────────
-  const handleLessonClick = (e: React.MouseEvent) => {
-    if (!isEnrolled) {
-      e.preventDefault();
-      toast.info('Đăng ký để học ngay nào! 🚀');
-      const enrollBtn = document.getElementById('enroll-button');
-      if (enrollBtn) {
-        enrollBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        enrollBtn.classList.add('ring-4', 'ring-rose-400', 'scale-105');
-        setTimeout(() => {
-          enrollBtn.classList.remove('ring-4', 'ring-rose-400', 'scale-105');
-        }, 1200);
-      }
-    }
-  };
-
-
-
   const fallbackCourse = slug ? COURSE_MAP[slug] : null;
   const baseCourse = fallbackCourse ?? (databaseCourse ? {
     id: databaseCourse.id,
     slug: databaseCourse.slug,
     title: databaseCourse.title,
-    level: databaseCourse.level ?? 'Beginner',
-    description: databaseCourse.description || 'Chưa có mô tả cho khóa học này.',
-    lastUpdated: databaseCourse.updated_at ? formatDate(databaseCourse.updated_at) : formatDate(new Date()),
+    level: 'Beginner',
+    description: 'Learning content loaded from Supabase.',
+    lastUpdated: 'Updated today',
     lessons: 0,
     questions: 0,
     hours: 0,
@@ -310,7 +258,7 @@ export default function LearnerCourseDetailPage() {
               id: lesson.id,
               title: lesson.title,
               duration: `${lesson.duration} min`,
-              completed: completedLessonIds.has(lesson.id),
+              completed: false,
             })),
           };
         }),
@@ -332,19 +280,6 @@ export default function LearnerCourseDetailPage() {
       </div>
     );
   }
-
-  const completedLessonCount = course.chapters.reduce(
-    (sum: number, chapter: any) =>
-      sum + (chapter.lessons?.filter((lesson: any) => lesson.completed).length || 0),
-    0
-  );
-  const totalLessonCount = course.chapters.reduce(
-    (sum: number, chapter: any) => sum + (chapter.lessons?.length || 0),
-    0
-  );
-  const progressPercent = totalLessonCount
-    ? Math.round((completedLessonCount / totalLessonCount) * 100)
-    : 0;
 
   return (
     <div className="mx-auto max-w-[1240px] pb-10">
@@ -368,11 +303,11 @@ export default function LearnerCourseDetailPage() {
 
           <div className="px-5 py-5 sm:px-6">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex rounded-full border border-[#f7d0d0] bg-[#fbe7e9] px-2.5 py-1 text-[11px] font-bold text-[#f7444e] capitalize">
+              <span className="inline-flex rounded-full border border-[#f7d0d0] bg-[#fbe7e9] px-2.5 py-1 text-[11px] font-bold text-[#f7444e]">
                 {course.level}
               </span>
               <span className="text-[13px] text-[#5d6b73]">
-                Cập nhật: {course.lastUpdated.includes('Updated ') ? (formatDate(course.lastUpdated.replace('Updated ', '')) || course.lastUpdated.replace('Updated ', '')) : (formatDate(course.lastUpdated) || course.lastUpdated)}
+                Updated {course.lastUpdated.split('Updated ')[1]}
               </span>
             </div>
 
@@ -405,50 +340,14 @@ export default function LearnerCourseDetailPage() {
               </div>
             </div>
 
-            <div className="mt-6 border-t border-[#e1e6e3] pt-4">
-              {!isEnrolled ? (
-                /* ── Chưa đăng ký: Hiện nút Đăng ký ── */
-                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-[14px] text-slate-500">
-                    Đăng ký để bắt đầu học và theo dõi tiến độ của bạn.
-                  </p>
-                  <button
-                    id="enroll-button"
-                    onClick={handleEnroll}
-                    disabled={isEnrolling}
-                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-[14px] bg-[#F7444E] px-6 py-3 text-sm font-bold text-white transition-all duration-300 hover:bg-[#e33b3b] disabled:opacity-60"
-                  >
-                    {isEnrolling ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <BookOpen className="h-4 w-4" />
-                    )}
-                    {isEnrolling ? 'Đang đăng ký...' : 'Đăng ký khóa học'}
-                  </button>
-                </div>
-              ) : (
-                /* ── Đã đăng ký: Hiện thanh tiến độ + nút Tiếp tục ── */
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex flex-1 items-center gap-3">
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#f4d0d0]">
-                      <div
-                        className="h-full rounded-full bg-[#f7444e] transition-all duration-500"
-                        style={{ width: `${progressPercent}%` }}
-                      />
-                    </div>
-                    <span className="min-w-[44px] text-right text-[18px] font-bold text-slate-700">
-                      {progressPercent}%
-                    </span>
-                  </div>
-                  <Link
-                    href="/learner/practice"
-                    className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#f4b7b7] bg-[#fff3f2] px-4 py-3 text-sm font-bold text-[#f7444e] transition hover:bg-[#ffe9e7]"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Practice questions
-                  </Link>
-                </div>
-              )}
+            <div className="mt-6 flex justify-end border-t border-[#e1e6e3] pt-4">
+              <Link
+                href="/learner/practice"
+                className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#f4b7b7] bg-[#fff3f2] px-4 py-3 text-sm font-bold text-[#f7444e] transition hover:bg-[#ffe9e7]"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Practice questions
+              </Link>
             </div>
           </div>
         </div>
@@ -485,15 +384,6 @@ export default function LearnerCourseDetailPage() {
                     </div>
 
                     <div className="flex items-center gap-2 pt-1">
-                      {chapter.completed ? (
-                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#dff5ea] text-[#2b9e6a]">
-                          <CheckCircle2 className="h-4 w-4" />
-                        </span>
-                      ) : (
-                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#f2f5f4] text-slate-500">
-                          <span className="h-2.5 w-2.5 rounded-full border-2 border-slate-400" />
-                        </span>
-                      )}
                       <span className="text-[14px] text-slate-400">
                         {chapter.lessons?.reduce(
                           (sum: number, lesson: any) =>
@@ -516,20 +406,13 @@ export default function LearnerCourseDetailPage() {
                         <Link
                           key={`${chapter.title}-${lesson.title}`}
                           href={`/learner/courses/${slug}/lessons/${lessonSlug}`}
-                          onClick={handleLessonClick}
                           className={`group flex items-center justify-between gap-4 px-4 py-3.5 transition-colors hover:bg-rose-50/50 ${
                             lessonIndex !== 0 ? 'border-t border-slate-100' : ''
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <span
-                              className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${
-                                lesson.completed
-                                  ? 'bg-[#dff5ea] text-[#2b9e6a]'
-                                  : 'bg-slate-100 text-slate-400'
-                              }`}
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-500">
+                              {lessonIndex + 1}
                             </span>
                             <span className="text-[16px] font-medium text-slate-700 transition group-hover:font-semibold group-hover:text-[#f7444e]">
                               {lesson.title}
@@ -547,8 +430,20 @@ export default function LearnerCourseDetailPage() {
             </div>
           </div>
 
-          {/* Cột phải: Tests, Resources */}
+          {/* Cột phải: Instructor, Tests, Resources */}
           <div className="space-y-5">
+            <div className="rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_8px_18px_rgba(0,44,62,0.04)]">
+              <h3 className="text-[22px] font-bold tracking-tight text-slate-800">Instructor</h3>
+              <div className="mt-4 flex items-center gap-3 rounded-[12px] border border-slate-200 bg-slate-50 p-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#dfeff5] text-base font-bold text-slate-700">
+                  DL
+                </div>
+                <div>
+                  <div className="text-[15px] font-bold text-slate-800">{course.instructor}</div>
+                  <div className="text-xs text-slate-500">{course.instructorRole}</div>
+                </div>
+              </div>
+            </div>
 
             <div className="rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_8px_18px_rgba(0,44,62,0.04)]">
               <div className="mb-4 flex items-center justify-between">
@@ -568,7 +463,6 @@ export default function LearnerCourseDetailPage() {
                     </div>
                     <Link
                       href={`/learner/courses/${slug}/tests/${test.id}`}
-                      onClick={handleLessonClick}
                       className="mt-3 inline-flex w-full items-center justify-center rounded-[10px] bg-[#F7444E] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#e33b3b]"
                     >
                       Start test

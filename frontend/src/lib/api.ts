@@ -7,7 +7,7 @@ import type {
   ApiErrorResponse,
 } from '../types/auth';
 import type { Category, CategoryCourse } from '../types/learning-content';
-import { clearSession, getStoredToken, getStoredRefreshToken, saveSession } from './auth/session';
+import { clearSession, getStoredToken } from './auth/session';
 import type { ChapterOption, CourseOption, LessonOption, QuestionPayload } from '../types/question';
 import type {
   QuizItem,
@@ -20,7 +20,6 @@ import type {
   QuizSubmissionPayload,
   QuizStatus,
 } from '../types/quiz';
-import type { Note, CreateNotePayload, UpdateNotePayload } from '../types/notes';
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 
@@ -36,39 +35,9 @@ export class ApiClientError extends Error {
   }
 }
 
-let refreshPromise: Promise<string | null> | null = null;
-
-async function doRefreshToken(): Promise<string | null> {
-  const refreshToken = getStoredRefreshToken();
-  if (!refreshToken) return null;
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-
-    if (!res.ok) return null;
-
-    const json = await res.json();
-    const data = json?.data as LoginResponse | undefined;
-    if (!data?.access_token) return null;
-
-    saveSession({
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      user: data.user,
-    });
-
-    return data.access_token;
-  } catch {
-    return null;
-  }
-}
-
-async function request<T>(endpoint: string, options: RequestInit = {}, isRetry = false): Promise<T> {
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const method = options.method || 'GET';
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -96,28 +65,6 @@ async function request<T>(endpoint: string, options: RequestInit = {}, isRetry =
     );
   }
 
-  // Tự động làm mới token khi nhận 401 và chưa phải lần retry
-  if (response.status === 401 && !isRetry && !endpoint.includes('/api/v1/auth/')) {
-    if (!refreshPromise) {
-      refreshPromise = doRefreshToken().finally(() => {
-        refreshPromise = null;
-      });
-    }
-
-    const newAccessToken = await refreshPromise;
-    if (newAccessToken) {
-      const retryHeaders = {
-        ...(options.headers as Record<string, string>),
-        Authorization: `Bearer ${newAccessToken}`,
-      };
-      return request<T>(endpoint, { ...options, headers: retryHeaders }, true);
-    }
-
-    if (typeof window !== 'undefined') {
-      clearSession();
-    }
-  }
-
   let responseBody: unknown = null;
   try {
     responseBody = await response.json();
@@ -142,10 +89,6 @@ async function request<T>(endpoint: string, options: RequestInit = {}, isRetry =
     throw new ApiClientError(message, code, response.status);
   }
 
-  if (response.status === 204 || responseBody === null || responseBody === undefined) {
-    return undefined as T;
-  }
-
   const json = responseBody as ApiSuccessResponse<T>;
   if (!json || !('data' in json)) {
     throw new ApiClientError('Backend returned an invalid response envelope.', 'INVALID_RESPONSE', response.status);
@@ -164,12 +107,6 @@ export const authApi = {
     return request<LoginResponse>('/api/v1/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload),
-    });
-  },
-  refresh: (refreshToken: string): Promise<LoginResponse> => {
-    return request<LoginResponse>('/api/v1/auth/refresh', {
-      method: 'POST',
-      body: JSON.stringify({ refresh_token: refreshToken }),
     });
   },
   logout: (): Promise<{ message: string }> => {
@@ -574,363 +511,4 @@ export const practiceApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-};
-
-export interface CreateNotificationPayload {
-  title: string;
-  content: string;
-  scopeType: 'course' | 'individual';
-  courseId: string;
-  recipientIds?: string[];
-}
-
-export const notificationsApi = {
-  getSent: (): Promise<any[]> => {
-    return request<any[]>('/api/v1/notifications/sent', {
-      method: 'GET',
-    });
-  },
-  getCourseLearners: (courseId: string): Promise<any[]> => {
-    return request<any[]>(`/api/v1/notifications/courses/${encodeURIComponent(courseId)}/learners`, {
-      method: 'GET',
-    });
-  },
-  send: (payload: CreateNotificationPayload): Promise<{ notification: any; recipientCount: number }> => {
-    return request<{ notification: any; recipientCount: number }>('/api/v1/notifications', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-  },
-};
-
-export interface FeedbackItem {
-  id: string;
-  managerId: string;
-  learnerId: string;
-  learnerName: string;
-  learnerEmail: string;
-  courseId: string;
-  courseTitle?: string;
-  content: string;
-  contextType: 'general' | 'progress' | 'result' | 'task';
-  contextId?: string | null;
-  contextSnapshot?: any;
-  status: 'draft' | 'sent';
-  sentAt?: string | null;
-  readAt?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateFeedbackPayload {
-  learnerId: string;
-  courseId: string;
-  content: string;
-  contextType?: 'general' | 'progress' | 'result' | 'task';
-  contextId?: string;
-  contextSnapshot?: Record<string, any>;
-  status?: 'draft' | 'sent';
-}
-
-export interface UpdateFeedbackPayload {
-  content?: string;
-  contextType?: 'general' | 'progress' | 'result' | 'task';
-  contextId?: string;
-  contextSnapshot?: Record<string, any>;
-}
-
-export const feedbacksApi = {
-  getLearners: (courseId?: string): Promise<Array<{ id: string; name: string; email: string }>> => {
-    const query = courseId ? `?courseId=${encodeURIComponent(courseId)}` : '';
-    return request<Array<{ id: string; name: string; email: string }>>(`/api/v1/feedbacks/learners${query}`);
-  },
-  list: (status?: string): Promise<FeedbackItem[]> => {
-    const query = status ? `?status=${encodeURIComponent(status)}` : '';
-    return request<FeedbackItem[]>(`/api/v1/feedbacks${query}`);
-  },
-  getById: (id: string): Promise<FeedbackItem> => {
-    return request<FeedbackItem>(`/api/v1/feedbacks/${encodeURIComponent(id)}`);
-  },
-  create: (payload: CreateFeedbackPayload): Promise<FeedbackItem> => {
-    return request<FeedbackItem>('/api/v1/feedbacks', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-  },
-  update: (id: string, payload: UpdateFeedbackPayload): Promise<FeedbackItem> => {
-    return request<FeedbackItem>(`/api/v1/feedbacks/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    });
-  },
-  delete: (id: string): Promise<{ success: boolean; message: string }> => {
-    return request<{ success: boolean; message: string }>(`/api/v1/feedbacks/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
-  },
-  send: (id: string): Promise<FeedbackItem> => {
-    return request<FeedbackItem>(`/api/v1/feedbacks/${encodeURIComponent(id)}/send`, {
-      method: 'POST',
-    });
-  },
-};
-
-// Dashboard API
-export interface ContinueLearningStudyPlan {
-  id: string;
-  name: string;
-  lesson_id: string;
-  lesson_name: string;
-  course_id: string;
-  course_name: string;
-}
-
-export interface ContinueLearningLesson {
-  id: string;
-  name: string;
-  course_id: string;
-  course_name: string;
-}
-
-export interface ContinueLearning {
-  type: 'study_plan' | 'lesson' | 'empty';
-  study_plan?: ContinueLearningStudyPlan;
-  lesson?: ContinueLearningLesson;
-}
-
-export interface CourseProgress {
-  course_id: string;
-  course_name: string;
-  completed_lessons: number;
-  total_lessons: number;
-  percentage: number;
-}
-
-export interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  deadline?: string;
-  status: string;
-}
-
-export interface QuizResult {
-  id: string;
-  quiz_name: string;
-  score: number;
-  total_questions: number;
-  completed_at: string;
-}
-
-export interface DashboardData {
-  continue_learning: ContinueLearning;
-  progress: {
-    courses: CourseProgress[];
-  };
-  tasks: {
-    active: Task[];
-    overdue: Task[];
-    upcoming: Task[];
-  };
-  recent_results: {
-    quizzes: QuizResult[];
-    trend: 'improving' | 'stable' | 'declining' | 'insufficient_data';
-  };
-}
-
-export const dashboardApi = {
-  get: (): Promise<DashboardData> => {
-    return request<DashboardData>('/api/v1/dashboard');
-  },
-};
-
-export interface ContentManagerCourseOption {
-  id: string;
-  title: string;
-  slug: string;
-  status: string;
-}
-
-export interface ContentManagerStats {
-  total_courses: number;
-  total_lessons: number;
-  total_questions: number;
-  total_active_learners: number;
-  published_count: number;
-  draft_count: number;
-  ai_generated_count: number;
-  total_feedbacks: number;
-  total_notifications: number;
-}
-
-export interface StatusDistribution {
-  published: number;
-  approved: number;
-  draft: number;
-  in_review: number;
-}
-
-export interface MonthlyGrowth {
-  month: string;
-  lessons: number;
-  questions: number;
-}
-
-export interface RecentActivityItem {
-  id: string;
-  type: 'lesson' | 'feedback' | 'notification' | 'course';
-  title: string;
-  description: string;
-  timestamp: string;
-}
-
-export interface ContentManagerDashboardData {
-  courses: ContentManagerCourseOption[];
-  selected_course_id?: string;
-  stats: ContentManagerStats;
-  status_distribution: StatusDistribution;
-  monthly_growth: MonthlyGrowth[];
-  recent_activities: RecentActivityItem[];
-}
-
-export const contentManagerDashboardApi = {
-  get: (courseId?: string): Promise<ContentManagerDashboardData> => {
-    const query = courseId ? `?course_id=${encodeURIComponent(courseId)}` : '';
-    return request<ContentManagerDashboardData>(`/api/v1/dashboard/content-manager${query}`);
-  },
-};
-
-// ============ NOTES API ============
-export const notesApi = {
-  async list(filter?: { lessonId?: string; search?: string }): Promise<Note[]> {
-    const params = new URLSearchParams();
-    if (filter?.lessonId) params.append('lessonId', filter.lessonId);
-    if (filter?.search) params.append('search', filter.search);
-    const query = params.toString() ? `?${params.toString()}` : '';
-    return request<Note[]>(`/api/v1/notes${query}`);
-  },
-
-  async get(id: string): Promise<Note> {
-    return request<Note>(`/api/v1/notes/${id}`);
-  },
-
-  async create(payload: CreateNotePayload): Promise<Note> {
-    return request<Note>('/api/v1/notes', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-  },
-
-  async update(id: string, payload: UpdateNotePayload): Promise<Note> {
-    return request<Note>(`/api/v1/notes/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    });
-  },
-
-  async delete(id: string): Promise<void> {
-    await request<void>(`/api/v1/notes/${id}`, { method: 'DELETE' });
-  },
-};
-
-// ============ ENROLLMENT API ============
-
-export interface EnrollmentStatus {
-  isEnrolled: boolean;
-  status: 'active' | 'left' | null;
-}
-
-export interface EnrollResult {
-  courseId: string;
-  learnerId: string;
-  status: string;
-  message: string;
-}
-
-export const enrollmentApi = {
-  /** Đăng ký khóa học */
-  enroll: (courseId: string): Promise<EnrollResult> =>
-    request<EnrollResult>(`/api/v1/enrollments/${encodeURIComponent(courseId)}`, {
-      method: 'POST',
-    }),
-
-  /** Kiểm tra trạng thái đăng ký */
-  check: (courseId: string): Promise<EnrollmentStatus> =>
-    request<EnrollmentStatus>(`/api/v1/enrollments/${encodeURIComponent(courseId)}/check`),
-
-  /** Lấy danh sách lesson_id đã hoàn thành */
-  getProgress: (courseId: string): Promise<{ completedLessons: string[] }> =>
-    request<{ completedLessons: string[] }>(`/api/v1/enrollments/${encodeURIComponent(courseId)}/progress`),
-};
-
-// ============ LESSON PROGRESS API ============
-
-export interface LessonCompleteResult {
-  lessonId: string;
-  courseId: string;
-  completedAt: string;
-  alreadyCompleted: boolean;
-}
-
-export const lessonProgressApi = {
-  /** Đánh dấu hoàn thành bài học */
-  complete: (lessonId: string, courseId: string): Promise<LessonCompleteResult> =>
-    request<LessonCompleteResult>(
-      `/api/v1/enrollments/lessons/${encodeURIComponent(lessonId)}/complete`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ courseId }),
-      },
-    ),
-};
-
-// ============ BOOKMARKS API ============
-
-export interface BookmarkToggleResult {
-  isBookmarked: boolean;
-  message: string;
-}
-
-export interface BookmarkCheckResult {
-  isBookmarked: boolean;
-}
-
-export interface BookmarkLessonItem {
-  id: string;
-  created_at: string;
-  lesson_id: string;
-  target_type?: string;
-  target_id?: string;
-  is_completed?: boolean;
-  lessons?: {
-    id: string;
-    title: string;
-    estimated_duration_minutes?: number;
-    chapters?: {
-      id: string;
-      title: string;
-      courses?: {
-        id: string;
-        title: string;
-        slug: string;
-      };
-    };
-  };
-}
-
-export const bookmarkApi = {
-  /** Lưu hoặc bỏ lưu bài học */
-  toggle: (lessonId: string): Promise<BookmarkToggleResult> =>
-    request<BookmarkToggleResult>('/api/v1/bookmarks/toggle', {
-      method: 'POST',
-      body: JSON.stringify({ lessonId }),
-    }),
-
-  /** Kiểm tra bài học đã bookmark chưa */
-  check: (lessonId: string): Promise<BookmarkCheckResult> =>
-    request<BookmarkCheckResult>(`/api/v1/bookmarks/check/${encodeURIComponent(lessonId)}`),
-
-  /** Lấy danh sách tất cả bài học đã lưu */
-  list: (): Promise<BookmarkLessonItem[]> =>
-    request<BookmarkLessonItem[]>('/api/v1/bookmarks'),
 };

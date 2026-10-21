@@ -1,2 +1,1 @@
-export { cn } from "cn";
-export * from "./date";
+export { cn } from "cn"

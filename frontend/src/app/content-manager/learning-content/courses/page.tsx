@@ -105,7 +105,7 @@ function CourseActions({
         aria-label={`Actions for ${course.title}`}
         data-course-menu-trigger
         onClick={handleToggle}
-        className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+        className="rounded-lg p-1.5 text-[#526f78] hover:bg-[#eaf4f3]"
       >
         <MoreHorizontal className="h-4 w-4" />
       </button>
@@ -113,13 +113,13 @@ function CourseActions({
         createPortal(
           <div
             data-course-menu
-            className="fixed z-[100] w-28 rounded-lg border border-border bg-card p-1 text-xs text-foreground shadow-lg"
+            className="fixed z-[100] w-28 rounded-lg border border-[#dfe6df] bg-white p-1 text-xs shadow-lg"
             style={menuPosition}
           >
-            <button type="button" onClick={onEdit} className="w-full rounded px-2 py-1.5 text-left text-foreground hover:bg-muted">
+            <button type="button" onClick={onEdit} className="w-full rounded px-2 py-1.5 text-left hover:bg-[#eaf4f3]">
               Edit
             </button>
-            <button type="button" onClick={onDelete} className="w-full rounded px-2 py-1.5 text-left text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30">
+            <button type="button" onClick={onDelete} className="w-full rounded px-2 py-1.5 text-left text-[#F7444E] hover:bg-[#fff1f0]">
               Delete
             </button>
           </div>,
@@ -146,10 +146,10 @@ function FilterSelect({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-full w-full appearance-none rounded-xl border border-[#dfe6df] bg-white px-3 pr-9 text-sm text-[#526f78] outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20 cursor-pointer"
+        className="h-full w-full appearance-none rounded-xl border border-[#dfe6df] bg-white px-3 pr-9 text-sm text-[#526f78] outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
       >
         {options.map((option) => (
-          <option key={option} value={option} className="bg-white text-[#526f78]">{option}</option>
+          <option key={option}>{option}</option>
         ))}
       </select>
       <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-[#71878c]" />
@@ -175,7 +175,7 @@ function CourseGrid({
       {items.map((course) => (
         <article
           key={course.id}
-          className="flex flex-col overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-xs transition hover:-translate-y-0.5 hover:shadow-md"
+          className="flex flex-col overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-[0_8px_18px_rgba(0,44,62,0.04)] transition hover:-translate-y-0.5 hover:shadow-md"
         >
           <Link
             href={`/content-manager/learning-content/courses/${course.slug}`}
@@ -196,7 +196,7 @@ function CourseGrid({
           </Link>
           <div className="flex flex-1 flex-col p-[18px]">
             <div className="mb-1 flex items-start justify-between gap-2">
-              <span className="text-xs text-[#637981]">{course.category}</span>
+              <span className="text-xs text-[#71878c]">{course.category}</span>
               <CourseActions
                 course={course}
                 openMenu={openMenu}
@@ -216,7 +216,7 @@ function CourseGrid({
             <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-[#637981]">
               {course.description}
             </p>
-            <div className="mt-auto flex items-center justify-between border-t border-[#dfe6df] pt-4 text-xs text-[#71878c]">
+            <div className="mt-auto flex items-center justify-between border-t border-[#dfe6df] pt-4 text-xs text-[#637981]">
               <span>
                 {course.chapters} chapters · {course.lessons} lessons
               </span>
@@ -243,7 +243,7 @@ function CourseList({
   onDelete: (course: Course) => void;
 }) {
   return (
-    <div className="h-[390px] overflow-auto rounded-2xl border border-[#dfe6df] bg-white shadow-xs">
+    <div className="h-[390px] overflow-auto rounded-2xl border border-[#dfe6df] bg-white shadow-[0_8px_18px_rgba(0,44,62,0.04)]">
       <table className="w-full min-w-[1120px] table-fixed border-collapse text-left">
         <colgroup>
           <col className="w-[30%]" />
@@ -256,7 +256,7 @@ function CourseList({
           <col className="w-10" />
         </colgroup>
         <thead className="sticky top-0 z-10 bg-white">
-          <tr className="border-b border-[#dfe6df] text-sm text-[#71878c]">
+          <tr className="border-b border-[#dfe6df] text-sm text-[#526f78]">
             <th className="px-3 py-3 font-medium">Course</th>
             <th className="px-3 py-3 font-medium">Category</th>
             <th className="px-3 py-3 font-medium">Level</th>
@@ -271,7 +271,7 @@ function CourseList({
           {items.map((course) => (
             <tr
               key={course.id}
-              className="h-[61px] border-b border-[#e5ebe5] last:border-0 hover:bg-[#fbfcf8]"
+              className="h-[61px] border-b border-[#dfe6df] last:border-0 hover:bg-[#f8fbf9]"
             >
               <td className="px-3 py-2">
                 <Link
@@ -285,13 +285,13 @@ function CourseList({
                     <span className="block truncate text-[15px] font-semibold text-[#002C3E] hover:text-[#F7444E]">
                       {course.title}
                     </span>
-                    <span className="block font-mono text-xs text-[#71878c]">
+                    <span className="block font-mono text-xs text-[#637981]">
                       /{course.slug}
                     </span>
                   </span>
                 </Link>
               </td>
-              <td className="truncate px-3 py-2 text-sm text-[#71878c]">
+              <td className="truncate px-3 py-2 text-sm text-[#637981]">
                 {course.category}
               </td>
               <td className="px-3 py-2">
@@ -310,7 +310,7 @@ function CourseList({
               <td className="px-3 py-2">
                 <StatusBadge status={course.status} />
               </td>
-              <td className="whitespace-nowrap px-3 py-2 text-sm text-[#71878c]">
+              <td className="whitespace-nowrap px-3 py-2 text-sm text-[#637981]">
                 {course.updated}
               </td>
               <td className="relative px-2 py-2 text-right">
@@ -455,40 +455,14 @@ export default function CoursesPage() {
     }
     setIsSaving(true);
     try {
-      const payload: {
-        title: string;
-        slug: string;
-        description?: string;
-        level: CourseLevel;
-        category_id?: string;
-      } = {
+      const updatedCourse = await courseApi.update(String(editingCourse.id), {
         title: editName.trim(),
         slug: editSlug.trim(),
         description: editDescription.trim(),
         level: editLevel,
-      };
-      if (
-        editingCourse.categoryId &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(editingCourse.categoryId)
-      ) {
-        payload.category_id = editingCourse.categoryId;
-      }
-      const updatedCourse = await courseApi.update(String(editingCourse.id), payload);
-      setCourses((currentCourses) =>
-        currentCourses.map((course) =>
-          course.id === editingCourse.id
-            ? {
-                ...course,
-                ...updatedCourse,
-                title: editName.trim(),
-                slug: editSlug.trim(),
-                level: editLevel,
-                status: course.status,
-                category: course.category,
-              }
-            : course
-        )
-      );
+        category_id: editingCourse.categoryId,
+      });
+      setCourses((currentCourses) => currentCourses.map((course) => course.id === editingCourse.id ? { ...course, ...updatedCourse, level: editLevel, status: course.status, category: course.category } : course));
       setEditingCourse(null);
     } catch (error) {
       setEditError(error instanceof ApiClientError ? error.message : "Unable to update course.");
@@ -510,12 +484,12 @@ export default function CoursesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex h-10 rounded-xl border border-[#dfe6df] bg-white p-1 shadow-xs">
+          <div className="flex h-10 rounded-xl border border-[#dfe6df] bg-white p-1">
             <button
               type="button"
               aria-label="Grid view"
               onClick={() => setView("grid")}
-              className={`rounded-lg px-2 transition-colors ${view === "grid" ? "bg-[#eaf4f3] text-[#002C3E] font-semibold" : "text-[#71878c] hover:text-[#002C3E]"}`}
+              className={`rounded-lg px-2 ${view === "grid" ? "bg-[#eaf4f3] text-[#176678]" : "text-[#71878c]"}`}
             >
               <Grid2X2 className="h-4 w-4" />
             </button>
@@ -523,21 +497,21 @@ export default function CoursesPage() {
               type="button"
               aria-label="List view"
               onClick={() => setView("list")}
-              className={`rounded-lg px-2 transition-colors ${view === "list" ? "bg-[#eaf4f3] text-[#002C3E] font-semibold" : "text-[#71878c] hover:text-[#002C3E]"}`}
+              className={`rounded-lg px-2 ${view === "list" ? "border border-[#002C3E] bg-[#eaf4f3] text-[#176678]" : "text-[#71878c]"}`}
             >
               <List className="h-4 w-4" />
             </button>
           </div>
           <Link
             href="/content-manager/learning-content/courses/new"
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#F7444E] px-4 text-sm font-semibold text-white shadow-xs hover:bg-[#db3540] transition-colors"
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#F7444E] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#df3540]"
           >
             <Plus className="h-4 w-4" />
             Create course
           </Link>
         </div>
       </header>
-      <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#dfe6df] bg-white p-4 shadow-xs">
+      <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#dfe6df] bg-white p-4 shadow-[0_8px_18px_rgba(0,44,62,0.04)]">
         <label className="relative min-w-[230px] flex-1">
           <span className="sr-only">Search courses</span>
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71878c]" />
@@ -545,7 +519,7 @@ export default function CoursesPage() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search courses..."
-            className="h-10 w-full rounded-xl border border-[#dfe6df] bg-white pl-10 pr-3 text-sm text-[#002C3E] placeholder-[#71878c] outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
+            className="h-10 w-full rounded-xl border border-[#dfe6df] pl-10 pr-3 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
           />
         </label>
         <SlidersHorizontal
@@ -587,7 +561,7 @@ export default function CoursesPage() {
         />
       </section>
       {loadError ? (
-        <p className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-14 text-center text-sm text-rose-600">
+        <p className="rounded-2xl border border-[#F7444E]/30 bg-[#fff1f0] px-5 py-14 text-center text-sm text-[#F7444E]">
           {loadError}
         </p>
       ) : isLoading ? (
@@ -612,51 +586,22 @@ export default function CoursesPage() {
         />
       )}
       {filteredCourses.length === 0 && (
-        <p className="rounded-2xl border border-dashed border-[#dfe6df] bg-white px-5 py-14 text-center text-sm text-[#637981]">
+        <p className="rounded-2xl border border-dashed border-[#dfe6df] px-5 py-14 text-center text-sm text-[#637981]">
           No courses match these filters.
         </p>
       )}
       {editingCourse && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-xs px-4 py-8" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSaving) setEditingCourse(null); }}>
-          <form onSubmit={handleUpdateCourse} className="max-h-full w-full max-w-[640px] overflow-y-auto rounded-2xl border border-[#dfe6df] bg-white p-6 text-[#002C3E] shadow-2xl sm:p-8">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-semibold text-[#002C3E]">Edit course</h2>
-                <p className="mt-1 text-sm text-[#637981]">Update the course information.</p>
-              </div>
-              <button type="button" onClick={() => setEditingCourse(null)} disabled={isSaving} aria-label="Close edit course" className="rounded-lg p-1 text-[#71878c] hover:bg-[#f3f7f5] hover:text-[#002C3E]">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[#00151d]/75 px-4 py-8" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSaving) setEditingCourse(null); }}>
+          <form onSubmit={handleUpdateCourse} className="max-h-full w-full max-w-[640px] overflow-y-auto rounded-2xl border border-[#dfe6df] bg-[#fffefb] p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4"><div><h2 className="text-2xl font-semibold text-[#002C3E]">Edit course</h2><p className="mt-1 text-sm text-[#637981]">Update the course information.</p></div><button type="button" onClick={() => setEditingCourse(null)} disabled={isSaving} aria-label="Close edit course"><X className="h-5 w-5 text-[#526f78]" /></button></div>
             <div className="mt-6 space-y-4">
-              <label className="block text-sm font-medium text-[#002C3E]">
-                Course title
-                <input value={editName} onChange={(event) => { setEditName(event.target.value); setEditSlug(event.target.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")); }} className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-1 focus:ring-[#78BCC4]" />
-              </label>
-              <label className="block text-sm font-medium text-[#002C3E]">
-                Slug
-                <input value={editSlug} onChange={(event) => setEditSlug(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 font-mono text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-1 focus:ring-[#78BCC4]" />
-              </label>
-              <label className="block text-sm font-medium text-[#002C3E]">
-                Description
-                <textarea value={editDescription} onChange={(event) => setEditDescription(event.target.value)} rows={4} className="mt-2 w-full rounded-xl border border-[#dfe6df] bg-white px-3 py-2 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-1 focus:ring-[#78BCC4]" />
-              </label>
-              <label className="block text-sm font-medium text-[#002C3E]">
-                Level
-                <select value={editLevel} onChange={(event) => setEditLevel(event.target.value as CourseLevel)} className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-1 focus:ring-[#78BCC4] cursor-pointer">
-                  {["Beginner", "Intermediate", "Advanced"].map((level) => <option key={level} className="bg-white text-[#002C3E]">{level}</option>)}
-                </select>
-              </label>
+              <label className="block text-sm font-medium text-[#002C3E]">Course title<input value={editName} onChange={(event) => { setEditName(event.target.value); setEditSlug(event.target.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")); }} className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none focus:border-[#78BCC4]" /></label>
+              <label className="block text-sm font-medium text-[#002C3E]">Slug<input value={editSlug} onChange={(event) => setEditSlug(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 font-mono text-sm outline-none focus:border-[#78BCC4]" /></label>
+              <label className="block text-sm font-medium text-[#002C3E]">Description<textarea value={editDescription} onChange={(event) => setEditDescription(event.target.value)} rows={4} className="mt-2 w-full rounded-xl border border-[#dfe6df] px-3 py-2 text-sm outline-none focus:border-[#78BCC4]" /></label>
+              <label className="block text-sm font-medium text-[#002C3E]">Level<select value={editLevel} onChange={(event) => setEditLevel(event.target.value as CourseLevel)} className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none">{["Beginner", "Intermediate", "Advanced"].map((level) => <option key={level}>{level}</option>)}</select></label>
             </div>
-            {editError && <p className="mt-3 text-sm text-rose-500" role="alert">{editError}</p>}
-            <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setEditingCourse(null)} disabled={isSaving} className="h-11 rounded-xl border border-[#dfe6df] bg-white px-5 text-sm font-semibold text-[#526f78] hover:bg-[#f3f7f5]">
-                Cancel
-              </button>
-              <button type="submit" disabled={isSaving} className="h-11 rounded-xl bg-[#F7444E] px-5 text-sm font-semibold text-white hover:bg-[#db3540] disabled:opacity-60 transition-colors">
-                {isSaving ? "Saving..." : "Save changes"}
-              </button>
-            </div>
+            {editError && <p className="mt-3 text-sm text-[#F7444E]" role="alert">{editError}</p>}
+            <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setEditingCourse(null)} disabled={isSaving} className="h-11 rounded-xl border border-[#dfe6df] px-5 text-sm font-semibold text-[#002C3E]">Cancel</button><button type="submit" disabled={isSaving} className="h-11 rounded-xl bg-[#F7444E] px-5 text-sm font-semibold text-white disabled:opacity-60">{isSaving ? "Saving..." : "Save changes"}</button></div>
           </form>
         </div>
       )}
