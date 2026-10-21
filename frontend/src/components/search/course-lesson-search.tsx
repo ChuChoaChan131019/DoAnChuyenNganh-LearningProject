@@ -24,6 +24,7 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [lessons, setLessons] = useState<LessonResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingLessons, setLoadingLessons] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -35,7 +36,13 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
         const availableCourses = learner
           ? loadedCourses.filter((course) => isPublishedStatus(course.status))
           : loadedCourses;
-        const lessonGroups = await Promise.all(availableCourses.map(async (course) => {
+        if (active) {
+          setCourses(availableCourses);
+          setLoading(false);
+          setLoadingLessons(true);
+        }
+
+        const lessonGroups = await Promise.allSettled(availableCourses.map(async (course) => {
           const chapterGroups = learner
             ? (await courseApi.learnerLessons(course.slug)).chapters
             : await courseApi.chapters(String(course.id));
@@ -53,8 +60,8 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
         }));
 
         if (active) {
-          setCourses(availableCourses);
-          setLessons(lessonGroups.flat());
+          setLessons(lessonGroups.flatMap((group) => group.status === 'fulfilled' ? group.value : []));
+          setLoadingLessons(false);
         }
       })
       .catch((requestError: unknown) => {
@@ -138,8 +145,9 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
       </section>
 
       {loading && <p className="text-sm text-[#637981]">Loading content...</p>}
+      {!loading && loadingLessons && showLessons && <p className="text-sm text-[#637981]">Loading lessons...</p>}
       {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}
-      {!loading && !error && resultCount === 0 && !showChapters && !showQuestions && !showResources && (
+      {!loading && !loadingLessons && !error && resultCount === 0 && !showChapters && !showQuestions && !showResources && (
         <div className="rounded-2xl border border-dashed border-[#dfe6df] bg-white p-12 text-center text-sm text-[#637981]">
           No courses or lessons match your search.
         </div>
@@ -166,7 +174,7 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
           )}
           {showChapters && <ResultSection title="Chapters" emptyMessage="No chapters available yet." />}
           {showLessons && (
-            <ResultSection title={`Lessons · ${visibleLessons.length}`} emptyMessage="No lessons match your search.">
+            <ResultSection title={`Lessons · ${visibleLessons.length}`} emptyMessage={loadingLessons ? 'Loading lessons...' : 'No lessons match your search.'}>
               {visibleLessons.map((lesson) => (
                 <Link
                   key={lesson.id}

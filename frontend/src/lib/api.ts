@@ -69,7 +69,6 @@ async function doRefreshToken(): Promise<string | null> {
 
 async function request<T>(endpoint: string, options: RequestInit = {}, isRetry = false): Promise<T> {
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-  const method = options.method || 'GET';
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -81,8 +80,6 @@ async function request<T>(endpoint: string, options: RequestInit = {}, isRetry =
   if (token && !headers['Authorization'] && !headers['authorization']) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-
-  console.log('[API request]', { method, url });
 
   let response: Response;
   try {
@@ -127,13 +124,6 @@ async function request<T>(endpoint: string, options: RequestInit = {}, isRetry =
   } catch {
     // Empty or non-JSON response body.
   }
-
-  console.log('[API response]', {
-    method,
-    url,
-    status: response.status,
-    data: responseBody,
-  });
 
   if (!response.ok) {
     let errorDetail: { code?: string; message?: string } = {};
