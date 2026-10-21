@@ -2,22 +2,10 @@ export type ContentStatus = "Published" | "Draft" | "Approved" | "In review";
 
 export type CourseLevel = "Beginner" | "Intermediate" | "Advanced";
 
-export interface Category {
-  id: string | number;
-  name: string;
-  slug: string;
-  description: string;
-  courses: number;
-  created: string;
-  status: ContentStatus;
-}
-
 export interface Course {
   id: string | number;
-  categoryId?: string;
   title: string;
   slug: string;
-  category: string;
   description: string;
   level: CourseLevel;
   status: ContentStatus;
@@ -38,10 +26,6 @@ export interface CourseDetail extends Course {
     lessons: number;
     status: ContentStatus;
   }>;
-}
-
-export interface CategoryCourse extends Omit<Course, "id"> {
-  id: string;
 }
 
 export interface Lesson {

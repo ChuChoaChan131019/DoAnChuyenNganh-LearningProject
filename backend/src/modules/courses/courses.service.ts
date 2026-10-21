@@ -354,7 +354,7 @@ export class CoursesService {
     const supabase = this.supabaseService.getClient();
     const { data: courses, error: coursesError } = await supabase
       .from('courses')
-      .select('id, title, slug, description, level, status, category_id, updated_at')
+      .select('id, title, slug, description, level, status, updated_at')
       .order('updated_at', { ascending: false });
 
     if (coursesError) {
@@ -362,16 +362,6 @@ export class CoursesService {
     }
 
     const rows = courses ?? [];
-    const categoryIds = rows.map((course) => course.category_id).filter(Boolean);
-    const { data: categories, error: categoriesError } = categoryIds.length
-      ? await supabase.from('categories').select('id, name').in('id', categoryIds)
-      : { data: [], error: null };
-
-    if (categoriesError) {
-      throw new InternalServerErrorException('Unable to load course categories');
-    }
-
-    const categoryNames = new Map((categories ?? []).map((category) => [category.id, category.name]));
     const courseIds = rows.map((course) => course.id);
     const { data: chapters, error: chaptersError } = courseIds.length
       ? await supabase.from('chapters').select('id, course_id').in('course_id', courseIds)
@@ -413,8 +403,6 @@ export class CoursesService {
       id: course.id,
       title: course.title,
       slug: course.slug,
-      category: categoryNames.get(course.category_id) ?? 'Uncategorized',
-      categoryId: course.category_id,
       description: course.description ?? '',
       level: course.level ?? 'Beginner',
       status: statusLabels[course.status] ?? 'Draft',
@@ -431,22 +419,8 @@ export class CoursesService {
   }
 
   async create(createCourseDto: CreateCourseDto, creatorId: string) {
-    const { category_id: categoryId, ...courseFields } = createCourseDto;
+    const courseFields = createCourseDto;
     const supabase = this.supabaseService.getClient();
-
-    const { data: category, error: categoryError } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('id', categoryId)
-      .single();
-
-    if (categoryError?.code === 'PGRST116' || !category) {
-      throw new NotFoundException('Category not found');
-    }
-
-    if (categoryError) {
-      throw new InternalServerErrorException('Unable to validate category');
-    }
 
     const { data, error } = await supabase
       .from('courses')
@@ -457,11 +431,10 @@ export class CoursesService {
         description: courseFields.description?.trim() || null,
         level: courseFields.level?.toLowerCase() ?? 'beginner',
         thumbnail_url: courseFields.thumbnail_url?.trim() || null,
-        category_id: categoryId,
         created_by: creatorId,
         status: 'draft',
       })
-      .select('id, title, slug, description, level, status, category_id, thumbnail_url, created_at, updated_at')
+      .select('id, title, slug, description, level, status, thumbnail_url, created_at, updated_at')
       .single();
 
     if (error?.code === '23505') {
@@ -479,7 +452,7 @@ export class CoursesService {
     const supabase = this.supabaseService.getClient();
     const { data: course, error: courseError } = await supabase
       .from('courses')
-      .select('id, title, slug, description, level, status, category_id, created_by, thumbnail_url, created_at, updated_at')
+      .select('id, title, slug, description, level, status, created_by, thumbnail_url, created_at, updated_at')
       .eq('slug', slug)
       .single();
 
@@ -490,14 +463,13 @@ export class CoursesService {
       throw new InternalServerErrorException('Unable to load course');
     }
 
-    const [categoryResult, chaptersResult, questionsResult, authorResult] = await Promise.all([
-      supabase.from('categories').select('name').eq('id', course.category_id).single(),
+    const [chaptersResult, questionsResult, authorResult] = await Promise.all([
       supabase.from('chapters').select('id, title, order_index, status').eq('course_id', course.id).order('order_index'),
       supabase.from('questions').select('id').eq('course_id', course.id),
       supabase.auth.admin.getUserById(course.created_by),
     ]);
 
-    if (categoryResult.error || chaptersResult.error || questionsResult.error) {
+    if (chaptersResult.error || questionsResult.error) {
       throw new InternalServerErrorException('Unable to load course details');
     }
 
@@ -532,7 +504,6 @@ export class CoursesService {
       id: course.id,
       title: course.title,
       slug: course.slug,
-      category: categoryResult.data?.name ?? 'Uncategorized',
       description: course.description ?? '',
       level: levelLabels[course.level] ?? 'Beginner',
       status: statusLabels[course.status] ?? 'Draft',
@@ -737,7 +708,7 @@ export class CoursesService {
       .from('courses')
       .update(payload)
       .eq('id', id)
-      .select('id, title, slug, description, level, status, category_id, updated_at')
+      .select('id, title, slug, description, level, status, updated_at')
       .single();
 
     if (error?.code === '23505') throw new ConflictException('A course with this slug already exists');

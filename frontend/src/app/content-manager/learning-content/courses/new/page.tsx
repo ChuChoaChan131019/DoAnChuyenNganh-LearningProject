@@ -1,45 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Check,
-  ChevronDown,
   ImagePlus,
   Save,
   Upload,
 } from "lucide-react";
-import { ApiClientError, categoryApi, courseApi } from "@/lib/api";
-import type { Category, CourseLevel } from "@/types/learning-content";
+import { ApiClientError, courseApi } from "@/lib/api";
+import type { CourseLevel } from "@/types/learning-content";
 
 const steps = ["Course details", "Chapters", "Lessons", "Resources", "Questions", "Review & publish"];
 const levels: CourseLevel[] = ["Beginner", "Intermediate", "Advanced"];
 
 export default function CreateCoursePage() {
   const router = useRouter();
-  const [categories, setCategories] = useState<Category[]>([]);
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
-  const [categoryId, setCategoryId] = useState("");
   const [description, setDescription] = useState("");
   const [level, setLevel] = useState<CourseLevel>("Beginner");
   const [thumbnailName, setThumbnailName] = useState("");
-  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    categoryApi
-      .list()
-      .then((loadedCategories) => {
-        setCategories(loadedCategories);
-        if (loadedCategories.length > 0) setCategoryId(String(loadedCategories[0].id));
-      })
-      .catch(() => setError("Unable to load categories."))
-      .finally(() => setIsLoadingCategories(false));
-  }, []);
 
   const handleTitleChange = (value: string) => {
     setTitle(value);
@@ -68,11 +53,6 @@ export default function CreateCoursePage() {
       setError("A valid slug is required.");
       return;
     }
-    if (!categoryId) {
-      setError("Please select a category.");
-      return;
-    }
-
     setIsSaving(true);
     try {
       await courseApi.create({
@@ -80,7 +60,6 @@ export default function CreateCoursePage() {
         slug: trimmedSlug,
         description: description.trim(),
         level,
-        category_id: categoryId,
       });
       router.push("/content-manager/learning-content/courses");
     } catch (requestError) {
@@ -167,30 +146,14 @@ export default function CreateCoursePage() {
               />
             </label>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="block text-sm font-medium text-[#002C3E]">
-                Slug
-                <input
-                  value={slug}
-                  readOnly
-                  className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] bg-[#f5f7f3] px-3 font-mono text-sm text-[#637981] outline-none"
-                />
-              </label>
-              <label className="relative block text-sm font-medium text-[#002C3E]">
-                Category
-                <select
-                  value={categoryId}
-                  onChange={(event) => setCategoryId(event.target.value)}
-                  disabled={isLoadingCategories || categories.length === 0}
-                  className="mt-2 h-11 w-full appearance-none rounded-xl border border-[#dfe6df] bg-white px-3 pr-9 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20 disabled:bg-[#f5f7f3]"
-                >
-                  {isLoadingCategories ? <option>Loading categories...</option> : null}
-                  {!isLoadingCategories && categories.length === 0 ? <option>No categories available</option> : null}
-                  {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-9 h-4 w-4 text-[#71878c]" />
-              </label>
-            </div>
+            <label className="block text-sm font-medium text-[#002C3E]">
+              Slug
+              <input
+                value={slug}
+                readOnly
+                className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] bg-[#f5f7f3] px-3 font-mono text-sm text-[#637981] outline-none"
+              />
+            </label>
 
             <label className="block text-sm font-medium text-[#002C3E]">
               Description

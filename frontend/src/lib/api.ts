@@ -6,7 +6,6 @@ import type {
   ApiSuccessResponse,
   ApiErrorResponse,
 } from '../types/auth';
-import type { Category, CategoryCourse } from '../types/learning-content';
 import { clearSession, getStoredToken } from './auth/session';
 import type { ChapterOption, CourseOption, LessonOption, QuestionPayload } from '../types/question';
 import type {
@@ -133,43 +132,6 @@ export const aiTutorApi = {
       '/api/v1/ai/tutor/message',
       { method: 'POST', body: JSON.stringify(payload) },
     ),
-};
-
-export const categoryApi = {
-  list: (): Promise<Category[]> => {
-    return request<Category[]>('/api/v1/categories');
-  },
-  create: (payload: {
-    name: string;
-    slug: string;
-    description?: string;
-  }): Promise<Category> => {
-    return request<Category>('/api/v1/categories', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-  },
-  detail: (slug: string): Promise<{
-    category: Category;
-    courses: CategoryCourse[];
-  }> => {
-    return request(`/api/v1/categories/${encodeURIComponent(slug)}`);
-  },
-  update: (
-    id: string,
-    payload: { name: string; slug: string; description?: string },
-  ): Promise<Category> => {
-    return request<Category>(`/api/v1/categories/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    });
-  },
-  remove: (id: string): Promise<{ id: string; message: string }> => {
-    return request<{ id: string; message: string }>(
-      `/api/v1/categories/${encodeURIComponent(id)}`,
-      { method: 'DELETE' },
-    );
-  },
 };
 
 export const courseApi = {
@@ -309,7 +271,6 @@ export const courseApi = {
     slug: string;
     description?: string;
     level: 'Beginner' | 'Intermediate' | 'Advanced';
-    category_id: string;
     thumbnail_url?: string;
   }) => {
     return request<{
@@ -327,7 +288,6 @@ export const courseApi = {
     slug: string;
     description?: string;
     level: 'Beginner' | 'Intermediate' | 'Advanced';
-    category_id?: string;
   }): Promise<import('../types/learning-content').Course> => request('/api/v1/courses/' + encodeURIComponent(id), {
     method: 'PATCH',
     body: JSON.stringify(payload),
