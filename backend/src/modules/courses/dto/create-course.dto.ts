@@ -2,7 +2,6 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
   Matches,
   MaxLength,
   MinLength,
@@ -32,9 +31,6 @@ export class CreateCourseDto {
   @IsString()
   @Matches(/^(Beginner|Intermediate|Advanced)$/)
   level?: string;
-
-  @IsUUID()
-  category_id!: string;
 
   @IsOptional()
   @IsString()

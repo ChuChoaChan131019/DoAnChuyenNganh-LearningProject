@@ -100,7 +100,7 @@ Không commit `SUPABASE_SECRET_KEY` hoặc chia sẻ file `backend/.env`.
 
 Database Supabase là database dùng chung của project, vì vậy người clone cần
 được cấp tài khoản đăng nhập hợp lệ và dùng đúng Supabase project. Các trang
-Categories và Courses sẽ gọi API backend tại `http://localhost:3001`.
+Courses sẽ gọi API backend tại `http://localhost:3001`.
 
 ## Cách chạy dự án 
 

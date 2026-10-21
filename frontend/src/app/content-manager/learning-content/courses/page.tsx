@@ -15,12 +15,11 @@ import {
   X,
 } from "lucide-react";
 import type {
-  Category,
   ContentStatus,
   Course,
   CourseLevel,
 } from "@/types/learning-content";
-import { ApiClientError, categoryApi, courseApi } from "@/lib/api";
+import { ApiClientError, courseApi } from "@/lib/api";
 
 const statusStyles: Record<ContentStatus, string> = {
   Published: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -195,8 +194,7 @@ function CourseGrid({
             </span>
           </Link>
           <div className="flex flex-1 flex-col p-[18px]">
-            <div className="mb-1 flex items-start justify-between gap-2">
-              <span className="text-xs text-[#71878c]">{course.category}</span>
+            <div className="mb-1 flex justify-end">
               <CourseActions
                 course={course}
                 openMenu={openMenu}
@@ -246,8 +244,7 @@ function CourseList({
     <div className="h-[390px] overflow-auto rounded-2xl border border-[#dfe6df] bg-white shadow-[0_8px_18px_rgba(0,44,62,0.04)]">
       <table className="w-full min-w-[1120px] table-fixed border-collapse text-left">
         <colgroup>
-          <col className="w-[30%]" />
-          <col className="w-[21%]" />
+          <col className="w-[51%]" />
           <col className="w-[10%]" />
           <col className="w-[7%]" />
           <col className="w-[7%]" />
@@ -258,7 +255,6 @@ function CourseList({
         <thead className="sticky top-0 z-10 bg-white">
           <tr className="border-b border-[#dfe6df] text-sm text-[#526f78]">
             <th className="px-3 py-3 font-medium">Course</th>
-            <th className="px-3 py-3 font-medium">Category</th>
             <th className="px-3 py-3 font-medium">Level</th>
             <th className="px-3 py-3 text-center font-medium">Chapters</th>
             <th className="px-3 py-3 text-center font-medium">Lessons</th>
@@ -290,9 +286,6 @@ function CourseList({
                     </span>
                   </span>
                 </Link>
-              </td>
-              <td className="truncate px-3 py-2 text-sm text-[#637981]">
-                {course.category}
               </td>
               <td className="px-3 py-2">
                 <span
@@ -334,11 +327,9 @@ function CourseList({
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("All categories");
   const [level, setLevel] = useState("All levels");
   const [status, setStatus] = useState("All statuses");
   const [sort, setSort] = useState("Last updated");
@@ -369,13 +360,6 @@ export default function CoursesPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
-
-  useEffect(() => {
-    categoryApi
-      .list()
-      .then(setCategories)
-      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -415,14 +399,12 @@ export default function CoursesPage() {
               course.title,
               course.slug,
               course.description,
-              course.category,
             ].some((value) => value.toLowerCase().includes(term))) &&
-          (category === "All categories" || course.category === category) &&
           (level === "All levels" || course.level === level) &&
           (status === "All statuses" || course.status === status)
         );
       }),
-    [category, courses, level, query, status],
+    [courses, level, query, status],
   );
 
   const openEditCourse = (course: Course) => {
@@ -460,9 +442,8 @@ export default function CoursesPage() {
         slug: editSlug.trim(),
         description: editDescription.trim(),
         level: editLevel,
-        category_id: editingCourse.categoryId,
       });
-      setCourses((currentCourses) => currentCourses.map((course) => course.id === editingCourse.id ? { ...course, ...updatedCourse, level: editLevel, status: course.status, category: course.category } : course));
+      setCourses((currentCourses) => currentCourses.map((course) => course.id === editingCourse.id ? { ...course, ...updatedCourse, level: editLevel, status: course.status } : course));
       setEditingCourse(null);
     } catch (error) {
       setEditError(error instanceof ApiClientError ? error.message : "Unable to update course.");
@@ -525,15 +506,6 @@ export default function CoursesPage() {
         <SlidersHorizontal
           className="mx-1 h-4 w-4 shrink-0 text-[#71878c]"
           aria-hidden="true"
-        />
-        <FilterSelect
-          label="Category"
-          value={category}
-          options={[
-            "All categories",
-            ...categories.map((category) => category.name),
-          ]}
-          onChange={setCategory}
         />
         <FilterSelect
           label="Level"

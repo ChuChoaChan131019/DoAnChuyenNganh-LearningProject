@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  FolderTree,
   BookOpen,
   Bookmark,
   FileText,
@@ -74,11 +73,6 @@ const MENU_DATA: NavGroup[] = [
   {
     group: "LEARNING CONTENT",
     items: [
-      {
-        label: "Categories",
-        href: "/content-manager/learning-content/categories",
-        icon: FolderTree,
-      },
       {
         label: "Courses",
         href: "/content-manager/learning-content/courses",
