@@ -691,7 +691,6 @@ export class CoursesService {
     if (!lesson) throw new NotFoundException('Lesson not found');
 
     const relatedTables = [
-      'lesson_topics',
       'materials',
       'questions',
     ] as const;

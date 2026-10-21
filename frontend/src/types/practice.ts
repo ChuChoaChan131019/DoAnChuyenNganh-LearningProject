@@ -15,7 +15,14 @@ export interface PracticeCourse {
   slug: string;
 }
 
-export interface WeakTopic {
+export interface PracticeChapter {
+  id: string;
+  course_id: string;
+  title: string;
+  description: string | null;
+}
+
+export interface WeakChapter {
   id: string;
   name: string;
   accuracy: number;
@@ -43,5 +50,6 @@ export interface PracticeQuestion {
 
 export interface PracticeOverview {
   courses: PracticeCourse[];
-  weakTopics: WeakTopic[];
+  chapters: PracticeChapter[];
+  weakChapters: WeakChapter[];
 }

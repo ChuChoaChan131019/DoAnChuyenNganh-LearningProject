@@ -48,9 +48,8 @@ export class QuestionDto {
   @IsUUID()
   course_id!: string;
 
-  @IsOptional()
   @IsUUID()
-  chapter_id!: string | null;
+  chapter_id!: string;
 
   @IsOptional()
   @IsUUID()
@@ -72,10 +71,6 @@ export class QuestionDto {
 
   @IsEnum(QuestionStatus)
   status!: QuestionStatus;
-
-  @IsArray()
-  @IsUUID('4', { each: true })
-  topic_ids!: string[];
 
   @IsArray()
   @ValidateNested({ each: true })
