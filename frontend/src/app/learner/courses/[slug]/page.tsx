@@ -281,19 +281,6 @@ export default function LearnerCourseDetailPage() {
     );
   }
 
-  const completedLessonCount = course.chapters.reduce(
-    (sum: number, chapter: any) =>
-      sum + (chapter.lessons?.filter((lesson: any) => lesson.completed).length || 0),
-    0
-  );
-  const totalLessonCount = course.chapters.reduce(
-    (sum: number, chapter: any) => sum + (chapter.lessons?.length || 0),
-    0
-  );
-  const progressPercent = totalLessonCount
-    ? Math.round((completedLessonCount / totalLessonCount) * 100)
-    : 0;
-
   return (
     <div className="mx-auto max-w-[1240px] pb-10">
       <Link
@@ -353,16 +340,7 @@ export default function LearnerCourseDetailPage() {
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-between gap-3 border-t border-[#e1e6e3] pt-4">
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#f4d0d0]">
-                <div
-                  className="h-full rounded-full bg-[#f7444e]"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-              <span className="min-w-[44px] text-right text-[18px] font-bold text-slate-700">
-                {progressPercent}%
-              </span>
+            <div className="mt-6 flex justify-end border-t border-[#e1e6e3] pt-4">
               <Link
                 href="/learner/practice"
                 className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#f4b7b7] bg-[#fff3f2] px-4 py-3 text-sm font-bold text-[#f7444e] transition hover:bg-[#ffe9e7]"
@@ -406,15 +384,6 @@ export default function LearnerCourseDetailPage() {
                     </div>
 
                     <div className="flex items-center gap-2 pt-1">
-                      {chapter.completed ? (
-                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#dff5ea] text-[#2b9e6a]">
-                          <CheckCircle2 className="h-4 w-4" />
-                        </span>
-                      ) : (
-                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#f2f5f4] text-slate-500">
-                          <span className="h-2.5 w-2.5 rounded-full border-2 border-slate-400" />
-                        </span>
-                      )}
                       <span className="text-[14px] text-slate-400">
                         {chapter.lessons?.reduce(
                           (sum: number, lesson: any) =>
@@ -442,14 +411,8 @@ export default function LearnerCourseDetailPage() {
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <span
-                              className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${
-                                lesson.completed
-                                  ? 'bg-[#dff5ea] text-[#2b9e6a]'
-                                  : 'bg-slate-100 text-slate-400'
-                              }`}
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-500">
+                              {lessonIndex + 1}
                             </span>
                             <span className="text-[16px] font-medium text-slate-700 transition group-hover:font-semibold group-hover:text-[#f7444e]">
                               {lesson.title}

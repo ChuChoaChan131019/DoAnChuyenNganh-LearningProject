@@ -2,7 +2,6 @@ import "./globals.css";
 import { Plus_Jakarta_Sans, Geist } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/contexts/auth-context";
-import { ThemeProvider } from "@/lib/theme-context";
 import { cn } from "@/lib/utils";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
@@ -19,13 +18,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={cn("font-sans", geist.variable)} suppressHydrationWarning>
+    <html lang="vi" className={cn("font-sans", geist.variable)}>
       <body>
         <AuthProvider>
-          <ThemeProvider>
-            {children}
-            <Toaster position="top-right" richColors closeButton />
-          </ThemeProvider>
+          {children}
+          <Toaster position="top-right" richColors closeButton theme="light" />
         </AuthProvider>
       </body>
     </html>

@@ -18,7 +18,6 @@ import {
   ShieldCheck,
   AlertCircle,
 } from 'lucide-react';
-import { useTheme } from '@/lib/theme-context';
 import { useAuth } from '@/contexts/auth-context';
 import { ApiClientError } from '@/lib/api';
 import { getDefaultRouteByRole, isRouteAllowedForRole } from '@/config/roles';
@@ -149,7 +148,6 @@ const CODE_LINES: CodeLine[] = [
 ];
 
 function LoginFormContent() {
-  const { isDark } = useTheme();
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -211,17 +209,9 @@ function LoginFormContent() {
   return (
     <div className="flex h-screen w-screen overflow-hidden font-[var(--font-plus-jakarta-sans),ui-sans-serif,system-ui,sans-serif]">
       {/* ── LEFT: Login form ─────────────────────────────────── */}
-      <section
-        className={`relative flex w-full flex-col justify-center overflow-y-auto px-8 py-12 sm:px-14 lg:w-[46%] xl:w-[42%] transition-colors duration-300 ${
-          isDark ? 'bg-[#061a24]' : 'bg-white'
-        }`}
-      >
+      <section className="relative flex w-full flex-col justify-center overflow-y-auto bg-white px-8 py-12 sm:px-14 lg:w-[46%] xl:w-[42%]">
         {/* Subtle left-panel blob */}
-        <div
-          className={`pointer-events-none absolute -left-16 top-1/3 h-72 w-72 rounded-full blur-3xl transition-colors duration-300 ${
-            isDark ? 'bg-rose-700/10' : 'bg-rose-400/8'
-          }`}
-        />
+        <div className="pointer-events-none absolute -left-16 top-1/3 h-72 w-72 rounded-full bg-rose-400/8 blur-3xl" />
 
         {/* Logo */}
         <div className="relative mb-8 flex items-center gap-2.5">
@@ -229,30 +219,30 @@ function LoginFormContent() {
             <Sparkles className="h-[18px] w-[18px] text-white" />
           </div>
           <div>
-            <p className={`text-[15px] font-semibold tracking-tight leading-none ${isDark ? 'text-white' : 'text-slate-800'}`}>
+            <p className="text-[15px] font-semibold tracking-tight leading-none text-slate-800">
               CSharpHub
             </p>
-            <p className={`text-[11px] leading-none mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p className="mt-0.5 text-[11px] leading-none text-slate-500">
               C# &amp; OOP learning platform
             </p>
           </div>
         </div>
 
         {/* Heading */}
-        <h1 className={`relative text-[28px] font-bold leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+        <h1 className="relative text-[28px] font-bold leading-tight text-slate-900">
           Welcome back
         </h1>
-        <p className={`relative mt-1.5 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <p className="relative mt-1.5 text-sm text-slate-500">
           Sign in to continue managing and learning C# content.
         </p>
 
         {/* Error Alert Box */}
         {errorMessage && (
-          <div className="relative mt-5 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50/90 p-4 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200">
-            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
+          <div className="relative mt-5 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50/90 p-4 text-rose-800">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
             <div className="text-sm">
               <p className="font-semibold">Đăng nhập không thành công</p>
-              <p className="mt-0.5 text-xs text-rose-700 dark:text-rose-300">{errorMessage}</p>
+              <p className="mt-0.5 text-xs text-rose-700">{errorMessage}</p>
             </div>
           </div>
         )}
@@ -263,7 +253,7 @@ function LoginFormContent() {
           <div className="space-y-1.5">
             <label
               htmlFor="login-email"
-              className={`block text-[11px] font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
+              className="block text-[11px] font-semibold uppercase tracking-widest text-slate-400"
             >
               Email
             </label>
@@ -276,11 +266,7 @@ function LoginFormContent() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className={`w-full rounded-xl border py-3 pl-10 pr-4 text-sm backdrop-blur-sm transition focus:outline-none focus:ring-2 focus:ring-rose-500/20 ${
-                  isDark
-                    ? 'border-white/10 bg-white/5 text-white placeholder-slate-600 focus:border-rose-500/50 focus:bg-white/8'
-                    : 'border-slate-200 bg-white text-slate-800 placeholder-slate-400 shadow-sm focus:border-rose-400'
-                }`}
+                className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm text-slate-800 shadow-sm backdrop-blur-sm transition placeholder:text-slate-400 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
               />
             </div>
           </div>
@@ -290,16 +276,11 @@ function LoginFormContent() {
             <div className="flex items-center justify-between">
               <label
                 htmlFor="login-password"
-                className={`block text-[11px] font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
+                className="block text-[11px] font-semibold uppercase tracking-widest text-slate-400"
               >
                 Password
               </label>
-              <Link
-                href="/forgot-password"
-                className="text-xs font-medium text-rose-400 hover:text-rose-300 transition-colors"
-              >
-                Forgot password?
-              </Link>
+
             </div>
             <div className="relative">
               <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -310,11 +291,7 @@ function LoginFormContent() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Your password"
-                className={`w-full rounded-xl border py-3 pl-10 pr-10 text-sm backdrop-blur-sm transition focus:outline-none focus:ring-2 focus:ring-rose-500/20 ${
-                  isDark
-                    ? 'border-white/10 bg-white/5 text-white placeholder-slate-600 focus:border-rose-500/50 focus:bg-white/8'
-                    : 'border-slate-200 bg-white text-slate-800 placeholder-slate-400 shadow-sm focus:border-rose-400'
-                }`}
+                className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-10 text-sm text-slate-800 shadow-sm backdrop-blur-sm transition placeholder:text-slate-400 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
               />
               <button
                 type="button"
@@ -331,12 +308,12 @@ function LoginFormContent() {
             <div
               onClick={() => setKeepSignedIn(!keepSignedIn)}
               className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border transition-all ${
-                keepSignedIn ? 'bg-rose-500 border-rose-500' : 'border-slate-300 dark:border-white/20'
+                keepSignedIn ? 'bg-rose-500 border-rose-500' : 'border-slate-300'
               }`}
             >
               {keepSignedIn && <CheckCircle2 className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />}
             </div>
-            <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            <span className="text-sm text-slate-600">
               Keep me signed in
             </span>
           </label>
@@ -363,13 +340,13 @@ function LoginFormContent() {
         </form>
 
         {/* Footer */}
-        <p className={`relative mt-8 text-center text-[11px] leading-relaxed ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>
+        <p className="relative mt-8 text-center text-[11px] leading-relaxed text-slate-400">
           Protected by the University SSO gateway · Accounts are provisioned by the User module.
         </p>
 
         {/* Sign up link */}
         <p className="relative mt-3 text-center text-sm text-slate-500">
-          <span className={isDark ? 'text-slate-500' : 'text-slate-500'}>Don&apos;t have an account?</span>{' '}
+          <span>Don&apos;t have an account?</span>{' '}
           <Link href="/register" className="font-semibold text-rose-400 hover:text-rose-300 transition-colors">
             Sign up
           </Link>

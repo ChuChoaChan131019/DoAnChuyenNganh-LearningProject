@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, FileText, Loader2, Search } from 'lucide-react';
 import { ApiClientError, courseApi } from '@/lib/api';
 import type { Course } from '@/types/learning-content';
@@ -21,37 +21,57 @@ type QuickContentSearchProps = {
 export function QuickContentSearch({ learner = false }: QuickContentSearchProps) {
   const [query, setQuery] = useState('');
   const [courses, setCourses] = useState<Course[]>([]);
-  const [results, setResults] = useState<QuickResult[]>([]);
+  const [lessons, setLessons] = useState<QuickResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const hasStartedLoading = useRef(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let active = true;
-    const loadCourses = learner ? courseApi.learnerList() : courseApi.list();
-    loadCourses
-      .then((loadedCourses) => {
-        if (active) {
-          setCourses(learner
-            ? loadedCourses.filter((course) => isPublishedStatus(course.status))
-            : loadedCourses);
-          setError('');
-        }
-      })
+    if (!isOpen || query.trim().length < 2 || hasStartedLoading.current) return;
+
+    hasStartedLoading.current = true;
+    setIsLoading(true);
+    const loadSearchIndex = async () => {
+      const loadedCourses = learner ? await courseApi.learnerList() : await courseApi.list();
+      const availableCourses = learner
+        ? loadedCourses.filter((course) => isPublishedStatus(course.status))
+        : loadedCourses;
+
+      setCourses(availableCourses);
+
+      const lessonGroups = await Promise.allSettled(availableCourses.map(async (course) => {
+        const chapterGroups = learner
+          ? (await courseApi.learnerLessons(course.slug)).chapters
+          : await courseApi.chapters(String(course.id));
+
+        return chapterGroups.flatMap((chapter) => chapter.lessons
+          .filter((lesson) => !learner || isPublishedStatus(lesson.status))
+          .map((lesson) => ({
+            kind: 'lesson' as const,
+            id: String(lesson.id),
+            title: lesson.title,
+            subtitle: `${course.title} · ${chapter.title}`,
+            href: learner
+              ? `/learner/courses/${course.slug}/lessons/${lesson.id}`
+              : `/content-manager/learning-content/lessons/${lesson.id}`,
+          })));
+      }));
+
+      setLessons(lessonGroups.flatMap((group) => group.status === 'fulfilled' ? group.value : []));
+      setError('');
+    };
+
+    loadSearchIndex()
       .catch((requestError: unknown) => {
-        if (active) {
-          setError(requestError instanceof ApiClientError ? requestError.message : 'Unable to load searchable content.');
-        }
+        hasStartedLoading.current = false;
+        setError(requestError instanceof ApiClientError ? requestError.message : 'Unable to load searchable content.');
       })
       .finally(() => {
-        if (active) setIsLoading(false);
+        setIsLoading(false);
       });
-
-    return () => {
-      active = false;
-    };
-  }, [learner]);
+  }, [isOpen, learner, query]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -62,35 +82,14 @@ export function QuickContentSearch({ learner = false }: QuickContentSearchProps)
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
+  const results = useMemo(() => {
     const term = query.trim().toLowerCase();
-    if (term.length < 2) return;
+    if (term.length < 2) return [];
 
-    let active = true;
-    const matchingCourses = courses.filter((course) =>
-      [course.title, course.description, course.slug].some((value) => value?.toLowerCase().includes(term)),
-    );
-
-    Promise.all(courses.map(async (course) => {
-      const chapterGroups = learner
-        ? (await courseApi.learnerLessons(course.slug)).chapters
-        : await courseApi.chapters(String(course.id));
-
-      return chapterGroups.flatMap((chapter) => chapter.lessons
-        .filter((lesson) => (!learner || isPublishedStatus(lesson.status)) && [lesson.title, chapter.title].some((value) => value.toLowerCase().includes(term)))
-        .map((lesson) => ({
-          kind: 'lesson' as const,
-          id: String(lesson.id),
-          title: lesson.title,
-          subtitle: `${course.title} · ${chapter.title}`,
-          href: learner
-            ? `/learner/courses/${course.slug}/lessons/${lesson.id}`
-            : `/content-manager/learning-content/lessons/${lesson.id}`,
-        })));
-    })).then((lessonGroups) => {
-      if (!active) return;
-      setError('');
-      const courseResults = matchingCourses.map((course) => ({
+    const courseResults: QuickResult[] = courses
+      .filter((course) => [course.title, course.description, course.slug]
+        .some((value) => value?.toLowerCase().includes(term)))
+      .map((course) => ({
         kind: 'course' as const,
         id: String(course.id),
         title: course.title,
@@ -98,18 +97,11 @@ export function QuickContentSearch({ learner = false }: QuickContentSearchProps)
           ? `/learner/courses/${course.slug}`
           : `/content-manager/learning-content/courses/${course.slug}`,
       }));
-      setResults([...courseResults, ...lessonGroups.flat()].slice(0, 8));
-    }).catch((requestError: unknown) => {
-      if (active) {
-        setResults([]);
-        setError(requestError instanceof ApiClientError ? requestError.message : 'Unable to search lessons.');
-      }
-    });
-
-    return () => {
-      active = false;
-    };
-  }, [courses, learner, query]);
+    const lessonResults = lessons.filter((lesson) =>
+      [lesson.title, lesson.subtitle].some((value) => value?.toLowerCase().includes(term)),
+    );
+    return [...courseResults, ...lessonResults].slice(0, 8);
+  }, [courses, learner, lessons, query]);
 
   return (
     <div ref={rootRef} className="relative w-full max-w-md">

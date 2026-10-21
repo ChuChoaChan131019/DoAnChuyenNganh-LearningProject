@@ -21,9 +21,6 @@ import {
   Sparkles,
   Inbox,
   Search,
-  Bell,
-  MessageSquare,
-  Settings,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -175,17 +172,6 @@ const MENU_DATA: NavGroup[] = [
     group: "SYSTEM",
     items: [
       { label: "Search", href: "/content-manager/search", icon: Search },
-      {
-        label: "Notifications",
-        href: "/content-manager/notifications",
-        icon: Bell,
-      },
-      {
-        label: "Feedback",
-        href: "/content-manager/feedback",
-        icon: MessageSquare,
-      },
-      { label: "Settings", href: "/content-manager/settings", icon: Settings },
     ],
   },
 ];
@@ -204,7 +190,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           <Sparkles className="h-5 w-5 text-white" />
         </div>
         {!isCollapsed && (
-          <div className="truncate text-[15px] font-medium tracking-tight text-slate-400/50">
+          <div className="truncate text-[15px] font-semibold tracking-tight text-slate-400">
             Content Studio
           </div>
         )}
@@ -215,7 +201,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         {MENU_DATA.map((section, idx) => (
           <div key={idx} className="space-y-1">
             {!isCollapsed && (
-              <div className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-400/30 uppercase">
+              <div className="px-3 pb-2 text-[11px] font-bold tracking-wider text-slate-400/50 uppercase">
                 {section.group}
               </div>
             )}

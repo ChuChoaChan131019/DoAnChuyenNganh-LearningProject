@@ -557,7 +557,7 @@ export class CoursesService {
     const supabase = this.supabaseService.getClient();
     const { data: course, error: courseError } = await supabase
       .from('courses')
-      .select('id, title, slug, status')
+      .select('id, title, slug, status, level, description, updated_at')
       .eq('slug', slug)
       .eq('status', 'published')
       .single();
@@ -691,12 +691,9 @@ export class CoursesService {
     if (!lesson) throw new NotFoundException('Lesson not found');
 
     const relatedTables = [
-      'lesson_progress',
       'lesson_topics',
       'materials',
-      'notes',
       'questions',
-      'study_plan_items',
     ] as const;
     const relatedResults = await Promise.all(
       relatedTables.map((table) =>

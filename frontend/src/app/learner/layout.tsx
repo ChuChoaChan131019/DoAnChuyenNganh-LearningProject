@@ -1,10 +1,23 @@
 import React from 'react';
-import { LearnerShell } from '@/components/learner/shell';
+import { LearnerFooter } from '@/components/learner/footer';
+import { LearnerTopbar } from '@/components/learner/topbar';
 
 export default function LearnerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <LearnerShell>{children}</LearnerShell>;
+  return (
+    <div className="min-h-screen bg-[#F7F8F3] font-[var(--font-plus-jakarta-sans)]">
+      {/* Thanh điều hướng ngang */}
+      <LearnerTopbar />
+
+      {/* Vùng chứa nội dung các trang con */}
+      <main className="mx-auto max-w-7xl p-6 lg:p-8">
+        {children}
+      </main>
+
+      <LearnerFooter />
+    </div>
+  );
 }

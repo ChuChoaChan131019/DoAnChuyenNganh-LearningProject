@@ -46,13 +46,12 @@ export function LearnerFooter() {
             <p className="font-semibold uppercase tracking-wider text-[#637981]">Platform</p>
             <a className="mt-4 block text-[#637981] hover:text-[#002c3e]" href="/learner/courses">Courses</a>
             <a className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/learner/practice">Practice</a>
-            <a className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/learner/dashboard">Analytics</a>
             <a className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/learner/ai-tutor">AI Tutor</a>
           </div>
 
           <div>
             <p className="font-semibold uppercase tracking-wider text-[#637981]">Studio</p>
-            <a className="mt-4 block text-[#637981] hover:text-[#002c3e]" href="/content-manager">Dashboard</a>
+            <a className="mt-4 block text-[#637981] hover:text-[#002c3e]" href="/content-manager/dashboard">Dashboard</a>
             <a className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/content-manager/questions/bank">Question bank</a>
             <a className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/content-manager/testsandpractice/tests">Tests</a>
             <a className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/content-manager">AI generator</a>
@@ -62,7 +61,6 @@ export function LearnerFooter() {
             <p className="font-semibold uppercase tracking-wider text-[#637981]">Support</p>
             <a className="mt-4 block text-[#637981] hover:text-[#002c3e]" href="/learner/search">Search</a>
             <a className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="#">Settings</a>
-            <a className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="#">Notifications</a>
           </div>
         </div>
       </div>

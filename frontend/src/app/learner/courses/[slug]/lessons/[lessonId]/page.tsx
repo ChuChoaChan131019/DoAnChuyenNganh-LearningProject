@@ -20,8 +20,6 @@ import {
   Terminal,
   Trophy,
   Zap,
-  Bookmark,
-  Edit3,
   X,
   Layers,
   PanelLeft,
@@ -552,15 +550,10 @@ export default function LearnerLessonPage() {
   const nextLesson = globalIndex < allCourseLessons.length - 1 ? allCourseLessons[globalIndex + 1] : null;
 
   // Trạng thái tương tác
-  const [isCompleted, setIsCompleted] = useState(currentLessonMeta.completed);
   const [copiedCode, setCopiedCode] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [hasRun, setHasRun] = useState(false);
   const [consoleOutput, setConsoleOutput] = useState<string>('');
-  const [isNoteOpen, setIsNoteOpen] = useState(false);
-  const [noteContent, setNoteContent] = useState('');
-  const [isSavingNote, setIsSavingNote] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
 
   const [showOutline, setShowOutline] = useState(true);
   const outlineDialog = useRef<HTMLDialogElement>(null);
@@ -590,8 +583,7 @@ export default function LearnerLessonPage() {
     setHasRun(false);
     setIsRunning(false);
     setConsoleOutput('');
-    setIsCompleted(currentLessonMeta.completed);
-  }, [activeLessonId, currentLessonMeta.completed]);
+  }, [activeLessonId]);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(currentLesson.initialCode);
@@ -639,17 +631,11 @@ export default function LearnerLessonPage() {
                       className={`flex items-start gap-3 rounded-xl p-2.5 text-xs transition-all ${
                         isCurrent
                           ? 'border border-[#f4b7b7] bg-[#fff3f2] font-semibold text-[#f7444e] shadow-sm'
-                          : item.completed
-                          ? 'text-slate-700 hover:bg-slate-50 cursor-pointer'
                           : 'text-slate-600 hover:bg-slate-50 cursor-pointer'
                       }`}
                     >
                       <span className="mt-0.5 shrink-0">
-                        {item.completed && !isCurrent ? (
-                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#dff5ea] text-[#2b9e6a]">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                          </span>
-                        ) : isCurrent ? (
+                        {isCurrent ? (
                           <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#F7444E] text-[10px] font-bold text-white">
                             {index + 1}
                           </span>
@@ -747,46 +733,6 @@ export default function LearnerLessonPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              <div className="flex flex-col items-end">
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                  <span>Tiến độ chương</span>
-                  <span className="font-bold text-slate-800">
-                    {Math.round(((currentChapterLessons.findIndex((l) => l.id === currentLessonMeta.id) + 1) / currentChapterLessons.length) * 100)}%
-                  </span>
-                </div>
-                <div className="mt-1.5 h-1.5 w-32 rounded-full bg-[#f4d0d0] overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-[#f7444e] transition-all duration-300"
-                    style={{
-                      width: `${((currentChapterLessons.findIndex((l) => l.id === currentLessonMeta.id) + 1) / currentChapterLessons.length) * 100}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsBookmarked(!isBookmarked)}
-                className={`hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-semibold transition ${isBookmarked ? 'bg-rose-50 text-[#f7444e]' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900'}`}
-              >
-                <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-current' : ''}`} />
-                {isBookmarked ? 'Saved' : 'Bookmark'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsCompleted(!isCompleted)}
-                className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold transition shadow-sm ${
-                  isCompleted
-                    ? 'bg-[#dff5ea] text-[#2b9e6a] hover:bg-[#d0f0e2] border border-[#a2e5c6]'
-                    : 'bg-[#F7444E] text-white hover:bg-[#e33b3b]'
-                }`}
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                {isCompleted ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
-              </button>
-            </div>
           </div>
         </div>
 
@@ -1021,63 +967,6 @@ export default function LearnerLessonPage() {
         </footer>
       </div>
 
-      {/* Note FAB */}
-      <button
-        onClick={() => setIsNoteOpen(true)}
-        className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#0f3741] text-white shadow-lg transition hover:scale-105 hover:bg-[#145a68]"
-        title="Ghi chú bài học"
-      >
-        <Edit3 className="h-6 w-6" />
-      </button>
-
-      {/* Note Drawer */}
-      {isNoteOpen && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm transition-opacity" onClick={() => setIsNoteOpen(false)} />
-          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md border-l border-slate-200 bg-white shadow-2xl transition-transform ease-[cubic-bezier(0.32,0.72,0,1)] duration-500 flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                  <FileText className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-[#0f3741]">My Notes</h3>
-                  <p className="text-xs text-slate-500 line-clamp-1">{currentLesson.title}</p>
-                </div>
-              </div>
-              <button onClick={() => setIsNoteOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            
-            <div className="flex-1 p-6 flex flex-col">
-              <textarea
-                value={noteContent}
-                onChange={(e) => {
-                  setNoteContent(e.target.value);
-                  setIsSavingNote(true);
-                  setTimeout(() => setIsSavingNote(false), 1000);
-                }}
-                placeholder="Type your notes here... (Supports Markdown)"
-                className="flex-1 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 placeholder-slate-400 focus:border-[#78bcc4] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#78bcc4]/10"
-              />
-            </div>
-            
-            <div className="border-t border-slate-100 px-6 py-4 flex items-center justify-between bg-slate-50">
-              <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                {isSavingNote ? (
-                  <span className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> Saving...</span>
-                ) : (
-                  <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-emerald-500" /> Saved</span>
-                )}
-              </div>
-              <Link href="/learner/notes" className="text-xs font-semibold text-[#f7444e] hover:text-rose-600 transition">
-                View all notes →
-              </Link>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }
