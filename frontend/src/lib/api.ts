@@ -13,7 +13,6 @@ import type {
   QuizData,
   QuizQuestionItem,
   QuizAttempt,
-  QuizAnswerSubmission,
   QuizAttemptQuestion,
   QuizResultResponse,
   QuizSubmissionPayload,
@@ -36,8 +35,6 @@ export class ApiClientError extends Error {
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-  const method = options.method || 'GET';
-
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
