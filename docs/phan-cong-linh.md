@@ -2,7 +2,7 @@
 
 **Nguồn:** [phân công chung](phan-cong-cong-viec.md) và [đặc tả chức năng](dac-ta-chuc-nang-phan-he-noi-dung.md). Phần việc mới được chốt ngày 22/10/2026.
 
-Tài liệu này ghi **phạm vi Linh phụ trách**, không xác nhận chức năng đã hoàn thành. Phần ở mục 1 lấy từ phân công cũ; phần ở mục 2 là hai việc mới đã chốt. Tiến độ hiện tại cần được cập nhật riêng trong phân công chung và PR.
+Tài liệu này ghi **phạm vi Linh phụ trách**, không xác nhận chức năng đã hoàn thành. Phần ở mục 1 lấy từ phân công cũ; phần ở mục 2 là các việc mới đã chốt. Tiến độ hiện tại cần được cập nhật riêng trong phân công chung và PR.
 
 ## 1. Chức năng theo phân công cũ
 
@@ -41,3 +41,11 @@ Linh phụ trách giao diện thảo luận trong trang chương/bài học và 
 - Cho học sinh tạo bình luận dưới bài đăng; sửa hoặc xóa bình luận của chính mình, kiểm tra quyền tác giả ở API.
 - Ghép form đăng bài và nút hữu ích do Khoa phụ trách, cùng nút báo cáo do Trang phụ trách, vào giao diện học sinh.
 - Khi bài đăng hoặc bình luận bị ẩn/gỡ, cập nhật danh sách và chi tiết để học sinh không tiếp tục xem hoặc tương tác với nội dung đó.
+
+### 2.3. Quản lý tài khoản quản trị viên (`FR-44`)
+
+Linh làm giao diện và API cho quản trị viên xem, tìm kiếm, tạo, cập nhật, vô hiệu hóa hoặc khôi phục tài khoản và gán vai trò được phép. API phải kiểm tra quyền `admin`; thao tác quản trị tài khoản chỉ chạy ở backend, không đưa khóa quản trị lên trình duyệt. Trang phối hợp rà soát phân quyền trước khi nghiệm thu.
+
+### 2.4. Kiểm tra câu hỏi AI (`FR-12`)
+
+Linh kiểm tra câu hỏi AI thiếu đáp án, gần trùng hoặc không phù hợp với bài học được chọn; trả lý do rõ để người biên soạn sửa hoặc loại bỏ. Phần này nối với quy trình lưu nháp, nhận xét và duyệt do Trang phụ trách. Linh tiếp tục chịu trách nhiệm lưu/khôi phục mã bài thực hành của học sinh theo `C06`/`C07`.
