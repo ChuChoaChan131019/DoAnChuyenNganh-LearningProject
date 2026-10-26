@@ -2,7 +2,7 @@
 
 **Nguồn:** [phân công chung](phan-cong-cong-viec.md) và [đặc tả chức năng](dac-ta-chuc-nang-phan-he-noi-dung.md). Phần việc mới được chốt ngày 22/10/2026.
 
-Tài liệu này ghi **phạm vi Trang phụ trách**, không xác nhận chức năng đã hoàn thành. Phần ở mục 1 lấy từ phân công cũ; phần ở mục 2 là hai việc mới đã chốt. Tiến độ hiện tại cần được cập nhật riêng trong phân công chung và PR.
+Tài liệu này ghi **phạm vi Trang phụ trách**, không xác nhận chức năng đã hoàn thành. Phần ở mục 1 lấy từ phân công cũ; phần ở mục 2 là các việc mới đã chốt. Tiến độ hiện tại cần được cập nhật riêng trong phân công chung và PR.
 
 ## 1. Chức năng theo phân công cũ
 
@@ -43,3 +43,9 @@ Trang phụ trách luồng báo cáo và xử lý nội dung trong [Thảo luậ
 - Kiểm tra quyền `admin` ở API xử lý báo cáo; nội dung bị ẩn/gỡ không tiếp tục hiển thị hoặc nhận tương tác từ học sinh.
 
 Khoa phụ trách dữ liệu bài đăng và lượt hữu ích; Linh phụ trách danh sách thảo luận và bình luận. Ba phần phải dùng chung quy ước về ID nội dung và trạng thái ẩn/gỡ.
+
+### 2.3. Kiểm tra nội dung và lịch sử duyệt AI (`FR-12`–`FR-14`)
+
+Trang chịu trách nhiệm phần backend còn thiếu của quy trình AI biên tập: kiểm tra nội dung bài học AI trước khi gửi duyệt; lưu bản nháp, phiên bản, người sửa và thời điểm sửa; cho người biên soạn nhận xét, chấp thuận hoặc trả lại. Kết quả kiểm tra là cảnh báo để người biên soạn quyết định, không tự xuất bản nội dung AI. Linh cung cấp kiểm tra riêng cho câu hỏi AI và phối hợp dùng chung trạng thái duyệt.
+
+Trang cũng phối hợp rà soát quyền `admin` trong API quản lý tài khoản do Linh phụ trách; đây không phải phần Trang tự làm toàn bộ giao diện và API tài khoản.

@@ -2,9 +2,11 @@
 
 **Nguồn đối chiếu:** [Bảng tính phân công của nhóm](https://docs.google.com/spreadsheets/d/13QN-UGyH6Z6yL0FU4zw1-th-UWS-L1Zwk4Ta5fFunu0/edit?usp=sharing), hai tab **Phân công** và **Chức năng**, đọc ngày 21/10/2026; [đặc tả chức năng](dac-ta-chuc-nang-phan-he-noi-dung.md); [chi tiết Phòng thực hành C#](chi-tiet-phong-thuc-hanh-csharp.md); [chi tiết Thảo luận và chia sẻ](chi-tiet-thao-luan-chia-se-noi-dung.md). Phân công hai chức năng mới ở mục 3.1 được nhóm chốt ngày 22/10/2026.
 
-**Cách đọc:** Các mức `100%` và `0%` ở mục 2 được chép theo bảng tính cũ, phản ánh tiến độ nhóm đã đánh dấu vào tháng 8–9/2026. Chúng **không phải kết quả kiểm thử hoặc nghiệm thu mã hiện tại**. Mục 3.1 ghi **người chịu trách nhiệm đã chốt**, không có nghĩa chức năng đã làm xong. Mục 3.2 vẫn là đề xuất hoặc chưa phân công; hạn mới và tiến độ triển khai cần được cập nhật riêng.
+**Cách đọc:** Các mức `100%` và `0%` ở mục 2 được chép theo bảng tính cũ, phản ánh tiến độ nhóm đã đánh dấu vào tháng 8–9/2026. Chúng **không phải kết quả kiểm thử hoặc nghiệm thu mã hiện tại**. Mục 3 ghi **người chịu trách nhiệm đã chốt**, không có nghĩa chức năng đã làm xong; hạn mới và tiến độ triển khai cần được cập nhật riêng.
 
 **Tài liệu từng thành viên:** [Trang](phan-cong-trang.md) · [Linh](phan-cong-linh.md) · [Khoa](phan-cong-khoa.md).
+
+**Lịch đề xuất theo mốc 15/11/2026:** [Deadline các việc mới và việc cũ chưa hoàn thành](lich-deadline-phan-cong-15-11-2026.md). Lịch này chưa được ghi vào Google Sheet trực tuyến.
 
 ## 1. Thành viên và phạm vi đã nhận
 
@@ -65,18 +67,19 @@ Các phần việc dưới đây là trách nhiệm triển khai **toàn luồng
 | Thảo luận — xem và bình luận (`FR-45`, `FR-47`, phần bình luận của `FR-48`) | **Linh** | Danh sách và chi tiết thảo luận trong trang chương/bài học; tìm/lọc bài đăng; tạo, xem, sửa và xóa bình luận của chính tác giả. Linh ghép các thành phần đăng bài, hữu ích và báo cáo vào giao diện học sinh. |
 | Thảo luận — báo cáo và kiểm duyệt (`FR-50`–`FR-51`) | **Trang** | Học sinh gửi báo cáo kèm lý do; hàng chờ báo cáo cho quản trị viên; xem ngữ cảnh, bỏ qua/ẩn/gỡ nội dung và lưu người xử lý, thời điểm, lý do. Trang chịu trách nhiệm quy tắc hiển thị của nội dung đã bị xử lý và quyền quản trị của luồng này. |
 
-### 3.2. Việc còn cần chốt riêng
+### 3.2. Phân công bổ sung
 
-| Hạng mục | Người phụ trách hiện ghi nhận | Trạng thái phân công |
+| Hạng mục | Người phụ trách chính | Phạm vi cần làm |
 | --- | --- | --- |
-| Quy trình bản nháp, kiểm tra, nhận xét, duyệt và xuất bản nội dung AI | Trang theo phạm vi cũ; Linh phối hợp phần câu hỏi | Cần chốt phạm vi backend và lịch mới. |
-| Tiến độ học tập tổng hợp từ bài học, quiz, luyện tập và bài code | Khoa được đề xuất; Trang và Linh cung cấp dữ liệu liên quan | Chưa chốt người phụ trách chính cho phiên bản cuối. |
-| Quản lý tài khoản của quản trị viên | Chưa ghi người phụ trách trong bảng tính cũ | Cần phân công riêng; không gộp với xử lý báo cáo thảo luận. |
+| Quản lý tài khoản quản trị viên (`FR-44`) | **Linh** | Giao diện và API cho quản trị viên xem/tìm, tạo, sửa, vô hiệu hóa/khôi phục tài khoản và gán vai trò. Trang phối hợp rà soát kiểm tra quyền ở API. |
+| Tiến độ tổng hợp và tiếp tục học (`FR-42`–`FR-43`) | **Khoa** | Tổng hợp bài học, quiz/luyện tập và bài code; cho học sinh mở lại bài học đang dở. Linh cung cấp dữ liệu quiz/bài code; Trang cung cấp dữ liệu bài học. Linh vẫn phụ trách mở lại mã bài code ở `C06`/`C07`. |
+| Kiểm tra nội dung và lịch sử duyệt AI (`FR-12`–`FR-14`) | **Trang** | Kiểm tra nội dung bài học AI; hoàn thiện backend lưu nháp, phiên bản/lịch sử sửa, nhận xét, chấp thuận/trả lại cho quy trình duyệt và xuất bản đã giao. |
+| Kiểm tra câu hỏi AI (`FR-12`) | **Linh** | Phát hiện câu thiếu đáp án, gần trùng hoặc không phù hợp với bài học được chọn; trả cảnh báo để người biên soạn xử lý trước khi gửi duyệt. Phối hợp với Trang để dùng chung trạng thái duyệt. |
 
 ## 4. Điểm phối hợp và theo dõi
 
 1. **Dữ liệu học tập:** Dùng cấu trúc khóa học → chương → bài học. Thảo luận gắn với chương hoặc bài học; bài thực hành gắn với bài học. Không xây lại Category hoặc topic.
-2. **Phòng thực hành:** Khoa và Trang thống nhất định dạng bài/bộ kiểm tra và quy tắc công khai/ẩn; Trang và Linh thống nhất phản hồi chạy/nộp và cách lưu kết quả. Ba người cùng nghiệm thu từ tạo nháp đến học sinh nộp bài đạt; mã và tiến độ của học sinh được giữ khi đề được sửa.
+2. **Phòng thực hành:** Ba người dùng chung [quyết định thiết kế Phòng thực hành C#](quyet-dinh-thiet-ke-phong-thuc-hanh-csharp.md) về trình độ bài tập, dữ liệu, bộ kiểm tra và ranh giới API. Ba người cùng nghiệm thu từ tạo nháp đến học sinh nộp bài đạt; mã và tiến độ của học sinh được giữ khi đề được sửa.
 3. **Thảo luận:** Khoa, Linh và Trang thống nhất bài đăng, bình luận, lượt hữu ích, báo cáo và trạng thái ẩn/gỡ trước khi làm riêng. Mọi thao tác sửa/xóa cần kiểm tra đúng tác giả; thao tác xử lý báo cáo cần quyền `admin` ở API.
 4. **Theo dõi tiến độ:** Người phụ trách cập nhật `Chưa làm`, `Đang làm`, `Chờ duyệt`, `Hoàn thành` cùng liên kết PR. Chỉ đánh dấu hoàn thành sau khi kiểm tra luồng thật; các mức `100%` trong bảng cũ không thay thế nghiệm thu.
 5. **Lịch và bảng tính:** Mốc tháng 8–9/2026 trong bảng là lịch sử. Khi nhóm điền hạn mới, cập nhật bảng tính theo các phần việc đã chốt ở mục 3.1 và đối chiếu lại với file này.

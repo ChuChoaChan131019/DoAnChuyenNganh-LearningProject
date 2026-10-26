@@ -2,6 +2,8 @@
 
 **Phạm vi:** chức năng dự kiến cho phân hệ Nội dung, tương ứng `FR-21`–`FR-33` trong [đặc tả chức năng](dac-ta-chuc-nang-phan-he-noi-dung.md).
 
+**Quyết định triển khai đã chốt:** [Trình độ bài tập, đầu vào/đầu ra, bộ kiểm tra, dữ liệu và ranh giới API](quyet-dinh-thiet-ke-phong-thuc-hanh-csharp.md).
+
 Tài liệu này mô tả học sinh và người biên soạn sẽ sử dụng Phòng thực hành như thế nào. Đây là **yêu cầu cho chức năng dự kiến**, không phải danh sách những gì đã làm xong. Chức năng chính thức chưa được triển khai.
 
 ## 1. Mục tiêu và phạm vi
@@ -32,7 +34,7 @@ Người biên soạn có thể cung cấp một đoạn C# ban đầu, ví dụ
 
 Mỗi bộ kiểm tra gồm đầu vào gửi cho chương trình và kết quả mong đợi. Người biên soạn thêm nhiều bộ để kiểm tra cả trường hợp thông thường lẫn trường hợp biên, chẳng hạn số âm, chuỗi có dấu cách hoặc dãy nhiều phần tử. Mỗi bộ được đánh dấu **công khai** hoặc **ẩn**. Bộ công khai giúp học sinh hiểu lỗi; bộ ẩn dùng khi nộp bài nhưng không lộ dữ liệu hoặc đáp án. Các bộ kiểm tra thuộc riêng từng bài, nên bài chào theo tên không dùng chung bộ kiểm tra của bài tính tổng.
 
-Trước khi xuất bản, hệ thống kiểm tra bộ dữ liệu có đủ đầu vào và đầu ra mong đợi theo quy tắc của bài. Người biên soạn phải chạy lời giải tham khảo qua các bộ kiểm tra để phát hiện đề hoặc đáp án nhập sai. Việc so khớp khoảng trắng cuối dòng, giới hạn thời gian và số bộ bắt buộc cần được chốt chung trước khi dùng để chấm chính thức.
+Trước khi xuất bản, hệ thống kiểm tra bộ dữ liệu có đầu vào và đầu ra mong đợi theo quy tắc của bài; giá trị rỗng vẫn hợp lệ nếu đề bài yêu cầu. Người biên soạn phải chạy lời giải tham khảo qua các bộ kiểm tra để phát hiện đề hoặc đáp án nhập sai. Số bộ tối thiểu và cách so khớp đầu ra được ghi trong [quyết định thiết kế](quyet-dinh-thiet-ke-phong-thuc-hanh-csharp.md); giới hạn tài nguyên cụ thể sẽ được cấu hình và đo khi triển khai.
 
 ### 2.6. Soạn gợi ý, lời giải và giải thích
 
@@ -90,6 +92,6 @@ Giao diện cần phân biệt **sai kết quả**, **lỗi biên dịch**, **l�
 4. Học sinh thử mã sai, xem phản hồi từng bộ, mở gợi ý, rời trang rồi quay lại. Mã và gợi ý đã dùng vẫn còn.
 5. Học sinh nộp bài đạt; hệ thống ghi nhận hoàn thành. Bộ ẩn không lộ đầu vào/đáp án, lịch sử nộp và kết quả cá nhân được giữ lại.
 
-## 6. Điểm cần chốt khi thiết kế chi tiết
+## 6. Điểm còn cần chốt khi triển khai
 
-Nhóm cần thống nhất cách so khớp đầu ra (đặc biệt là khoảng trắng và xuống dòng), giới hạn tài nguyên, số bộ kiểm tra bắt buộc và quy tắc mở lời giải cho người chưa hoàn thành. Các quyết định này phải được áp dụng nhất quán cho giao diện biên soạn, chạy thử và nộp bài.
+Cách so khớp đầu ra và số bộ kiểm tra tối thiểu đã được ghi trong [quyết định thiết kế](quyet-dinh-thiet-ke-phong-thuc-hanh-csharp.md). Nhóm vẫn cần đo để đặt giới hạn tài nguyên cụ thể, chốt quy tắc mở lời giải cho người chưa hoàn thành và đặt đường dẫn API theo mã nguồn hiện có.

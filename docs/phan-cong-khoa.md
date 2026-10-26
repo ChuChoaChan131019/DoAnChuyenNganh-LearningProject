@@ -2,7 +2,7 @@
 
 **Nguồn:** [phân công chung](phan-cong-cong-viec.md) và [đặc tả chức năng](dac-ta-chuc-nang-phan-he-noi-dung.md). Phần việc mới được chốt ngày 22/10/2026.
 
-Tài liệu này ghi **phạm vi Khoa phụ trách**, không xác nhận chức năng đã hoàn thành. Phần ở mục 1 lấy từ phân công cũ; phần ở mục 2 là hai việc mới đã chốt. Tiến độ hiện tại cần được cập nhật riêng trong phân công chung và PR.
+Tài liệu này ghi **phạm vi Khoa phụ trách**, không xác nhận chức năng đã hoàn thành. Phần ở mục 1 lấy từ phân công cũ; phần ở mục 2 là các việc mới đã chốt. Tiến độ hiện tại cần được cập nhật riêng trong phân công chung và PR.
 
 ## 1. Chức năng theo phân công cũ
 
@@ -42,3 +42,7 @@ Khoa phụ trách phần bài đăng và lượt hữu ích của [Thảo luận
 - Cung cấp dữ liệu bài đăng và các thành phần đăng bài/hữu ích để Linh ghép vào trang thảo luận; áp dụng trạng thái ẩn/gỡ do luồng kiểm duyệt của Trang quyết định.
 
 Loại tài liệu được chia sẻ và giới hạn tệp cần được nhóm chốt trước khi triển khai tải tệp trực tiếp. Giao diện chỉ đưa ra hình thức chia sẻ thực sự được hỗ trợ.
+
+### 2.3. Tiến độ học tập tổng hợp và tiếp tục học (`FR-42`–`FR-43`)
+
+Khoa tổng hợp dữ liệu bài học đã học, kết quả quiz/luyện tập và bài thực hành code đã hoàn thành thành tiến độ của từng học sinh; làm chức năng mở lại bài học đang học dở. Linh cung cấp dữ liệu quiz và bài code, Trang cung cấp trạng thái bài học. Phần lưu và mở lại mã bài code vẫn do Linh thực hiện ở Phòng thực hành C#.
