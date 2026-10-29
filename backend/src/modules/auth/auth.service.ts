@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger, UnauthorizedException } from '@nestjs/common';
 import { SupabaseService } from '../../config/supabase.service.js';
 
 @Injectable()
@@ -189,6 +189,31 @@ export class AuthService {
   async logout(token: string): Promise<void> {
     const supabase = this.supabaseService.getClient();
     await supabase.auth.admin.signOut(token);
+  }
+
+  async refreshSession(refreshToken: string) {
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+    if (error || !data.session || !data.user) {
+      throw new UnauthorizedException('Session expired. Please sign in again.');
+    }
+
+    const { data: profile, error: profileError } = await supabase.from('profiles')
+      .select('role').eq('id', data.user.id).single();
+    if (profileError || !profile) {
+      throw new UnauthorizedException('User profile not found');
+    }
+
+    return {
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+        role: profile.role,
+        fullName: data.user.user_metadata?.full_name ?? '',
+      },
+    };
   }
 
   async getMe(userId: string): Promise<any> {

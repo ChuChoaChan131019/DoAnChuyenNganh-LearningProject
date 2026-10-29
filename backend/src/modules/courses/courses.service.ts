@@ -1,5 +1,7 @@
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -11,6 +13,7 @@ import { CreateChapterDto } from './dto/create-chapter.dto.js';
 import { CreateLessonDto } from './dto/create-lesson.dto.js';
 import { UpdateChapterDto } from './dto/update-chapter.dto.js';
 import { UpdateLessonDto } from './dto/update-lesson.dto.js';
+import { LessonReviewActionDto } from './dto/lesson-review-action.dto.js';
 
 type ContentStatusLabel = 'Draft' | 'In review' | 'Approved' | 'Published';
 
@@ -89,7 +92,7 @@ export class CoursesService {
     return data ?? [];
   }
 
-  async createLesson(courseId: string, chapterId: string, createLessonDto: CreateLessonDto) {
+  async createLesson(courseId: string, chapterId: string, createLessonDto: CreateLessonDto, actorId: string) {
     const supabase = this.supabaseService.getClient();
     const { data: chapter, error: chapterError } = await supabase
       .from('chapters')
@@ -124,7 +127,9 @@ export class CoursesService {
         title: createLessonDto.title.trim(),
         estimated_duration_minutes: createLessonDto.estimated_duration_minutes ?? 0,
         order_index: (lastLesson?.order_index ?? 0) + 1,
-        status: createLessonDto.status ?? 'draft',
+        status: 'draft',
+        created_by: actorId,
+        updated_by: actorId,
         content: createLessonDto.content?.trim() || null,
         code_example: createLessonDto.code_example?.trim() || null,
       })
@@ -145,9 +150,17 @@ export class CoursesService {
     };
   }
 
-  async updateLesson(lessonId: string, updateLessonDto: UpdateLessonDto) {
+  private reviewError(error: { code?: string; message?: string }) {
+    if (error.code === 'P0002') throw new NotFoundException(error.message);
+    if (error.code === '40001') throw new ConflictException(error.message);
+    if (error.code === '42501') throw new ForbiddenException(error.message);
+    if (error.code === '22023' || error.code === '23514' || error.code === '22P02') throw new BadRequestException(error.message);
+    throw new InternalServerErrorException('Unable to save lesson review change');
+  }
+
+  async updateLesson(lessonId: string, updateLessonDto: UpdateLessonDto, actorId: string) {
     const payload = Object.fromEntries(
-      Object.entries(updateLessonDto)
+      Object.entries(updateLessonDto).filter(([key]) => key !== 'version')
         .filter(([, value]) => value !== undefined)
         .map(([key, value]) => [
           key,
@@ -160,22 +173,157 @@ export class CoursesService {
     if ('content' in payload && payload.content === '') payload.content = null;
     if ('code_example' in payload && payload.code_example === '') payload.code_example = null;
 
-    const { data, error } = await this.supabaseService
-      .getClient()
-      .from('lessons')
-      .update(payload)
-      .eq('id', lessonId)
-      .select('id, title, content, code_example, estimated_duration_minutes, status, order_index, is_ai_generated')
-      .single();
-
-    if (error?.code === 'PGRST116' || !data) throw new NotFoundException('Lesson not found');
-    if (error) throw new InternalServerErrorException('Unable to update lesson');
+    const { data, error } = await this.supabaseService.getClient().rpc('save_lesson_content', {
+      p_lesson_id: lessonId, p_actor_id: actorId, p_version: updateLessonDto.version, p_content: payload,
+    });
+    if (error) this.reviewError(error);
 
     return {
       ...data,
       duration: `${data.estimated_duration_minutes ?? 0}m`,
       status: statusLabels[data.status] ?? 'Draft',
     };
+  }
+
+  async reviewAction(lessonId: string, actorId: string, body: LessonReviewActionDto) {
+    const { data, error } = await this.supabaseService.getClient().rpc('apply_lesson_review_action', {
+      p_lesson_id: lessonId, p_actor_id: actorId, p_version: body.version,
+      p_action: body.action, p_reason: body.reason ?? null,
+    });
+    if (error) this.reviewError(error);
+    return { ...data, status: statusLabels[data.status] ?? 'Draft' };
+  }
+
+  async reviewHistory(lessonId: string) {
+    const supabase = this.supabaseService.getClient();
+    const { data: lesson, error: lessonError } = await supabase.from('lessons').select('id').eq('id', lessonId).maybeSingle();
+    if (lessonError) throw new InternalServerErrorException('Unable to find lesson');
+    if (!lesson) throw new NotFoundException('Lesson not found');
+    const { data, error } = await supabase.from('lesson_review_events')
+      .select('id, version, action, from_status, to_status, actor_id, reason, created_at')
+      .eq('lesson_id', lessonId).order('created_at', { ascending: false });
+    if (error) throw new InternalServerErrorException('Unable to load review history');
+    const actors = [...new Set((data ?? []).map((event) => event.actor_id).filter((id): id is string => !!id))];
+    const names = new Map(await Promise.all(actors.map(async (id) => {
+      const { data: account } = await supabase.auth.admin.getUserById(id);
+      return [id, account.user?.email ?? id] as const;
+    })));
+    return (data ?? []).map((event) => ({ ...event,
+      actor_email: event.actor_id ? names.get(event.actor_id) ?? event.actor_id : 'System migration',
+    }));
+  }
+
+  async reviewQueue() {
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase.from('lessons')
+      .select('id, title, status, version, is_ai_generated, created_by, updated_at, chapters!inner(title, courses!inner(title, status))')
+      .order('updated_at', { ascending: false });
+    if (error) throw new InternalServerErrorException('Unable to load review queue');
+    return data ?? [];
+  }
+
+  async reviewTree() {
+    const supabase = this.supabaseService.getClient();
+    const { data: courses, error: coursesError } = await supabase
+      .from('courses').select('id, title, slug, status').order('title');
+    if (coursesError) throw new InternalServerErrorException('Unable to load review courses');
+
+    const courseRows = courses ?? [];
+    const courseIds = courseRows.map((course) => course.id);
+    const { data: chapters, error: chaptersError } = courseIds.length
+      ? await supabase.from('chapters').select('id, course_id, title, status, order_index').in('course_id', courseIds).order('order_index')
+      : { data: [], error: null };
+    if (chaptersError) throw new InternalServerErrorException('Unable to load review chapters');
+
+    const chapterRows = chapters ?? [];
+    const chapterIds = chapterRows.map((chapter) => chapter.id);
+    const { data: lessons, error: lessonsError } = chapterIds.length
+      ? await supabase.from('lessons').select('id, chapter_id, title, status, version, is_ai_generated, order_index').in('chapter_id', chapterIds).order('order_index')
+      : { data: [], error: null };
+    if (lessonsError) throw new InternalServerErrorException('Unable to load review lessons');
+
+    const lessonsByChapter = new Map<string, typeof lessons>();
+    for (const lesson of lessons ?? []) {
+      const rows = lessonsByChapter.get(lesson.chapter_id) ?? [];
+      rows.push(lesson);
+      lessonsByChapter.set(lesson.chapter_id, rows);
+    }
+    const chaptersByCourse = new Map<string, typeof chapterRows>();
+    for (const chapter of chapterRows) {
+      const rows = chaptersByCourse.get(chapter.course_id) ?? [];
+      rows.push(chapter);
+      chaptersByCourse.set(chapter.course_id, rows);
+    }
+
+    return courseRows.map((course) => ({
+      ...course,
+      chapters: (chaptersByCourse.get(course.id) ?? []).map((chapter) => ({
+        ...chapter,
+        lessons: (lessonsByChapter.get(chapter.id) ?? []).map((lesson) => ({
+          ...lesson,
+          is_ai_generated: lesson.is_ai_generated ?? false,
+        })),
+      })),
+    }));
+  }
+
+  private nextContainerStatus(status: string, action: 'approve' | 'publish' | 'unpublish') {
+    const nextStatus = status === 'draft' && action === 'approve' ? 'approved'
+      : status === 'approved' && action === 'publish' ? 'published'
+        : status === 'published' && action === 'unpublish' ? 'approved' : null;
+    if (!nextStatus) throw new ConflictException('Invalid status transition. Use Draft → Approved → Published.');
+    return nextStatus;
+  }
+
+  async reviewChapterAction(chapterId: string, action: 'approve' | 'publish' | 'unpublish') {
+    const supabase = this.supabaseService.getClient();
+    const { data: chapter, error: chapterError } = await supabase.from('chapters')
+      .select('id, status').eq('id', chapterId).maybeSingle();
+    if (chapterError) throw new InternalServerErrorException('Unable to load chapter status');
+    if (!chapter) throw new NotFoundException('Chapter not found');
+    const nextStatus = this.nextContainerStatus(chapter.status, action);
+
+    if (action === 'publish') {
+      const { data: lessons, error } = await supabase.from('lessons').select('status').eq('chapter_id', chapterId);
+      if (error) throw new InternalServerErrorException('Unable to verify chapter lessons');
+      if (!lessons?.length || lessons.some((lesson) => !['approved', 'published'].includes(lesson.status))) {
+        throw new ConflictException('Approve every lesson in this chapter before publishing it.');
+      }
+    }
+
+    const { data, error } = await supabase.from('chapters').update({ status: nextStatus })
+      .eq('id', chapterId).eq('status', chapter.status).select('id, status').maybeSingle();
+    if (error) throw new InternalServerErrorException('Unable to save chapter status');
+    if (!data) throw new ConflictException('Chapter status changed. Refresh and try again.');
+    return data;
+  }
+
+  async reviewCourseAction(courseId: string, action: 'approve' | 'publish' | 'unpublish') {
+    const supabase = this.supabaseService.getClient();
+    const { data: course, error: courseError } = await supabase.from('courses')
+      .select('id, status').eq('id', courseId).maybeSingle();
+    if (courseError) throw new InternalServerErrorException('Unable to load course status');
+    if (!course) throw new NotFoundException('Course not found');
+    const nextStatus = this.nextContainerStatus(course.status, action);
+
+    if (action === 'publish') {
+      const { data: chapters, error } = await supabase.from('chapters').select('id, status').eq('course_id', courseId);
+      if (error) throw new InternalServerErrorException('Unable to verify course chapters');
+      if (!chapters?.length || chapters.some((chapter) => !['approved', 'published'].includes(chapter.status))) {
+        throw new ConflictException('Approve every chapter before publishing this course.');
+      }
+      const { data: lessons, error: lessonsError } = await supabase.from('lessons').select('status').in('chapter_id', chapters.map((chapter) => chapter.id));
+      if (lessonsError) throw new InternalServerErrorException('Unable to verify course lessons');
+      if (lessons?.some((lesson) => !['approved', 'published'].includes(lesson.status))) {
+        throw new ConflictException('Approve every lesson before publishing this course.');
+      }
+    }
+
+    const { data, error } = await supabase.from('courses').update({ status: nextStatus })
+      .eq('id', courseId).eq('status', course.status).select('id, status').maybeSingle();
+    if (error) throw new InternalServerErrorException('Unable to save course status');
+    if (!data) throw new ConflictException('Course status changed. Refresh and try again.');
+    return data;
   }
 
   async updateChapter(courseId: string, chapterId: string, updateChapterDto: UpdateChapterDto) {
@@ -542,8 +690,9 @@ export class CoursesService {
 
     const { data: chapters, error: chaptersError } = await supabase
       .from('chapters')
-      .select('id, title, order_index')
+      .select('id, title, order_index, status')
       .eq('course_id', course.id)
+      .eq('status', 'published')
       .order('order_index', { ascending: true });
 
     if (chaptersError) {
@@ -576,6 +725,7 @@ export class CoursesService {
       chapters: (chapters ?? []).map((chapter) => ({
         id: chapter.id,
         title: chapter.title,
+        status: chapter.status,
         lessons: (lessonsByChapter.get(chapter.id) ?? []).map((lesson) => ({
           id: lesson.id,
           title: lesson.title,
@@ -592,7 +742,7 @@ export class CoursesService {
     const supabase = this.supabaseService.getClient();
     const { data: lesson, error: lessonError } = await supabase
       .from('lessons')
-      .select('id, chapter_id, title, content, code_example, estimated_duration_minutes, order_index, status, is_ai_generated')
+      .select('id, chapter_id, title, content, code_example, estimated_duration_minutes, order_index, status, is_ai_generated, version, created_by, submitted_by, submitted_at, reviewed_by, reviewed_at')
       .eq('id', lessonId)
       .single();
 
@@ -654,12 +804,13 @@ export class CoursesService {
     const supabase = this.supabaseService.getClient();
     const { data: lesson, error: lessonError } = await supabase
       .from('lessons')
-      .select('id')
+      .select('id, status')
       .eq('id', lessonId)
       .maybeSingle();
 
     if (lessonError) throw new InternalServerErrorException('Unable to find lesson');
     if (!lesson) throw new NotFoundException('Lesson not found');
+    if (lesson.status !== 'draft') throw new ConflictException('Only draft lessons can be deleted');
 
     const relatedTables = [
       'materials',

@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreateLessonDto {
   @IsString()
@@ -21,7 +21,4 @@ export class CreateLessonDto {
   @IsString()
   code_example?: string;
 
-  @IsOptional()
-  @IsIn(['draft', 'in_review', 'approved', 'published'])
-  status?: string;
 }

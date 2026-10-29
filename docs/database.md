@@ -1,5 +1,11 @@
 # Từ điển dữ liệu hiện tại — Phân hệ Nội dung
 
+> **Cập nhật 30/10/2026 (duyệt bài cá nhân):** Đã áp dụng `database/migrations/20261030_allow_lesson_author_approval.sql`. Tài khoản `content_manager` hoặc `admin` có thể duyệt bài do chính mình tạo. Vẫn yêu cầu tiêu đề, nội dung, đúng phiên bản và ghi lịch sử duyệt.
+
+> **Cập nhật 30/10/2026:** Đã áp dụng `database/migrations/20261030_lesson_direct_approval.sql`. Bài học đi trực tiếp `draft → approved → published`; thao tác gửi duyệt và trạng thái `in_review` không còn dùng. Bài cũ ở `in_review` được chuyển về `draft` và có sự kiện `workflow_migration` trong lịch sử. Các cột `submitted_by`/`submitted_at` và sự kiện `submit` cũ được giữ để đọc lịch sử.
+
+> **Cập nhật 29/10/2026:** Migration `database/migrations/20261029_lesson_review_workflow.sql` đã thêm `created_by`, `updated_by`, `updated_at`, `version`, `submitted_by`, `submitted_at`, `reviewed_by`, `reviewed_at` và bảng `lesson_review_events` để lưu hành động, phiên bản, người thực hiện, lý do, thời gian và bản chụp nội dung. Hai hàm `save_lesson_content` và `apply_lesson_review_action` cập nhật cùng lịch sử trong một giao dịch. Các số liệu 17 bảng/129 cột và bảng mô tả cũ bên dưới là ảnh chụp ngày 21/10/2026, chưa bao gồm các migration mới.
+
 **Ngày đối chiếu:** 21/10/2026
 
 **Nguồn:** đối chiếu trực tiếp `pg_catalog` của schema `public` trên Supabase ngày 21/10/2026; mô tả cách sử dụng dựa trên backend tại commit `e19dcb3` của nhánh `main`.
@@ -296,3 +302,7 @@ Lưu câu hỏi của học sinh, câu trả lời AI và vai trò người gử
 - Chưa có bảng tiến độ đọc bài học riêng trong 17 bảng `public` đang tồn tại. Không suy ra học sinh đã học xong bài chỉ từ bảng `lessons`.
 
 Khi thêm tính năng hoặc migration, cần đọc lại schema Supabase và cập nhật tài liệu này cùng PR tương ứng.
+
+## Course and chapter review
+
+Courses, chapters, and lessons use draft, pproved, and published review states. A learner can access a lesson only when its course, chapter, and lesson are all published. Publishing a chapter requires every lesson in it to be approved or published; publishing a course requires every chapter and lesson to be approved or published. See database/migrations/20261030_course_chapter_review_status.sql.

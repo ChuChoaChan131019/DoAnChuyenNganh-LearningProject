@@ -10,6 +10,8 @@ import { CreateLessonDto } from './dto/create-lesson.dto.js';
 import { UpdateChapterDto } from './dto/update-chapter.dto.js';
 import { ReorderChaptersDto } from './dto/reorder-chapters.dto.js';
 import { UpdateLessonDto } from './dto/update-lesson.dto.js';
+import { LessonReviewActionDto } from './dto/lesson-review-action.dto.js';
+import { ContainerReviewActionDto } from './dto/container-review-action.dto.js';
 
 @Controller('api/v1/courses')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -69,8 +71,39 @@ export class CoursesController {
     @Param('courseId') courseId: string,
     @Param('chapterId') chapterId: string,
     @Body() createLessonDto: CreateLessonDto,
+    @Req() request: any,
   ) {
-    return this.coursesService.createLesson(courseId, chapterId, createLessonDto);
+    return this.coursesService.createLesson(courseId, chapterId, createLessonDto, request.user.id);
+  }
+
+  @Get('lessons/review-queue')
+  reviewQueue() {
+    return this.coursesService.reviewQueue();
+  }
+
+  @Get('review-tree')
+  reviewTree() {
+    return this.coursesService.reviewTree();
+  }
+
+  @Post('chapters/:chapterId/review-action')
+  reviewChapterAction(@Param('chapterId') chapterId: string, @Body() body: ContainerReviewActionDto) {
+    return this.coursesService.reviewChapterAction(chapterId, body.action);
+  }
+
+  @Post(':courseId/review-action')
+  reviewCourseAction(@Param('courseId') courseId: string, @Body() body: ContainerReviewActionDto) {
+    return this.coursesService.reviewCourseAction(courseId, body.action);
+  }
+
+  @Get('lessons/:lessonId/review-history')
+  reviewHistory(@Param('lessonId') lessonId: string) {
+    return this.coursesService.reviewHistory(lessonId);
+  }
+
+  @Post('lessons/:lessonId/review-action')
+  reviewAction(@Param('lessonId') lessonId: string, @Body() body: LessonReviewActionDto, @Req() request: any) {
+    return this.coursesService.reviewAction(lessonId, request.user.id, body);
   }
 
   @Patch(':courseId/chapters/:chapterId')
@@ -99,8 +132,9 @@ export class CoursesController {
   updateLesson(
     @Param('lessonId') lessonId: string,
     @Body() updateLessonDto: UpdateLessonDto,
+    @Req() request: any,
   ) {
-    return this.coursesService.updateLesson(lessonId, updateLessonDto);
+    return this.coursesService.updateLesson(lessonId, updateLessonDto, request.user.id);
   }
 
   @Delete('lessons/:lessonId')

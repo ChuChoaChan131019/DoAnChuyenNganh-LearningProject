@@ -148,11 +148,15 @@ const MENU_DATA: NavGroup[] = [
         href: "/content-manager/ai/question-generator",
         icon: Sparkles,
       },
+    ],
+  },
+  {
+    group: "REVIEW",
+    items: [
       {
-        label: "AI review queue",
+        label: "Content review",
         href: "/content-manager/ai/review-queue",
         icon: Inbox,
-        badge: 4,
       },
     ],
   },

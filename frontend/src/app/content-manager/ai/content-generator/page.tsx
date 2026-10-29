@@ -4,7 +4,6 @@ import React, { useMemo, useState } from 'react';
 import {
   ArrowRight,
   BookOpen,
-  Bot,
   Check,
   ChevronDown,
   Clock3,
@@ -13,7 +12,6 @@ import {
   PencilLine,
   RotateCw,
   Save,
-  Send,
   Sparkles,
   Wand2,
 } from 'lucide-react';
@@ -318,17 +316,6 @@ export default function AIContentGeneratorPage() {
                 <Save className="h-4 w-4" />
                 Save as draft
               </button>
-              <button className={`${primaryActionClass} w-full`}>
-                <Send className="h-4 w-4" />
-                Submit for review
-              </button>
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-600">
-              <div className="flex items-center gap-2 text-slate-700">
-                <Bot className="h-4 w-4 text-[#14919B]" />
-                Typical review turnaround: 1 working day
-              </div>
             </div>
           </div>
         </aside>

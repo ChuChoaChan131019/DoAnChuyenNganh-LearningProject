@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class UpdateLessonDto {
   @IsOptional()
@@ -20,7 +20,7 @@ export class UpdateLessonDto {
   @IsString()
   code_example?: string | null;
 
-  @IsOptional()
-  @IsIn(['draft', 'in_review', 'approved', 'published'])
-  status?: string;
+  @IsInt()
+  @Min(1)
+  version!: number;
 }

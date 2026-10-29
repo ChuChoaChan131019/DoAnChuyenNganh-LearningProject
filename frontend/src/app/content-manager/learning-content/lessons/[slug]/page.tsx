@@ -5,12 +5,12 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Check,
   Eye,
+  Globe2,
   Image as ImageIcon,
   List,
-  Play,
   Save,
-  Send,
   Table2,
   Type,
   WandSparkles,
@@ -46,47 +46,53 @@ export default function LessonEditorPage() {
   }>>([]);
   const [chapterTitle, setChapterTitle] = useState("");
   const [status, setStatus] = useState("Draft");
+  const [version, setVersion] = useState(1);
+  const [savedFields, setSavedFields] = useState({ title: "", content: "", codeExample: "" });
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [showPlayground, setShowPlayground] = useState(true);
 
-  const saveLesson = async (nextStatus?: "draft" | "in_review" | "published") => {
+  const saveLesson = async () => {
     if (!selectedSlug) return;
 
     setIsSaving(true);
     setSaveMessage(null);
     setLoadError(null);
-    const statusValue = nextStatus ?? (
-      status === "Published"
-        ? "published"
-        : status === "Approved"
-          ? "approved"
-          : status === "In review"
-            ? "in_review"
-            : "draft"
-    );
-
     try {
-      await courseApi.updateLesson(selectedSlug, {
-        title: title.trim(),
-        content,
-        code_example: codeExample,
-        status: statusValue,
-      });
-      setStatus(
-        statusValue === "published"
-          ? "Published"
-          : statusValue === "in_review"
-            ? "In review"
-            : statusValue === "approved"
-              ? "Approved"
-              : "Draft",
-      );
+      if (title.trim() !== savedFields.title || content !== savedFields.content || codeExample !== savedFields.codeExample) {
+        const saved = await courseApi.updateLesson(selectedSlug, { title: title.trim(), content, code_example: codeExample, version });
+        setVersion(saved.version);
+        setStatus("Draft");
+        setSavedFields({ title: title.trim(), content, codeExample });
+      }
       setSaveMessage("Lesson saved successfully.");
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Unable to save lesson.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const changeStatus = async (action: "approve" | "publish") => {
+    if (!selectedSlug) return;
+    if (title.trim() !== savedFields.title || content !== savedFields.content || codeExample !== savedFields.codeExample) {
+      setLoadError("Save your changes before changing the lesson status.");
+      return;
+    }
+    if (!window.confirm(action === "approve" ? "Approve this lesson?" : "Publish this lesson?")) return;
+
+    setIsSaving(true);
+    setLoadError(null);
+    setSaveMessage(null);
+    try {
+      const updated = await courseApi.reviewAction(selectedSlug, { action, version });
+      setVersion(updated.version);
+      setStatus(action === "approve" ? "Approved" : "Published");
+      setSaveMessage(action === "approve" ? "Lesson approved." : "Lesson published.");
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Unable to change lesson status.");
     } finally {
       setIsSaving(false);
     }
@@ -120,6 +126,8 @@ export default function LessonEditorPage() {
         setSlug(lesson.id);
         setContent(lesson.content ?? "");
         setCodeExample(lesson.code_example ?? "");
+        setVersion(lesson.version);
+        setSavedFields({ title: lesson.title, content: lesson.content ?? "", codeExample: lesson.code_example ?? "" });
         setExercises(lesson.exercises);
         setChapterTitle(lesson.chapter.title);
         courseApi.chapters(lesson.course.id)
@@ -145,9 +153,7 @@ export default function LessonEditorPage() {
             ? "Published"
             : lesson.status === "approved"
               ? "Approved"
-              : lesson.status === "in_review"
-                ? "In review"
-                : "Draft",
+              : "Draft",
         );
         setIsLoading(false);
       })
@@ -173,17 +179,18 @@ export default function LessonEditorPage() {
           All lessons
         </Link>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
+          <Link
+            href={selectedSlug ? `/content-manager/learning-content/lessons/${selectedSlug}/preview` : "#"}
+            onClick={(event) => { if (title.trim() !== savedFields.title || content !== savedFields.content || codeExample !== savedFields.codeExample) { event.preventDefault(); setLoadError("Save your changes before previewing the saved lesson."); } }}
             className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#002C3E] shadow-sm hover:bg-[#f8fbf9]"
           >
             <Eye className="h-4 w-4" />
-            Preview
-          </button>
+            Preview saved lesson
+          </Link>
           <button
             type="button"
-            onClick={() => saveLesson("draft")}
-            disabled={isLoading || isSaving}
+            onClick={() => void saveLesson()}
+            disabled={isLoading || isSaving || status === "Published"}
             className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#002C3E] shadow-sm hover:bg-[#f8fbf9]"
           >
             <Save className="h-4 w-4" />
@@ -196,15 +203,8 @@ export default function LessonEditorPage() {
             <WandSparkles className="h-4 w-4" />
             Generate with AI
           </button>
-          <button
-            type="button"
-            onClick={() => saveLesson("in_review")}
-            disabled={isLoading || isSaving}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#df3540]"
-          >
-            <Send className="h-4 w-4" />
-            Submit for review
-          </button>
+          {status === "Draft" && <button type="button" onClick={() => void changeStatus("approve")} disabled={isLoading || isSaving} className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50"><Check className="h-4 w-4" />Approve</button>}
+          {status === "Approved" && <button type="button" onClick={() => void changeStatus("publish")} disabled={isLoading || isSaving} className="inline-flex items-center gap-2 rounded-xl bg-[#14919B] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50"><Globe2 className="h-4 w-4" />Publish</button>}
         </div>
       </div>
       <header>
@@ -265,6 +265,7 @@ export default function LessonEditorPage() {
             </div>
             <textarea
               value={content}
+              readOnly={status === "Published"}
               onChange={(event) => setContent(event.target.value)}
               className="min-h-[265px] w-full resize-y border-0 p-5 text-[16px] leading-relaxed text-[#16485a] outline-none focus:ring-2 focus:ring-[#78BCC4]/20"
             />
@@ -278,12 +279,13 @@ export default function LessonEditorPage() {
             </div>
             <textarea
               value={codeExample}
+              readOnly={status === "Published"}
               onChange={(event) => setCodeExample(event.target.value)}
               placeholder="Add a C# code example..."
               className="mx-4 my-4 min-h-[180px] w-[calc(100%-2rem)] resize-y rounded-xl bg-[#061d26] p-5 font-mono text-sm leading-7 text-[#d8e9e8] outline-none focus:ring-2 focus:ring-[#78BCC4]/40"
             />
           </section>
-          {selectedSlug && <LessonMaterials key={selectedSlug} lessonId={selectedSlug} />}
+          {selectedSlug && status === "Draft" && <LessonMaterials key={selectedSlug} lessonId={selectedSlug} />}
           <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">
             <div className="border-b border-[#dfe6df] px-5 py-4">
               <h2 className="font-semibold text-[#002C3E]">Exercises</h2>
@@ -323,6 +325,7 @@ export default function LessonEditorPage() {
               Title
               <input
                 value={title}
+                readOnly={status === "Published"}
                 onChange={(event) => setTitle(event.target.value)}
                 className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] px-3 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4]"
               />
@@ -343,12 +346,7 @@ export default function LessonEditorPage() {
             </label>
             <label className="mt-4 block text-xs font-semibold text-[#526f78]">
               Status
-              <select value={status} onChange={(event) => setStatus(event.target.value)} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E]">
-                <option>Published</option>
-                <option>Approved</option>
-                <option>Draft</option>
-                <option>In review</option>
-              </select>
+              <span className="mt-1.5 block rounded-xl border border-[#dfe6df] bg-slate-50 px-3 py-2 text-sm text-[#002C3E]">{status} · v{version}</span>
             </label>
             <label className="mt-5 flex items-center justify-between text-sm text-[#526f78]">
               Show code playground
@@ -373,26 +371,14 @@ export default function LessonEditorPage() {
             <button
               type="button"
               onClick={deleteLesson}
-              disabled={isLoading || isSaving}
+              disabled={isLoading || isSaving || status !== "Draft"}
               className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Trash2 className="h-4 w-4" />
               Delete lesson
             </button>
           </section>
-          <section className="rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-sm">
-            <h2 className="font-semibold text-[#002C3E]">Publishing</h2>
-            <p className="mt-2 text-xs text-[#637981]">Last saved just now</p>
-            <button
-              type="button"
-              onClick={() => saveLesson("published")}
-              disabled={isLoading || isSaving}
-              className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#F7444E] text-sm font-semibold text-white hover:bg-[#df3540]"
-            >
-              <Play className="h-4 w-4" />
-              {isSaving ? "Saving..." : "Publish"}
-            </button>
-          </section>
+          <Link href="/content-manager/ai/review-queue" className="block rounded-2xl border border-[#dfe6df] bg-white p-5 text-sm font-semibold text-[#14919B] shadow-sm">Open lesson review queue</Link>
         </aside>
       </div>
     </div>

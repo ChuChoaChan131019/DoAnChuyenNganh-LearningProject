@@ -17,7 +17,6 @@ export default function NewLessonPage() {
   const [duration, setDuration] = useState("15");
   const [content, setContent] = useState("");
   const [codeExample, setCodeExample] = useState("");
-  const [status, setStatus] = useState<"draft" | "in_review" | "approved" | "published">("draft");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +77,6 @@ export default function NewLessonPage() {
         estimated_duration_minutes: Number(duration) || 0,
         content,
         code_example: codeExample,
-        status,
       });
       router.push(`/content-manager/learning-content/lessons/${lesson.id}`);
     } catch (saveError) {
@@ -146,15 +144,7 @@ export default function NewLessonPage() {
             Duration (minutes)
             <input type="number" min="0" max="1440" value={duration} onChange={(event) => setDuration(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-[#002C3E]" />
           </label>
-          <label className="mt-4 block text-sm font-semibold text-[#526f78]">
-            Status
-            <select value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="mt-1.5 h-11 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E]">
-              <option value="draft">Draft</option>
-              <option value="in_review">In review</option>
-              <option value="approved">Approved</option>
-              <option value="published">Published</option>
-            </select>
-          </label>
+          <p className="mt-4 text-sm text-[#526f78]">Status: <strong>Draft</strong></p>
           <button type="submit" disabled={isSaving || isLoading} className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#F7444E] text-sm font-semibold text-white hover:bg-[#df3540] disabled:cursor-not-allowed disabled:opacity-60">
             <Save className="h-4 w-4" />
             {isSaving ? "Saving..." : "Save lesson"}
