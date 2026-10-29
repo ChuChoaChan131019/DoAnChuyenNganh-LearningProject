@@ -19,6 +19,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { courseApi } from "@/lib/api";
+import LessonMaterials from "@/components/content-manager/lesson-materials";
 
 type EditorLesson = {
   title: string;
@@ -282,6 +283,7 @@ export default function LessonEditorPage() {
               className="mx-4 my-4 min-h-[180px] w-[calc(100%-2rem)] resize-y rounded-xl bg-[#061d26] p-5 font-mono text-sm leading-7 text-[#d8e9e8] outline-none focus:ring-2 focus:ring-[#78BCC4]/40"
             />
           </section>
+          {selectedSlug && <LessonMaterials key={selectedSlug} lessonId={selectedSlug} />}
           <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">
             <div className="border-b border-[#dfe6df] px-5 py-4">
               <h2 className="font-semibold text-[#002C3E]">Exercises</h2>

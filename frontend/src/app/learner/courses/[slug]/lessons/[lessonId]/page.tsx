@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { courseApi } from '@/lib/api';
+import LearnerLessonMaterials from '@/components/learner/lesson-materials';
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,9 +15,6 @@ import {
   Copy,
   Check,
   Code2,
-  Download,
-  FileText,
-  Video,
   Terminal,
   Trophy,
   Zap,
@@ -655,31 +653,7 @@ export default function LearnerLessonPage() {
               </div>
             </div>
 
-            {/* Tài nguyên tham khảo của khóa học */}
-            <details className="group rounded-[18px] border border-[#dfe6df] bg-white p-4">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-bold text-slate-600 [&::-webkit-details-marker]:hidden">Resources <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" /></summary>
-              <div className="mt-3 space-y-2">
-                {currentCourse.resources?.map((resource: any) => (
-                  <div
-                    key={resource.name}
-                    className="flex items-center gap-3 rounded-[12px] border border-slate-200 bg-[#f8f7f5] p-2.5 transition hover:bg-slate-50"
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm">
-                      {resource.isVideo ? (
-                        <Video className="h-4 w-4 text-blue-500" />
-                      ) : (
-                        <FileText className="h-4 w-4 text-[#F7444E]" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-xs font-semibold text-slate-800">{resource.name}</div>
-                      <div className="text-[10px] text-slate-500">{resource.type}</div>
-                    </div>
-                    <Download className="h-4 w-4 text-slate-400 cursor-pointer hover:text-slate-700" />
-                  </div>
-                ))}
-              </div>
-            </details>
+            <LearnerLessonMaterials key={activeLessonId} lessonId={activeLessonId} />
 
             {/* Card Tests: Đồng bộ từ tests của page_7.tsx */}
             <details className="group rounded-[18px] border border-[#dfe6df] bg-white p-4">
