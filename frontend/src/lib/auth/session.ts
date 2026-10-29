@@ -5,7 +5,7 @@ export const AUTH_ROLE_KEY = 'auth_role';
 export const AUTH_REFRESH_TOKEN_KEY = 'refresh_token';
 export const AUTH_USER_KEY = 'auth_user';
 
-const COOKIE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60; // 7 ngày
+const COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 ngày
 
 export interface SaveSessionParams {
   accessToken: string;
@@ -198,6 +198,10 @@ export function getStoredToken(): string | null {
     }
   }
   return null;
+}
+
+export function getStoredRefreshToken(): string | null {
+  return getCookie(AUTH_REFRESH_TOKEN_KEY);
 }
 
 /**

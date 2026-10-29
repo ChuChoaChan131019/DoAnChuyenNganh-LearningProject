@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Clock3, FileText, Plus, Search } from "lucide-react";
+import { Check, Clock3, FileText, Globe2, Plus, Search } from "lucide-react";
 import type { ContentStatus, Lesson } from "@/types/learning-content";
 import { courseApi } from "@/lib/api";
 
@@ -31,6 +31,8 @@ export default function LessonsPage() {
   const [lessons, setLessons] = useState<LessonRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -79,6 +81,24 @@ export default function LessonsPage() {
       : lessons;
   }, [lessons, query]);
 
+  async function changeStatus(lesson: LessonRow, action: "approve" | "publish") {
+    if (!lesson.id || busyId) return;
+    if (!window.confirm(action === "approve" ? `Approve ${lesson.title}?` : `Publish ${lesson.title}?`)) return;
+    setBusyId(lesson.id);
+    setActionError(null);
+    try {
+      const current = await courseApi.lesson(lesson.id);
+      await courseApi.reviewAction(lesson.id, { action, version: current.version });
+      setLessons((rows) => rows.map((row) => row.id === lesson.id
+        ? { ...row, status: action === "approve" ? "Approved" : "Published" }
+        : row));
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to change lesson status.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-[1240px] space-y-6 pb-12">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -99,6 +119,7 @@ export default function LessonsPage() {
         </Link>
       </header>
       <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-[0_8px_24px_rgba(0,44,62,0.06)]">
+        {actionError && <p role="alert" className="border-b border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700">{actionError}</p>}
         <div className="border-b border-[#dfe6df] px-4 py-4 sm:px-5">
           <label className="relative block w-full max-w-[348px]">
             <span className="sr-only">Search lessons</span>
@@ -123,33 +144,19 @@ export default function LessonsPage() {
             </p>
           )}
           {filteredLessons.map((lesson) => (
-            <Link
-              key={lesson.slug}
-              href={`/content-manager/learning-content/lessons/${lesson.slug}`}
-              className="flex min-h-[70px] items-center gap-3 border-b border-[#dfe6df] px-5 transition hover:bg-[#f8fbf9] last:border-0"
-            >
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#e0f3f2] text-[#527983]">
-                <FileText className="h-4 w-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-[#002C3E]">{lesson.title}</p>
-                <p className="truncate text-xs text-[#637981]">
-                  {lesson.chapter} · {lesson.slug && `/${lesson.slug}`}
-                </p>
-              </div>
+            <div key={lesson.slug} className="flex min-h-[70px] flex-wrap items-center gap-3 border-b border-[#dfe6df] px-5 py-3 last:border-0">
+              <Link href={`/content-manager/learning-content/lessons/${lesson.slug}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg hover:bg-[#f8fbf9]">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#e0f3f2] text-[#527983]"><FileText className="h-4 w-4" /></span>
+                <span className="min-w-0"><span className="block font-semibold text-[#002C3E]">{lesson.title}</span><span className="block truncate text-xs text-[#637981]">{lesson.chapter} · /{lesson.slug}</span></span>
+              </Link>
               <div className="flex shrink-0 items-center gap-3">
-                <span className="hidden items-center gap-1 text-xs text-[#637981] sm:flex">
-                  <Clock3 className="h-3.5 w-3.5" />
-                  {lesson.duration}
-                </span>
-                {lesson.ai && (
-                  <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 text-[11px] font-semibold text-cyan-700">
-                    ✣ AI
-                  </span>
-                )}
+                <span className="hidden items-center gap-1 text-xs text-[#637981] sm:flex"><Clock3 className="h-3.5 w-3.5" />{lesson.duration}</span>
+                {lesson.ai && <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 text-[11px] font-semibold text-cyan-700">✣ AI</span>}
                 <StatusBadge status={lesson.status} />
+                {lesson.status === "Draft" && <button type="button" onClick={() => void changeStatus(lesson, "approve")} disabled={!!busyId} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#F7444E] px-3 text-xs font-semibold text-white disabled:opacity-50"><Check className="h-3.5 w-3.5" />Approve</button>}
+                {lesson.status === "Approved" && <button type="button" onClick={() => void changeStatus(lesson, "publish")} disabled={!!busyId} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#14919B] px-3 text-xs font-semibold text-white disabled:opacity-50"><Globe2 className="h-3.5 w-3.5" />Publish</button>}
               </div>
-            </Link>
+            </div>
           ))}
         </div>
         {!isLoading && !loadError && filteredLessons.length === 0 && (

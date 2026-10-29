@@ -6,7 +6,7 @@ import type {
   ApiSuccessResponse,
   ApiErrorResponse,
 } from '../types/auth';
-import { clearSession, getStoredToken } from './auth/session';
+import { clearSession, getStoredRefreshToken, getStoredToken, saveSession } from './auth/session';
 import type { ChapterOption, CourseOption, LessonOption, QuestionPayload } from '../types/question';
 import type {
   QuizItem,
@@ -20,6 +20,25 @@ import type {
 } from '../types/quiz';
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
+let refreshInFlight: Promise<void> | null = null;
+
+function refreshAccessToken(): Promise<void> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    const refreshToken = getStoredRefreshToken();
+    if (!refreshToken) throw new Error('No refresh token');
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!response.ok) throw new Error('Session refresh failed');
+    const result = await response.json() as ApiSuccessResponse<LoginResponse>;
+    if (!result?.data?.access_token || !result.data.user) throw new Error('Invalid session refresh response');
+    saveSession({ accessToken: result.data.access_token, refreshToken: result.data.refresh_token, user: result.data.user });
+  })().finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
+}
 
 export class ApiClientError extends Error {
   code: string;
@@ -33,7 +52,7 @@ export class ApiClientError extends Error {
   }
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function request<T>(endpoint: string, options: RequestInit = {}, retried = false): Promise<T> {
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
   const headers: Record<string, string> = {
     ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
@@ -79,6 +98,14 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     const message = errorDetail.message || response.statusText || 'Yêu cầu thất bại';
 
     if (response.status === 401 && typeof window !== 'undefined') {
+      if (!retried && token && getStoredRefreshToken() && endpoint !== '/api/v1/auth/login') {
+        try {
+          if (getStoredToken() === token) await refreshAccessToken();
+          return request<T>(endpoint, options, true);
+        } catch {
+          // The refresh token is invalid or the refresh endpoint is unavailable.
+        }
+      }
       clearSession();
     }
 
@@ -177,6 +204,12 @@ export const courseApi = {
     estimated_duration_minutes: number;
     order_index: number;
     status: string;
+    version: number;
+    created_by: string | null;
+    submitted_by: string | null;
+    submitted_at: string | null;
+    reviewed_by: string | null;
+    reviewed_at: string | null;
     is_ai_generated: boolean;
     chapter: { id: string; title: string };
     course: { id: string; title: string; slug: string };
@@ -191,14 +224,58 @@ export const courseApi = {
     return request(`/api/v1/courses/lessons/${encodeURIComponent(lessonId)}`);
   },
   updateLesson: (lessonId: string, payload: {
+    version: number;
     title?: string;
     estimated_duration_minutes?: number;
     content?: string;
     code_example?: string;
-    status?: 'draft' | 'in_review' | 'approved' | 'published';
-  }) => request(`/api/v1/courses/lessons/${encodeURIComponent(lessonId)}`, {
+  }) => request<{ version: number; status: string }>(`/api/v1/courses/lessons/${encodeURIComponent(lessonId)}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
+  }),
+  reviewQueue: () => request<Array<{
+    id: string; title: string; status: string; version: number; is_ai_generated: boolean;
+    created_by: string | null; updated_at: string;
+    chapters: { title: string; courses: { title: string; status: string } };
+  }>>('/api/v1/courses/lessons/review-queue'),
+  reviewTree: () => request<Array<{
+    id: string;
+    title: string;
+    slug: string;
+    status: string;
+    chapters: Array<{
+      id: string;
+      course_id: string;
+      title: string;
+      status: string;
+      order_index: number;
+      lessons: Array<{
+        id: string;
+        chapter_id: string;
+        title: string;
+        status: string;
+        version: number;
+        is_ai_generated: boolean;
+        order_index: number;
+      }>;
+    }>;
+  }>>('/api/v1/courses/review-tree'),
+  reviewChapterAction: (chapterId: string, action: 'approve' | 'publish' | 'unpublish') =>
+    request<{ id: string; status: string }>(`/api/v1/courses/chapters/${encodeURIComponent(chapterId)}/review-action`, {
+      method: 'POST', body: JSON.stringify({ action }),
+    }),
+  reviewCourseAction: (courseId: string, action: 'approve' | 'publish' | 'unpublish') =>
+    request<{ id: string; status: string }>(`/api/v1/courses/${encodeURIComponent(courseId)}/review-action`, {
+      method: 'POST', body: JSON.stringify({ action }),
+    }),
+  reviewHistory: (lessonId: string) => request<Array<{
+    id: string; version: number; action: string; from_status: string | null; to_status: string;
+    actor_id: string | null; actor_email: string; reason: string | null; created_at: string;
+  }>>(`/api/v1/courses/lessons/${encodeURIComponent(lessonId)}/review-history`),
+  reviewAction: (lessonId: string, payload: {
+    action: 'approve' | 'publish' | 'unpublish'; version: number; reason?: string;
+  }) => request<{ version: number; status: string }>(`/api/v1/courses/lessons/${encodeURIComponent(lessonId)}/review-action`, {
+    method: 'POST', body: JSON.stringify(payload),
   }),
   removeLesson: (lessonId: string) => request<{ id: string; message: string }>(
     `/api/v1/courses/lessons/${encodeURIComponent(lessonId)}`,
@@ -209,6 +286,7 @@ export const courseApi = {
     chapters: Array<{
       id: string;
       title: string;
+      status: string;
       lessons: Array<{
         id: string;
         title: string;
@@ -231,7 +309,6 @@ export const courseApi = {
     estimated_duration_minutes?: number;
     content?: string;
     code_example?: string;
-    status?: 'draft' | 'in_review' | 'approved' | 'published';
   }) => {
     return request<import('../types/learning-content').Lesson>(
       `/api/v1/courses/${encodeURIComponent(courseId)}/chapters/${encodeURIComponent(chapterId)}/lessons`,

@@ -3,6 +3,7 @@ import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 
 import { RegisterDto, LoginDto } from './dto/index.js';
+import { RefreshTokenDto } from './dto/refresh-token.dto.js';
 
 @Controller('api/v1/auth')
 export class AuthController {
@@ -33,6 +34,11 @@ export class AuthController {
     const token = req.headers['authorization']?.split(' ')[1];
     await this.authService.logout(token);
     return { message: 'Logged out successfully' };
+  }
+
+  @Post('refresh')
+  async refresh(@Body() body: RefreshTokenDto) {
+    return this.authService.refreshSession(body.refresh_token);
   }
 
   @Get('me')

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -102,7 +103,8 @@ export class MaterialsService {
   }
 
   async upload(lessonId: string, file: UploadedFile, requestedTitle?: string) {
-    await this.getLesson(lessonId);
+    const lesson = await this.getLesson(lessonId);
+    if (lesson.status !== 'draft') throw new ConflictException('Materials can only be changed on draft lessons');
     const config = this.validateFile(file);
     const title = requestedTitle?.trim() || file.originalname;
     if (title.length > 255) throw new BadRequestException('Title is too long');
@@ -144,7 +146,9 @@ export class MaterialsService {
   }
 
   async rename(id: string, title: string) {
-    await this.getMaterial(id);
+    const material = await this.getMaterial(id);
+    const lesson = await this.getLesson(material.lesson_id);
+    if (lesson.status !== 'draft') throw new ConflictException('Materials can only be changed on draft lessons');
     const cleanTitle = title.trim();
     if (!cleanTitle) throw new BadRequestException('Title is required');
     const { data, error } = await this.supabaseService.getClient().from('materials')
@@ -156,6 +160,8 @@ export class MaterialsService {
 
   async remove(id: string) {
     const material = await this.getMaterial(id);
+    const lesson = await this.getLesson(material.lesson_id);
+    if (lesson.status !== 'draft') throw new ConflictException('Materials can only be changed on draft lessons');
     const client = this.supabaseService.getClient();
     if (!/^https:\/\//i.test(material.file_url)) {
       const { error: storageError } = await client.storage.from(BUCKET).remove([material.file_url]);

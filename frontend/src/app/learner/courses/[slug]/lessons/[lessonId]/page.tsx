@@ -513,6 +513,9 @@ export default function LearnerLessonPage() {
   // Tìm bài học hiện tại (nếu chưa có trong LESSON_DATABASE thì lấy fallback)
   const activeLessonId = lessonIdParam || 'what-is-csharp';
   const currentLessonMeta = allCourseLessons.find((l) => l.id === activeLessonId) || allCourseLessons[0];
+  const databaseLesson = databaseChapters
+    ?.flatMap((chapter) => chapter.lessons)
+    .find((lesson) => lesson.id === activeLessonId);
   
   const currentLesson: LessonDetail = LESSON_DATABASE[activeLessonId] || {
     id: currentLessonMeta.id,
@@ -583,8 +586,12 @@ export default function LearnerLessonPage() {
     setConsoleOutput('');
   }, [activeLessonId]);
 
+  const activeLessonCode = databaseLesson
+    ? databaseLesson.codeExample?.trim() || ''
+    : currentLesson.initialCode;
+
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(currentLesson.initialCode);
+    navigator.clipboard.writeText(activeLessonCode);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
   };
@@ -738,7 +745,7 @@ export default function LearnerLessonPage() {
           {/* NỘI DUNG BÀI HỌC & Code Runner */}
           <section className="min-w-0 space-y-6">
             {/* Mục tiêu bài học */}
-            <div className="rounded-[18px] border border-[#d6e3e7] bg-[#f2f8fa] p-5 shadow-[0_4px_16px_rgba(0,44,62,0.02)]">
+            {!databaseLesson && <div className="rounded-[18px] border border-[#d6e3e7] bg-[#f2f8fa] p-5 shadow-[0_4px_16px_rgba(0,44,62,0.02)]">
               <div className="flex items-center gap-2.5 text-sm font-bold text-[#0f3741]">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-[#78bcc4] shadow-sm">
                   <Layers className="h-4 w-4" />
@@ -753,7 +760,7 @@ export default function LearnerLessonPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </div>}
 
             {/* Bài viết chi tiết */}
             <div className="rounded-[18px] border border-[#dfe6df] bg-white p-6 sm:p-8 shadow-[0_4px_16px_rgba(0,44,62,0.04)] space-y-5">
@@ -763,16 +770,18 @@ export default function LearnerLessonPage() {
                 </span>
                 <div>
                   <h2 className="text-xl sm:text-2xl font-black tracking-tight text-[#0f3741]">
-                    {currentLesson.mainHeading}
+                    {databaseLesson?.title ?? currentLesson.mainHeading}
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">{currentLesson.subHeading}</p>
+                  {!databaseLesson && <p className="text-xs text-slate-500 mt-0.5">{currentLesson.subHeading}</p>}
                 </div>
               </div>
 
-              <p className="text-[15px] leading-7 text-slate-600">{currentLesson.description}</p>
+              <div className="whitespace-pre-wrap break-words text-[15px] leading-7 text-slate-600">
+                {databaseLesson ? databaseLesson.content?.trim() || 'Bài học chưa có nội dung.' : currentLesson.description}
+              </div>
 
               {/* Bảng dữ liệu */}
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-[#fafafa]">
+              {!databaseLesson && <div className="overflow-hidden rounded-xl border border-slate-200 bg-[#fafafa]">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
@@ -795,7 +804,7 @@ export default function LearnerLessonPage() {
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </div>}
 
               {/* Code Runner IDE */}
               <div className="overflow-hidden rounded-xl border border-slate-800 bg-[#0d131a] shadow-lg">
@@ -842,7 +851,7 @@ export default function LearnerLessonPage() {
 
                 <div className="p-4 font-mono text-xs leading-relaxed text-slate-200 overflow-x-auto bg-[#0a0f14]">
                   <pre>
-                    <code>{currentLesson.initialCode}</code>
+                    <code>{activeLessonCode}</code>
                   </pre>
                 </div>
 
