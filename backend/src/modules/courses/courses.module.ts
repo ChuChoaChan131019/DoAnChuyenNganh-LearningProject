@@ -5,10 +5,12 @@ import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { CoursesController } from './courses.controller.js';
 import { LearnerCoursesController } from './learner-courses.controller.js';
 import { CoursesService } from './courses.service.js';
+import { MaterialsService } from './materials.service.js';
+import { MaterialsController, LessonMaterialsController, LearnerMaterialsController } from './materials.controller.js';
 
 @Module({
   imports: [SupabaseModule],
-  controllers: [CoursesController, LearnerCoursesController],
-  providers: [CoursesService, JwtAuthGuard, RolesGuard],
+  controllers: [CoursesController, LearnerCoursesController, MaterialsController, LessonMaterialsController, LearnerMaterialsController],
+  providers: [CoursesService, MaterialsService, JwtAuthGuard, RolesGuard],
 })
 export class CoursesModule {}
