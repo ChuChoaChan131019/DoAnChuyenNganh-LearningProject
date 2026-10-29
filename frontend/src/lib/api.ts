@@ -36,7 +36,7 @@ export class ApiClientError extends Error {
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string>),
   };
 
@@ -91,6 +91,34 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
   return json.data;
 }
+
+export type Material = {
+  id: string;
+  lesson_id: string;
+  title: string;
+  file_type: 'PDF' | 'Image' | 'Code Sample';
+  file_size: number | null;
+  created_at: string;
+  lesson_title?: string;
+  course_id?: string;
+  course_title?: string;
+};
+
+export const materialApi = {
+  list: () => request<Material[]>('/api/v1/courses/materials'),
+  byLesson: (lessonId: string) => request<Material[]>(`/api/v1/courses/lessons/${encodeURIComponent(lessonId)}/materials`),
+  upload: (lessonId: string, file: File, title?: string) => {
+    const body = new FormData();
+    body.append('file', file);
+    if (title) body.append('title', title);
+    return request<Material>(`/api/v1/courses/lessons/${encodeURIComponent(lessonId)}/materials`, { method: 'POST', body });
+  },
+  rename: (id: string, title: string) => request<Material>(`/api/v1/courses/materials/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ title }) }),
+  remove: (id: string) => request<{ id: string }>(`/api/v1/courses/materials/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  access: (id: string, download = false) => request<{ url: string }>(`/api/v1/courses/materials/${encodeURIComponent(id)}/access?download=${download}`),
+  learnerByLesson: (lessonId: string) => request<Material[]>(`/api/v1/learner/courses/lessons/${encodeURIComponent(lessonId)}/materials`),
+  learnerAccess: (id: string, download = false) => request<{ url: string }>(`/api/v1/learner/courses/materials/${encodeURIComponent(id)}/access?download=${download}`),
+};
 
 export const authApi = {
   register: (payload: RegisterRequest): Promise<RegisterResponse> => {

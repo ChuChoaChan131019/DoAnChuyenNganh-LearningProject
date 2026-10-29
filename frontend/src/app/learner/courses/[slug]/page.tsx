@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, CheckCircle2, Clock3, FileText } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle2, Clock3 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { courseApi, quizApi } from '@/lib/api';
@@ -474,24 +474,7 @@ export default function LearnerCourseDetailPage() {
 
             <div className="rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_8px_18px_rgba(0,44,62,0.04)]">
               <h3 className="text-[22px] font-bold tracking-tight text-slate-800">Resources</h3>
-              <div className="mt-4 space-y-3">
-                {course.resources.map((resource: any) => (
-                  <div
-                    key={resource.name}
-                    className="flex items-center gap-3 rounded-[12px] border border-slate-200 bg-[#f8f7f5] p-3"
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm">
-                      <FileText className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[15px] font-semibold text-slate-800">
-                        {resource.name}
-                      </div>
-                      <div className="text-xs text-slate-500">{resource.type}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p className="mt-3 text-sm text-slate-500">Open a lesson to view its PDF, images and code samples.</p>
             </div>
           </div>
         </div>
