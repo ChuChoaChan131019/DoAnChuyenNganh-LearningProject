@@ -2,8 +2,8 @@ import React from 'react';
 import { AdminShell } from '@/components/content-manager/admin-shell';
 
 export const metadata = {
-  title: 'Content Manager',
-  description: 'Manage learning content and questions',
+  title: 'Quản lý nội dung',
+  description: 'Quản lý nội dung học tập và câu hỏi',
 };
 
 export default function ContentManagerLayout({

@@ -94,7 +94,7 @@ const OPTION_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 function getApiErrorMessage(error: unknown): string {
   return error instanceof ApiClientError
     ? error.message
-    : 'Unable to complete the request. Please try again.';
+    : 'Không thể hoàn tất yêu cầu. Vui lòng thử lại.';
 }
 
 function normalizeNullableId(value: string | null | undefined): string | null {
@@ -328,15 +328,15 @@ function QuestionEditorContent() {
       return false;
     }
     if (!formData.chapter.trim()) {
-      alert('Please select a chapter.');
+      alert('Vui lòng chọn chương.');
       return false;
     }
     if (!formData.content.trim()) {
-      alert('Please enter question content.');
+      alert('Vui lòng nhập nội dung câu hỏi.');
       return false;
     }
     if (!formData.explanation.trim()) {
-      alert('Please enter an explanation.');
+      alert('Vui lòng nhập lời giải thích.');
       return false;
     }
     if (formData.type !== 'fill_in_blank') {
@@ -346,7 +346,7 @@ function QuestionEditorContent() {
       }
       const emptyOption = formData.options.find((option) => !option.text.trim());
       if (emptyOption) {
-        alert(`Please fill in option ${emptyOption.label}.`);
+        alert(`Vui lòng điền lựa chọn ${emptyOption.label}.`);
         return false;
       }
       if (!formData.options.some((option) => option.isCorrect)) {
@@ -414,10 +414,10 @@ function QuestionEditorContent() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-            {questionId ? 'Update Question' : 'Question editor'}
+            {questionId ? 'Update Question' : 'Soạn câu hỏi'}
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Accuracy first: every question needs a correct answer and an explanation.
+            Ưu tiên độ chính xác: mỗi câu hỏi cần có đáp án đúng và phần giải thích.
           </p>
         </div>
 
@@ -430,7 +430,7 @@ function QuestionEditorContent() {
               className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#c93f3a] disabled:opacity-60"
             >
               <Save className="h-4 w-4" />
-              <span>{isUpdating ? 'Updating...' : 'Update Question'}</span>
+              <span>{isUpdating ? 'Đang cập nhật...' : 'Update Question'}</span>
             </button>
           ) : (
             <>
@@ -441,7 +441,7 @@ function QuestionEditorContent() {
                 className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-60"
               >
                 <Save className="h-4 w-4 text-gray-500" />
-                <span>{isSaving ? 'Saving...' : 'Save draft'}</span>
+                <span>{isSaving ? 'Đang lưu...' : 'Lưu bản nháp'}</span>
               </button>
               <button
                 type="button"
@@ -450,7 +450,7 @@ function QuestionEditorContent() {
                 className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#c93f3a] disabled:opacity-60"
               >
                 <SendHorizontal className="h-4 w-4" />
-                <span>{isSubmitting ? 'Submitting...' : 'Submit for review'}</span>
+                <span>{isSubmitting ? 'Đang gửi...' : 'Gửi duyệt'}</span>
               </button>
             </>
           )}
@@ -465,11 +465,11 @@ function QuestionEditorContent() {
           <section className={`${STYLES.sectionCard} space-y-4`}>
             <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
               <BookOpen className="w-4 h-4 text-gray-400" />
-              <h2 className={STYLES.sectionTitle}>Placement</h2>
+              <h2 className={STYLES.sectionTitle}>Vị trí nội dung</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
               <div>
-                <label className={STYLES.label}>Course</label>
+                <label className={STYLES.label}>Khóa học</label>
                 <select
                   value={formData.course}
                   onChange={(e) => handleCourseChange(e.target.value)}
@@ -477,11 +477,11 @@ function QuestionEditorContent() {
                   className={STYLES.select}
                 >
                   {isLoadingCourses ? (
-                    <option value="">Loading courses...</option>
+                    <option value="">Đang tải khóa học...</option>
                   ) : (
-                    <option value="">Select course...</option>
+                    <option value="">Chọn khóa học...</option>
                   )}
-                  {!isLoadingCourses && courses.length === 0 && <option value="">No courses found</option>}
+                  {!isLoadingCourses && courses.length === 0 && <option value="">Không tìm thấy khóa học</option>}
                   {courses.map((course) => (
                     <option key={course.id} value={course.id}>{course.title}</option>
                   ))}
@@ -489,7 +489,7 @@ function QuestionEditorContent() {
               </div>
 
               <div>
-                <label className={STYLES.label}>Chapter</label>
+                <label className={STYLES.label}>Chương</label>
                 <select
                   value={formData.chapter}
                   onChange={(e) => handleChapterChange(e.target.value)}
@@ -497,11 +497,11 @@ function QuestionEditorContent() {
                   className={STYLES.select}
                 >
                   {isLoadingChapters ? (
-                    <option value="">Loading chapters...</option>
+                    <option value="">Đang tải chương...</option>
                   ) : (
-                    <option value="">Select chapter...</option>
+                    <option value="">Chọn chương...</option>
                   )}
-                  {!isLoadingChapters && formData.course && chapters.length === 0 && <option value="">No chapters found</option>}
+                  {!isLoadingChapters && formData.course && chapters.length === 0 && <option value="">Không tìm thấy chương</option>}
                   {chapters.map((chap) => (
                     <option key={chap.id} value={chap.id}>{chap.title}</option>
                   ))}
@@ -509,7 +509,7 @@ function QuestionEditorContent() {
               </div>
 
               <div>
-                <label className={STYLES.label}>Lesson</label>
+                <label className={STYLES.label}>Bài học</label>
                 <select
                   value={formData.lesson}
                   onChange={(e) => setFormData({ ...formData, lesson: e.target.value })}
@@ -517,11 +517,11 @@ function QuestionEditorContent() {
                   className={STYLES.select}
                 >
                   {isLoadingLessons ? (
-                    <option value="">Loading lessons...</option>
+                    <option value="">Đang tải bài học...</option>
                   ) : (
-                    <option value="">None</option>
+                    <option value="">Không có</option>
                   )}
-                  {!isLoadingLessons && formData.chapter && lessons.length === 0 && <option value="">No lessons found</option>}
+                  {!isLoadingLessons && formData.chapter && lessons.length === 0 && <option value="">Không tìm thấy bài học</option>}
                   {lessons.map((les) => (
                     <option key={les.id} value={les.id}>{les.title}</option>
                   ))}
@@ -537,46 +537,46 @@ function QuestionEditorContent() {
           <section className={`${STYLES.sectionCard} space-y-4`}>
             <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
               <FileText className="w-4 h-4 text-gray-400" />
-              <h2 className={STYLES.sectionTitle}>Question</h2>
+              <h2 className={STYLES.sectionTitle}>Câu hỏi</h2>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className={STYLES.label}>Question type</label>
+                <label className={STYLES.label}>Dạng câu hỏi</label>
                 <select
                   value={formData.type}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value as QuestionType })}
                   className={STYLES.select}
                 >
-                  <option value="single_choice">Single Choice</option>
-                  <option value="multiple_choice">Multiple Choice</option>
-                  <option value="true_false">True / False</option>
-                  <option value="fill_in_blank">Fill in the blank</option>
+                  <option value="single_choice">Một đáp án</option>
+                  <option value="multiple_choice">Nhiều đáp án</option>
+                  <option value="true_false">Đúng / Sai</option>
+                  <option value="fill_in_blank">Điền vào chỗ trống</option>
                 </select>
               </div>
 
               <div>
-                <label className={STYLES.label}>Difficulty</label>
+                <label className={STYLES.label}>Độ khó</label>
                 <select
                   value={formData.difficulty}
                   onChange={(e) => setFormData({ ...formData, difficulty: e.target.value as Difficulty })}
                   className={STYLES.select}
                 >
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
+                  <option value="easy">Dễ</option>
+                  <option value="medium">Trung bình</option>
+                  <option value="hard">Khó</option>
                 </select>
               </div>
 
             </div>
 
             <div>
-              <label className={STYLES.label}>Question content</label>
+              <label className={STYLES.label}>Nội dung câu hỏi</label>
               <textarea
                 rows={3}
                 value={formData.content}
                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                placeholder="Enter the main question statement..."
+                placeholder="Nhập nội dung câu hỏi..."
                 className={STYLES.textarea}
               />
             </div>
@@ -584,17 +584,17 @@ function QuestionEditorContent() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Explanation
+                  Giải thích
                 </label>
                 <span className="text-xs text-gray-400 flex items-center gap-1">
-                  <HelpCircle className="w-3.5 h-3.5" /> Shown after answering
+                  <HelpCircle className="w-3.5 h-3.5" /> Hiển thị sau khi trả lời
                 </span>
               </div>
               <textarea
                 rows={3}
                 value={formData.explanation}
                 onChange={(e) => setFormData({ ...formData, explanation: e.target.value })}
-                placeholder="Explain why the correct answer is right and why others are wrong..."
+                placeholder="Giải thích vì sao đáp án đúng chính xác và các đáp án khác chưa đúng..."
                 className={STYLES.textarea}
               />
             </div>
@@ -606,7 +606,7 @@ function QuestionEditorContent() {
               <div>
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 text-gray-400" />
-                  <h2 className={STYLES.sectionTitle}>Answer options</h2>
+                  <h2 className={STYLES.sectionTitle}>Các phương án trả lời</h2>
                 </div>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {formData.type === 'multiple_choice'
@@ -621,7 +621,7 @@ function QuestionEditorContent() {
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition disabled:opacity-40"
               >
                 <Plus className="w-4 h-4" />
-                <span>Add option</span>
+                <span>Thêm phương án</span>
               </button>
             </div>
 
@@ -650,14 +650,14 @@ function QuestionEditorContent() {
                     className={STYLES.markBtn(option.isCorrect)}
                   >
                     <Check className="w-3.5 h-3.5" />
-                    <span>{option.isCorrect ? 'Correct' : 'Mark'}</span>
+                    <span>{option.isCorrect ? 'Đúng' : 'Mark'}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleDeleteOption(option.id)}
                     className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition"
-                    title="Delete option"
+                    title="Xóa phương án"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -668,7 +668,7 @@ function QuestionEditorContent() {
             {!formData.options.some((opt) => opt.isCorrect) && (
               <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-200">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                <span>Remember to mark at least one correct option for students.</span>
+                <span>Hãy đánh dấu ít nhất một phương án đúng để học viên chọn.</span>
               </div>
             )}
           </section>
@@ -679,13 +679,13 @@ function QuestionEditorContent() {
           <div className={`${STYLES.sectionCard} space-y-5`}>
             <div className="pb-3 border-b border-gray-100">
               <div className="flex items-center justify-between">
-                <h2 className="font-semibold text-gray-900 text-base">Live preview</h2>
+                <h2 className="font-semibold text-gray-900 text-base">Xem trước</h2>
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600">
-                  Interactive
+                  Có thể tương tác
                 </span>
               </div>
               <p className="text-xs text-gray-400 mt-0.5">
-                Exactly what the student will see
+                Nội dung học viên sẽ nhìn thấy
               </p>
             </div>
 
@@ -693,7 +693,7 @@ function QuestionEditorContent() {
             <div className="bg-gray-50/70 rounded-2xl border border-gray-200/80 p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  Question 1 of 15
+                  Câu hỏi 1 trên 15
                 </span>
                 <span
                   className={`capitalize px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
@@ -709,7 +709,7 @@ function QuestionEditorContent() {
                   formData.content
                 ) : (
                   <span className="text-gray-400 italic font-normal">
-                    Question text will appear here...
+                    Nội dung câu hỏi sẽ hiển thị tại đây...
                   </span>
                 )}
               </div>
@@ -730,7 +730,7 @@ function QuestionEditorContent() {
                         {option.text.trim() ? (
                           option.text
                         ) : (
-                          <span className="text-gray-300 italic">Empty option...</span>
+                          <span className="text-gray-300 italic">Phương án trống...</span>
                         )}
                       </span>
                     </div>
@@ -741,7 +741,7 @@ function QuestionEditorContent() {
               {formData.explanation.trim() && (
                 <div className="mt-3 pt-3 border-t border-gray-200/70 text-xs space-y-1.5">
                   <span className="font-semibold text-gray-700 flex items-center gap-1.5">
-                    <HelpCircle className="w-3.5 h-3.5 text-gray-400" /> Explanation Reference:
+                    <HelpCircle className="w-3.5 h-3.5 text-gray-400" /> Tài liệu tham khảo cho phần giải thích:
                   </span>
                   <p className="text-gray-600 leading-relaxed bg-white/80 p-2.5 rounded-lg border border-gray-200/60">
                     {formData.explanation}
@@ -751,14 +751,14 @@ function QuestionEditorContent() {
             </div>
 
             <div className="text-[11px] text-gray-400 text-center leading-relaxed">
-              Changes made in the form on the left are synchronized in real-time.
+              Thay đổi trong biểu mẫu bên trái được đồng bộ ngay lập tức.
             </div>
           </div>
 
           <div className={`${STYLES.sectionCard} space-y-4`}>
             <div>
-              <h2 className={STYLES.sectionTitle}>Chapter</h2>
-              <p className="mt-1 text-xs text-gray-400">Questions are grouped by chapter for practice and progress.</p>
+              <h2 className={STYLES.sectionTitle}>Chương</h2>
+              <p className="mt-1 text-xs text-gray-400">Câu hỏi được nhóm theo chương để hỗ trợ luyện tập và theo dõi tiến độ.</p>
             </div>
             <p className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
               {chapters.find((chapter) => chapter.id === formData.chapter)?.title ?? 'Select a chapter in Placement.'}
@@ -772,7 +772,7 @@ function QuestionEditorContent() {
 
 export default function QuestionEditorPage() {
   return (
-    <Suspense fallback={<div className="mx-auto max-w-7xl px-6 py-10 text-sm text-gray-500">Loading question editor...</div>}>
+    <Suspense fallback={<div className="mx-auto max-w-7xl px-6 py-10 text-sm text-gray-500">Đang tải trình soạn câu hỏi...</div>}>
       <QuestionEditorContent />
     </Suspense>
   );

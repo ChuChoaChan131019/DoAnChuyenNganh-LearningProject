@@ -16,10 +16,10 @@ import {
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/learner/dashboard', icon: LayoutGrid },
-  { label: 'Browse courses', href: '/learner/courses', icon: Compass },
-  { label: 'Practice', href: '/learner/practice', icon: Target },
-  { label: 'AI Tutor', href: '/learner/ai-tutor', icon: Bot },
+  { label: 'Trang chủ', href: '/learner/dashboard', icon: LayoutGrid },
+  { label: 'Khám phá khóa học', href: '/learner/courses', icon: Compass },
+  { label: 'Luyện tập', href: '/learner/practice', icon: Target },
+  { label: 'Trợ giảng trí tuệ nhân tạo', href: '/learner/ai-tutor', icon: Bot },
 ];
 
 export function LearnerTopbar() {
@@ -71,7 +71,7 @@ export function LearnerTopbar() {
               }`}
             >
               <Search className="h-4 w-4" />
-              Search
+              Tìm kiếm
             </Link>
           </nav>
         </div>
@@ -84,7 +84,7 @@ export function LearnerTopbar() {
               href="/content-manager/dashboard"
               className="whitespace-nowrap text-sm font-medium text-slate-500 transition-colors hover:text-slate-800"
             >
-              Manager view
+              Trang quản lý
             </Link>
           ) : null}
 

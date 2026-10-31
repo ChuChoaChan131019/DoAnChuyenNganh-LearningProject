@@ -60,50 +60,50 @@ interface NavGroup {
 
 const MENU_DATA: NavGroup[] = [
   {
-    group: "OVERVIEW",
+    group: "TỔNG QUAN",
     items: [
       {
-        label: "Dashboard",
+        label: "Bảng điều khiển",
         href: "/content-manager/dashboard",
         icon: LayoutDashboard,
       },
     ],
   },
   {
-    group: "LEARNING CONTENT",
+    group: "NỘI DUNG HỌC TẬP",
     items: [
       {
-        label: "Courses",
+        label: "Khóa học",
         href: "/content-manager/learning-content/courses",
         icon: BookOpen,
       },
       {
-        label: "Chapters",
+        label: "Chương",
         href: "/content-manager/learning-content/chapters",
         icon: Bookmark,
       },
       {
-        label: "Lessons",
+        label: "Bài học",
         href: "/content-manager/learning-content/lessons",
         icon: FileText,
       },
     ],
   },
   {
-    group: "QUESTION BANK",
+    group: "NGÂN HÀNG CÂU HỎI",
     items: [
       {
-        label: "Questions",
+        label: "Câu hỏi",
         href: "/content-manager/questions/bank",
         icon: HelpCircle,
       },
       {
-        label: "Question editor",
+        label: "Soạn câu hỏi",
         href: "/content-manager/questions/editor",
         icon: Edit3,
       },
       {
-        label: "Question review",
+        label: "Duyệt câu hỏi",
         href: "/content-manager/questions/review",
         icon: CheckSquare,
         badge: 12,
@@ -111,59 +111,59 @@ const MENU_DATA: NavGroup[] = [
     ],
   },
   {
-    group: "TESTS & PRACTICE",
+    group: "BÀI KIỂM TRA & LUYỆN TẬP",
     items: [
       {
-        label: "Tests",
+        label: "Bài kiểm tra",
         href: "/content-manager/testsandpractice/tests",
         icon: ListChecks,
       },
       {
-        label: "Test builder",
+        label: "Tạo bài kiểm tra",
         href: "/content-manager/testsandpractice/builder",
         icon: Hammer,
       },
       {
-        label: "Practice sets",
+        label: "Bộ bài luyện tập",
         href: "/content-manager/testsandpractice/practicesets",
         icon: FlaskConical,
       },
       {
-        label: "Results",
+        label: "Kết quả",
         href: "/content-manager/testsandpractice/results",
         icon: BarChart2,
       },
     ],
   },
   {
-    group: "AI",
+    group: "TRÍ TUỆ NHÂN TẠO",
     items: [
       {
-        label: "AI content generator",
+        label: "Tạo nội dung tự động",
         href: "/content-manager/ai/content-generator",
         icon: Wand2,
       },
       {
-        label: "AI question generator",
+        label: "Tạo câu hỏi tự động",
         href: "/content-manager/ai/question-generator",
         icon: Sparkles,
       },
     ],
   },
   {
-    group: "REVIEW",
+    group: "KIỂM DUYỆT",
     items: [
       {
-        label: "Content review",
+        label: "Duyệt nội dung",
         href: "/content-manager/ai/review-queue",
         icon: Inbox,
       },
     ],
   },
   {
-    group: "SYSTEM",
+    group: "HỆ THỐNG",
     items: [
-      { label: "Search", href: "/content-manager/search", icon: Search },
+      { label: "Tìm kiếm", href: "/content-manager/search", icon: Search },
     ],
   },
 ];
@@ -183,7 +183,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         </div>
         {!isCollapsed && (
           <div className="truncate text-[15px] font-semibold tracking-tight text-slate-400">
-            Content Studio
+            Không gian nội dung
           </div>
         )}
       </div>
@@ -247,7 +247,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           ) : (
             <>
               <ChevronLeft className="h-4 w-4" />
-              <span>Collapse</span>
+              <span>Thu gọn</span>
             </>
           )}
         </button>

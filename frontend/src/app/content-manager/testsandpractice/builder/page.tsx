@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { DifficultyLevel, QuestionType, QuestionItem } from '@/types/question';
 import { courseApi, questionApi, quizApi } from '@/lib/api';
+import { vietnameseDifficulty } from '@/lib/ui-labels';
 
 const STYLES = {
   pageContainer: 'mx-auto max-w-7xl space-y-6 pb-12',
@@ -43,14 +44,14 @@ const STYLES = {
 };
 
 const TYPE_LABELS: Record<QuestionType, string> = {
-  single_choice: 'Single Choice',
-  multiple_choice: 'Multiple Choice',
-  true_false: 'True / False',
-  fill_in_blank: 'Fill in the Blank',
+  single_choice: 'Một đáp án',
+  multiple_choice: 'Nhiều đáp án',
+  true_false: 'Đúng / Sai',
+  fill_in_blank: 'Điền vào chỗ trống',
 };
 
 function DifficultyBadge({ level }: { level: DifficultyLevel }) {
-  const formatted = level ? level.charAt(0).toUpperCase() + level.slice(1) : 'Medium';
+  const formatted = level ? vietnameseDifficulty(level) : 'Trung bình';
   const badgeStyle = STYLES.difficultyBadges[level] || STYLES.difficultyBadges.medium;
   return (
     <span
@@ -243,7 +244,7 @@ function TestBuilderContent() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-            Test builder
+            Tạo bài kiểm tra
           </h1>
           <p className="mt-1 text-sm text-gray-500">
             Chọn các câu hỏi từ ngân hàng câu hỏi để hoàn thiện bài kiểm tra.
@@ -257,7 +258,7 @@ function TestBuilderContent() {
             className={STYLES.secondaryBtn}
           >
             <Eye className="h-4 w-4 text-gray-500" />
-            <span>Preview test</span>
+            <span>Xem trước bài kiểm tra</span>
           </button>
           <button
             type="button"
@@ -266,7 +267,7 @@ function TestBuilderContent() {
             className={STYLES.primaryBtn}
           >
             <Settings className="h-4 w-4" />
-            <span>{isSaving ? 'Saving...' : 'Setting test'}</span>
+            <span>{isSaving ? 'Đang lưu...' : 'Setting test'}</span>
           </button>
         </div>
       </div>
@@ -279,7 +280,7 @@ function TestBuilderContent() {
             <div className={STYLES.cardHeader}>
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-gray-400" />
-                <h2 className={STYLES.cardTitle}>Question bank</h2>
+                <h2 className={STYLES.cardTitle}>Ngân hàng câu hỏi</h2>
               </div>
               <span className="text-xs text-gray-400 font-medium">
                 {availableQuestions.length} available
@@ -293,7 +294,7 @@ function TestBuilderContent() {
                 onChange={(e) => setSelectedCourseId(e.target.value)}
                 className="w-full text-xs bg-white border border-gray-200 rounded-xl px-3 py-2 text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#F7444E]"
               >
-                <option value="">All courses</option>
+                <option value="">Tất cả khóa học</option>
                 {courses.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.title}
@@ -307,7 +308,7 @@ function TestBuilderContent() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search questions..."
+                  placeholder="Tìm câu hỏi..."
                   className="w-full text-xs bg-gray-50/75 border border-gray-200 rounded-xl pl-8 pr-3 py-2 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#F7444E] focus:bg-white transition"
                 />
               </div>
@@ -333,14 +334,14 @@ function TestBuilderContent() {
                         className={STYLES.addBtn}
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>Add</span>
+                        <span>Thêm</span>
                       </button>
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="py-12 text-center text-xs text-gray-400">
-                  No available questions found.
+                  Không tìm thấy câu hỏi phù hợp.
                 </div>
               )}
             </div>
@@ -353,7 +354,7 @@ function TestBuilderContent() {
             <div className={STYLES.cardHeader}>
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-gray-400" />
-                <h2 className={STYLES.cardTitle}>Selected questions</h2>
+                <h2 className={STYLES.cardTitle}>Câu hỏi đã chọn</h2>
               </div>
               <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-full">
                 {selectedQuestions.length} in this test
@@ -387,7 +388,7 @@ function TestBuilderContent() {
                       type="button"
                       onClick={() => handleRemoveQuestion(q.id)}
                       className={STYLES.removeBtn}
-                      title="Remove from test"
+                      title="Xóa khỏi bài kiểm tra"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
@@ -397,10 +398,10 @@ function TestBuilderContent() {
                 <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-gray-200 rounded-xl">
                   <Layers className="w-8 h-8 text-gray-300 mb-2" />
                   <p className="text-xs font-medium text-gray-500">
-                    No questions selected
+                    Chưa chọn câu hỏi nào
                   </p>
                   <p className="text-[11px] text-gray-400 mt-0.5">
-                    Click + Add on any question from the bank
+                    Bấm + Thêm ở câu hỏi bất kỳ trong ngân hàng
                   </p>
                 </div>
               )}
@@ -414,7 +415,7 @@ function TestBuilderContent() {
 
 export default function TestBuilderPage() {
   return (
-    <Suspense fallback={<div className="mx-auto max-w-7xl px-6 py-10 text-sm text-gray-500">Loading test builder...</div>}>
+    <Suspense fallback={<div className="mx-auto max-w-7xl px-6 py-10 text-sm text-gray-500">Đang tải công cụ tạo bài kiểm tra...</div>}>
       <TestBuilderContent />
     </Suspense>
   );

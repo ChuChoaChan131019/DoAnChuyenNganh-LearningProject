@@ -66,7 +66,7 @@ export function QuickContentSearch({ learner = false }: QuickContentSearchProps)
     loadSearchIndex()
       .catch((requestError: unknown) => {
         hasStartedLoading.current = false;
-        setError(requestError instanceof ApiClientError ? requestError.message : 'Unable to load searchable content.');
+        setError(requestError instanceof ApiClientError ? requestError.message : 'Không thể tải nội dung để tìm kiếm.');
       })
       .finally(() => {
         setIsLoading(false);
@@ -114,15 +114,15 @@ export function QuickContentSearch({ learner = false }: QuickContentSearchProps)
           setIsOpen(true);
         }}
         onFocus={() => setIsOpen(true)}
-        placeholder="Search courses or lessons..."
-        aria-label="Search courses or lessons"
+        placeholder="Tìm khóa học hoặc bài học..."
+        aria-label="Tìm khóa học hoặc bài học"
         className="h-10 w-full rounded-xl border border-gray-200 bg-[#78BCC4]/10 pl-9 pr-10 text-sm text-gray-700 placeholder-gray-400 transition-colors focus:border-teal-600 focus:bg-white focus:outline-none"
       />
       {isLoading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />}
       {isOpen && query.trim().length >= 2 && (
         <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg">
           {error && <p className="px-3 py-2 text-xs text-rose-600">{error}</p>}
-          {!error && !isLoading && results.length === 0 && <p className="px-3 py-2 text-xs text-gray-500">No courses or lessons found.</p>}
+          {!error && !isLoading && results.length === 0 && <p className="px-3 py-2 text-xs text-gray-500">Không tìm thấy khóa học hoặc bài học.</p>}
           {results.map((result) => {
             const Icon = result.kind === 'course' ? BookOpen : FileText;
             return (

@@ -19,11 +19,11 @@ import {
 export default function LearnerDashboardPage() {
   const { user } = useAuth();
 
-  const displayName = user?.fullName?.trim() || user?.email?.split('@')[0] || 'Learner';
+  const displayName = user?.fullName?.trim() || user?.email?.split('@')[0] || 'Học viên';
 
   const stats = [
     {
-      label: 'Enrolled courses',
+      label: 'Khóa học đã đăng ký',
       value: '4',
       subtext: '2 in progress',
       icon: BookOpen,
@@ -31,7 +31,7 @@ export default function LearnerDashboardPage() {
       bgColor: 'bg-cyan-50',
     },
     {
-      label: 'Learning time',
+      label: 'Thời gian học',
       value: '28.5 hrs',
       subtext: '+4.2 hrs this week',
       icon: Clock,
@@ -39,7 +39,7 @@ export default function LearnerDashboardPage() {
       bgColor: 'bg-emerald-50',
     },
     {
-      label: 'Daily streak',
+      label: 'Chuỗi ngày học liên tiếp',
       value: '12 days',
       subtext: 'Personal best!',
       icon: Flame,
@@ -47,7 +47,7 @@ export default function LearnerDashboardPage() {
       bgColor: 'bg-orange-50',
     },
     {
-      label: 'Practice accuracy',
+      label: 'Độ chính xác khi luyện tập',
       value: '84.6%',
       subtext: '168 questions solved',
       icon: TrendingUp,
@@ -58,25 +58,25 @@ export default function LearnerDashboardPage() {
 
   const quickLinks = [
     {
-      title: 'Browse Courses',
-      description: 'Explore C# fundamentals, OOP, LINQ, and ASP.NET Core courses.',
+      title: 'Khám phá khóa học',
+      description: 'Khám phá các khóa học C# cơ bản, lập trình hướng đối tượng, LINQ và ASP.NET Core.',
       href: '/learner/courses',
       icon: Compass,
       buttonText: 'View catalog',
     },
     {
-      title: 'Practice Bank',
+      title: 'Ngân hàng bài luyện tập',
       description: 'Challenge yourself with targeted question drills and weak topic reviews.',
       href: '/learner/practice',
       icon: Target,
-      buttonText: 'Start practice',
+      buttonText: 'Bắt đầu luyện tập',
     },
     {
-      title: 'AI Tutor',
-      description: 'Get instant explanations, code reviews, and debugging help 24/7.',
+      title: 'Trợ giảng trí tuệ nhân tạo',
+      description: 'Nhận giải thích tức thì, góp ý mã nguồn và hỗ trợ gỡ lỗi bất cứ lúc nào.',
       href: '/learner/ai-tutor',
       icon: Bot,
-      buttonText: 'Ask AI',
+      buttonText: 'Hỏi trợ giảng',
     },
   ];
 
@@ -140,7 +140,7 @@ export default function LearnerDashboardPage() {
               Khóa học đang học dở
             </div>
             <h2 className="text-xl font-bold text-[#0f3741] sm:text-2xl">
-              Object-Oriented Programming in C#
+              Lập trình hướng đối tượng với C#
             </h2>
             <p className="text-sm text-slate-600">
               Bài học tiếp theo: <span className="font-semibold text-slate-800">Chương 3 - Abstract Classes & Interfaces trong C#</span>

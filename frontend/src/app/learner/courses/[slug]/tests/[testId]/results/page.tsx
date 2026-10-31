@@ -17,7 +17,7 @@ import { ApiClientError, quizApi } from '@/lib/api';
 import type { QuizItem, QuizResultResponse } from '@/types/quiz';
 
 function errorMessage(error: unknown) {
-  return error instanceof ApiClientError ? error.message : 'Unable to load test results.';
+  return error instanceof ApiClientError ? error.message : 'Không thể tải kết quả bài kiểm tra.';
 }
 
 type QuestionFilter = 'all' | 'incorrect' | 'correct';
@@ -100,7 +100,7 @@ export default function CourseTestResultsPage() {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-2xl rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm">
-        <p className="text-sm font-medium text-slate-500">Loading test results...</p>
+        <p className="text-sm font-medium text-slate-500">Đang tải kết quả bài kiểm tra...</p>
       </div>
     );
   }
@@ -108,12 +108,12 @@ export default function CourseTestResultsPage() {
   if (error || !quiz) {
     return (
       <div className="mx-auto max-w-2xl rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center shadow-sm">
-        <h1 className="text-xl font-bold text-rose-800">Test not found</h1>
+        <h1 className="text-xl font-bold text-rose-800">Không tìm thấy bài kiểm tra</h1>
         <Link
           href={`/learner/courses/${slug}`}
           className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#c93f3a] transition"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to course
+          <ArrowLeft className="h-4 w-4" /> Quay lại khóa học
         </Link>
       </div>
     );
@@ -200,7 +200,7 @@ export default function CourseTestResultsPage() {
                   isPassed ? 'text-emerald-600' : 'text-[#F7444E]'
                 }`}
               >
-                {isPassed ? 'Passed' : 'Failed'}
+                {isPassed ? 'Đạt' : 'Chưa đạt'}
               </span>
             </div>
           </div>
@@ -209,15 +209,15 @@ export default function CourseTestResultsPage() {
           <div className="grid flex-1 grid-cols-3 gap-3">
             <div className="flex flex-col items-center justify-center rounded-2xl border border-emerald-100/80 bg-emerald-50/50 p-4 shadow-sm">
               <span className="text-2xl font-black text-emerald-600">{correctCount}</span>
-              <span className="mt-1 text-xs font-bold uppercase tracking-wider text-emerald-700">Correct</span>
+              <span className="mt-1 text-xs font-bold uppercase tracking-wider text-emerald-700">Đúng</span>
             </div>
             <div className="flex flex-col items-center justify-center rounded-2xl border border-rose-100/80 bg-rose-50/50 p-4 shadow-sm">
               <span className="text-2xl font-black text-rose-600">{incorrectCount}</span>
-              <span className="mt-1 text-xs font-bold uppercase tracking-wider text-rose-700">Incorrect</span>
+              <span className="mt-1 text-xs font-bold uppercase tracking-wider text-rose-700">Sai</span>
             </div>
             <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/60 bg-slate-50/80 p-4 shadow-sm">
               <span className="text-2xl font-black text-slate-700">{totalQuestions}</span>
-              <span className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">Total</span>
+              <span className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">Tổng cộng</span>
             </div>
           </div>
         </div>
@@ -232,7 +232,7 @@ export default function CourseTestResultsPage() {
                 : 'bg-[#F7444E] text-white shadow-sm hover:bg-[#c93f3a]'
             }`}
           >
-            <RotateCcw className="h-4 w-4" /> Retake test
+            <RotateCcw className="h-4 w-4" /> Làm lại bài kiểm tra
           </Link>
           <Link
             href={`/learner/courses/${slug}`}
@@ -242,7 +242,7 @@ export default function CourseTestResultsPage() {
                 : 'border border-slate-200 bg-white text-[#0f3741] hover:bg-slate-50 shadow-sm'
             }`}
           >
-            <ArrowLeft className="h-4 w-4" /> Back to course
+            <ArrowLeft className="h-4 w-4" /> Quay lại khóa học
           </Link>
         </div>
       </div>
@@ -253,7 +253,7 @@ export default function CourseTestResultsPage() {
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-3">
             <div className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-[#F7444E]" />
-              <h2 className="text-xl font-bold text-slate-900">Answers & Explanations</h2>
+              <h2 className="text-xl font-bold text-slate-900">Câu trả lời và giải thích</h2>
             </div>
 
             {/* Filter Tabs */}
@@ -290,7 +290,7 @@ export default function CourseTestResultsPage() {
 
           {filteredQuestions.length === 0 ? (
             <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-sm text-slate-500">
-              No questions found under this filter.
+              Không tìm thấy câu hỏi phù hợp với bộ lọc này.
             </div>
           ) : (
             filteredQuestions.map((item) => {
@@ -326,7 +326,7 @@ export default function CourseTestResultsPage() {
                           : 'bg-rose-50 text-rose-700 border border-rose-200'
                       }`}
                     >
-                      {isCorrectQuestion ? 'Correct' : 'Incorrect'}
+                      {isCorrectQuestion ? 'Đúng' : 'Sai'}
                     </span>
                   </div>
 
@@ -366,17 +366,17 @@ export default function CourseTestResultsPage() {
                           <div className="flex items-center gap-2">
                             {isChosen && !isCorrect && (
                               <span className="rounded-md bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700">
-                                Your answer
+                                Câu trả lời của bạn
                               </span>
                             )}
                             {isChosen && isCorrect && (
                               <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
-                                Your correct answer
+                                Câu trả lời đúng của bạn
                               </span>
                             )}
                             {!isChosen && isCorrect && (
                               <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
-                                Correct answer
+                                Đáp án đúng
                               </span>
                             )}
                           </div>
@@ -388,7 +388,7 @@ export default function CourseTestResultsPage() {
                   {q.explanation && (
                     <div className="mt-4 rounded-xl border border-gray-100 bg-slate-50/90 p-4">
                       <p className="text-xs leading-relaxed text-slate-600">
-                        <span className="font-bold text-slate-800">Explanation: </span>
+                        <span className="font-bold text-slate-800">Giải thích: </span>
                         {q.explanation}
                       </p>
                     </div>

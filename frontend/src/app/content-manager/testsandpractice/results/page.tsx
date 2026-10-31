@@ -58,20 +58,20 @@ const METRICS_DATA: MetricOverview = {
   averageScore: 77,
   scoreGrowth: 3,
   passRate: 82,
-  weakestTopic: 'Polymorphism',
+  weakestTopic: 'Tính đa hình',
 };
 
 const CHART_DATA: TestScoreChartData[] = [
   { label: 'C#', score: 72 },
   { label: 'Variables', score: 86 },
   { label: 'OOP', score: 68 },
-  { label: 'Inheritance', score: 0 },
+  { label: 'Tính kế thừa', score: 0 },
   { label: 'LINQ', score: 70 },
   { label: 'Exception', score: 0 },
 ];
 
 const STRUGGLE_TOPICS: StruggleTopic[] = [
-  { topic: 'Polymorphism', accuracy: 48 },
+  { topic: 'Tính đa hình', accuracy: 48 },
   { topic: 'Interfaces', accuracy: 56 },
   { topic: 'Exception filters', accuracy: 61 },
   { topic: 'LINQ grouping', accuracy: 67 },
@@ -80,43 +80,43 @@ const STRUGGLE_TOPICS: StruggleTopic[] = [
 const RECENT_ATTEMPTS: RecentAttemptSummary[] = [
   {
     id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c11',
-    testTitle: 'C# Fundamentals — Final Assessment',
-    courseName: 'C# Fundamentals',
+    testTitle: 'C# cơ bản — Bài đánh giá cuối khóa',
+    courseName: 'C# cơ bản',
     attemptsCount: 412,
     avgScore: 78,
   },
   {
     id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c12',
-    testTitle: 'Variables & Data Types Quiz',
-    courseName: 'C# Fundamentals',
+    testTitle: 'Trắc nghiệm về biến và kiểu dữ liệu',
+    courseName: 'C# cơ bản',
     attemptsCount: 658,
     avgScore: 86,
   },
   {
     id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c13',
-    testTitle: 'OOP Pillars Checkpoint',
+    testTitle: 'Kiểm tra các trụ cột lập trình hướng đối tượng',
     courseName: 'OOP in C#',
     attemptsCount: 240,
     avgScore: 71,
   },
   {
     id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c14',
-    testTitle: 'Inheritance & Polymorphism Deep Dive',
+    testTitle: 'Tìm hiểu sâu về kế thừa và tính đa hình',
     courseName: 'OOP in C#',
     attemptsCount: 0,
     avgScore: 0,
   },
   {
     id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c15',
-    testTitle: 'LINQ Practice Set',
-    courseName: 'Collections and LINQ',
+    testTitle: 'Bộ bài luyện tập LINQ',
+    courseName: 'Tập hợp và LINQ',
     attemptsCount: 189,
     avgScore: 74,
   },
   {
     id: 'e1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c16',
-    testTitle: 'Exception Handling Mock Test',
-    courseName: 'Exception Handling in C#',
+    testTitle: 'Bài kiểm tra thử về xử lý ngoại lệ',
+    courseName: 'Xử lý ngoại lệ trong C#',
     attemptsCount: 0,
     avgScore: 0,
   },
@@ -131,10 +131,10 @@ export default function ResultsAnalyticsPage() {
       {/* Header Section */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-          Results &amp; analytics
+          Kết quả và thống kê
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          How students are performing across the C# curriculum.
+          Tình hình học tập của học viên trong chương trình C#.
         </p>
       </div>
 
@@ -143,7 +143,7 @@ export default function ResultsAnalyticsPage() {
         {/* Total Attempts */}
         <div className={STYLES.card}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500">Total attempts</span>
+            <span className="text-xs font-semibold text-gray-500">Tổng lượt làm bài</span>
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.attempts.bg}`}
             >
@@ -163,7 +163,7 @@ export default function ResultsAnalyticsPage() {
         {/* Average Score */}
         <div className={STYLES.card}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500">Average score</span>
+            <span className="text-xs font-semibold text-gray-500">Điểm trung bình</span>
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.score.bg}`}
             >
@@ -183,7 +183,7 @@ export default function ResultsAnalyticsPage() {
         {/* Pass Rate */}
         <div className={STYLES.card}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500">Pass rate</span>
+            <span className="text-xs font-semibold text-gray-500">Tỷ lệ đạt</span>
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.passRate.bg}`}
             >
@@ -200,7 +200,7 @@ export default function ResultsAnalyticsPage() {
         {/* Weakest Topic */}
         <div className={STYLES.card}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500">Weakest topic</span>
+            <span className="text-xs font-semibold text-gray-500">Chủ đề cần cải thiện</span>
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center ${STAT_CARD_VARIANTS.weakest.bg}`}
             >
@@ -221,7 +221,7 @@ export default function ResultsAnalyticsPage() {
         <div className={`lg:col-span-7 ${STYLES.card} flex flex-col justify-between`}>
           <div>
             <div className={STYLES.cardHeaderWithDivider}>
-              <h2 className={STYLES.cardTitle}>Average score by test</h2>
+              <h2 className={STYLES.cardTitle}>Điểm trung bình theo bài kiểm tra</h2>
             </div>
 
             <div className="space-y-4 pt-1">
@@ -276,7 +276,7 @@ export default function ResultsAnalyticsPage() {
         <div className={`lg:col-span-5 ${STYLES.card} flex flex-col justify-between`}>
           <div>
             <div className={STYLES.cardHeaderWithDivider}>
-              <h2 className={STYLES.cardTitle}>Topics students struggle with</h2>
+              <h2 className={STYLES.cardTitle}>Chủ đề học viên gặp khó khăn</h2>
             </div>
 
             <div className="space-y-5 pt-1">
@@ -306,17 +306,17 @@ export default function ResultsAnalyticsPage() {
       {/* Bottom Section: Recent attempts Table */}
       <div className={STYLES.card}>
         <div className={STYLES.cardHeaderWithDivider}>
-          <h2 className={STYLES.cardTitle}>Recent attempts</h2>
+          <h2 className={STYLES.cardTitle}>Lượt làm bài gần đây</h2>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-gray-600">
             <thead className={STYLES.tableThead}>
               <tr>
-                <th scope="col" className="pb-3 pr-4 font-semibold">Test</th>
-                <th scope="col" className="pb-3 px-4 font-semibold">Course</th>
-                <th scope="col" className="pb-3 px-4 text-right font-semibold">Attempts</th>
-                <th scope="col" className="pb-3 pl-4 text-right font-semibold">Avg score</th>
+                <th scope="col" className="pb-3 pr-4 font-semibold">Bài kiểm tra</th>
+                <th scope="col" className="pb-3 px-4 font-semibold">Khóa học</th>
+                <th scope="col" className="pb-3 px-4 text-right font-semibold">Lượt làm bài</th>
+                <th scope="col" className="pb-3 pl-4 text-right font-semibold">Điểm trung bình</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-xs sm:text-sm">

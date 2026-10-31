@@ -6,7 +6,7 @@ import { ArrowRight, BookOpen, Clock, Layers, Search } from 'lucide-react';
 import { ApiClientError, courseApi } from '@/lib/api';
 import type { Course } from '@/types/learning-content';
 
-const FILTERS = ['All', 'Beginner', 'Intermediate', 'Advanced'];
+const FILTERS = ['Tất cả', 'Cơ bản', 'Trung cấp', 'Nâng cao'];
 const GRADIENTS = [
   'from-rose-100/80 to-teal-50/80',
   'from-sky-100/80 to-teal-50/80',
@@ -16,7 +16,7 @@ const GRADIENTS = [
 
 export default function BrowseCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
-  const [activeFilter, setActiveFilter] = useState('All');
+  const [activeFilter, setActiveFilter] = useState('Tất cả');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,28 +25,28 @@ export default function BrowseCoursesPage() {
     courseApi.learnerList()
       .then(setCourses)
       .catch((requestError: unknown) => {
-        setError(requestError instanceof ApiClientError ? requestError.message : 'Unable to load courses.');
+        setError(requestError instanceof ApiClientError ? requestError.message : 'Không thể tải khóa học.');
       })
       .finally(() => setIsLoading(false));
   }, []);
 
   const visibleCourses = useMemo(() => courses.filter((course) => {
     const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = activeFilter === 'All' || course.level.toLowerCase() === activeFilter.toLowerCase();
+    const matchesFilter = activeFilter === 'Tất cả' || course.level.toLowerCase() === activeFilter.toLowerCase();
     return matchesSearch && matchesFilter;
   }), [activeFilter, courses, searchQuery]);
 
   return (
     <div className="mx-auto max-w-[1216px] space-y-[22px]">
       <div>
-        <h1 className="text-[32px] font-bold tracking-tight text-[#0f3741]">Browse courses</h1>
+        <h1 className="text-[32px] font-bold tracking-tight text-[#0f3741]">Khám phá khóa học</h1>
         <p className="mt-1 text-sm text-slate-500">Các khóa học đã được xuất bản trong hệ thống.</p>
       </div>
 
       <div className="rounded-2xl border border-[#dfe6df] bg-white p-[14px] shadow-sm">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
-          <input type="text" placeholder="Search courses..." value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="h-[42px] w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-[#78bcc4]" />
+          <input type="text" placeholder="Tìm khóa học..." value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="h-[42px] w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-[#78bcc4]" />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {FILTERS.map((filter) => <button key={filter} onClick={() => setActiveFilter(filter)} className={`rounded-full border px-3 py-[5px] text-xs font-medium ${activeFilter === filter ? 'border-rose-200 bg-rose-50 text-[#f7444e]' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>{filter}</button>)}
@@ -71,7 +71,7 @@ export default function BrowseCoursesPage() {
                 <span className="flex items-center gap-1.5"><Layers className="h-[14px] w-[14px] text-slate-400" />{course.lessons} lessons</span>
                 <span className="flex items-center gap-1.5"><Clock className="h-[14px] w-[14px] text-slate-400" />{course.chapters} chapters</span>
               </div>
-              <div className="border-t border-[#dfe6df] pt-4 text-sm font-bold text-[#f7444e]">Start learning <ArrowRight className="ml-1 inline h-[14px] w-[14px]" /></div>
+              <div className="border-t border-[#dfe6df] pt-4 text-sm font-bold text-[#f7444e]">Bắt đầu học <ArrowRight className="ml-1 inline h-[14px] w-[14px]" /></div>
             </div>
           </Link>
         ))}

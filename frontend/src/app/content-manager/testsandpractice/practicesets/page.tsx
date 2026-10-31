@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { FlaskConical, Plus } from 'lucide-react';
 import { PracticeSetItem } from '@/types/test-and-practice';
 import { DifficultyLevel } from '@/types/question';
+import { vietnameseDifficulty } from '@/lib/ui-labels';
 
 // ==========================================
 // CENTRALIZED STYLES (Đầu file)
@@ -38,23 +39,23 @@ const STYLES = {
 const SAMPLE_PRACTICE_SETS: PracticeSetItem[] = [
   {
     id: 'f1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c01',
-    title: 'C# Fundamentals — Final Assessment',
-    course: 'C# Fundamentals',
+    title: 'C# cơ bản — Bài đánh giá cuối khóa',
+    course: 'C# cơ bản',
     questionCount: 40,
     difficulty: 'medium',
     averageScore: 78,
   },
   {
     id: 'f1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c02',
-    title: 'Variables & Data Types Quiz',
-    course: 'C# Fundamentals',
+    title: 'Trắc nghiệm về biến và kiểu dữ liệu',
+    course: 'C# cơ bản',
     questionCount: 15,
     difficulty: 'easy',
     averageScore: 86,
   },
   {
     id: 'f1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c03',
-    title: 'OOP Pillars Checkpoint',
+    title: 'Kiểm tra các trụ cột lập trình hướng đối tượng',
     course: 'OOP in C#',
     questionCount: 25,
     difficulty: 'medium',
@@ -62,7 +63,7 @@ const SAMPLE_PRACTICE_SETS: PracticeSetItem[] = [
   },
   {
     id: 'f1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c04',
-    title: 'Inheritance & Polymorphism Deep Dive',
+    title: 'Tìm hiểu sâu về kế thừa và tính đa hình',
     course: 'OOP in C#',
     questionCount: 30,
     difficulty: 'hard',
@@ -70,16 +71,16 @@ const SAMPLE_PRACTICE_SETS: PracticeSetItem[] = [
   },
   {
     id: 'f1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c05',
-    title: 'LINQ Practice Set',
-    course: 'Collections and LINQ',
+    title: 'Bộ bài luyện tập LINQ',
+    course: 'Tập hợp và LINQ',
     questionCount: 20,
     difficulty: 'medium',
     averageScore: 74,
   },
   {
     id: 'f1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c06',
-    title: 'Exception Handling Mock Test',
-    course: 'Exception Handling in C#',
+    title: 'Bài kiểm tra thử về xử lý ngoại lệ',
+    course: 'Xử lý ngoại lệ trong C#',
     questionCount: 18,
     difficulty: 'hard',
     averageScore: 0,
@@ -90,7 +91,7 @@ const SAMPLE_PRACTICE_SETS: PracticeSetItem[] = [
 // SUB-COMPONENTS
 // ==========================================
 function DifficultyBadge({ level }: { level: DifficultyLevel }) {
-  const formatted = level.charAt(0).toUpperCase() + level.slice(1);
+  const formatted = vietnameseDifficulty(level);
   return (
     <span
       className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold capitalize ${STYLES.difficultyBadges[level]}`}
@@ -116,10 +117,10 @@ export default function PracticeSetsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-            Practice sets
+            Bộ bài luyện tập
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Untimed drills students can repeat as often as they like.
+            Bài luyện tập không giới hạn thời gian, học viên có thể làm lại tùy thích.
           </p>
         </div>
 
@@ -130,7 +131,7 @@ export default function PracticeSetsPage() {
             className={STYLES.primaryBtn}
           >
             <Plus className="h-4 w-4" />
-            New practice set
+            Tạo bộ bài luyện tập
           </button>
         </div>
       </div>
@@ -160,7 +161,7 @@ export default function PracticeSetsPage() {
             {/* Footer: Average Score & Progress Bar */}
             <div className="pt-2">
               <div className="flex items-center justify-between text-xs text-gray-500">
-                <span>Average score</span>
+                <span>Điểm trung bình</span>
                 <span className="font-medium text-gray-600">
                   {item.averageScore}%
                 </span>

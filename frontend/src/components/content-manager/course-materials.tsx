@@ -12,16 +12,16 @@ export default function CourseMaterials({ courseId }: { courseId: string | numbe
   useEffect(() => {
     let active = true;
     materialApi.list().then((all) => { if (active) setItems(all.filter((item) => item.course_id === String(courseId))); })
-      .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'Unable to load materials'); })
+      .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'Không thể tải tài liệu.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [courseId]);
 
   return <section className="rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-sm">
-    <h2 className="font-semibold text-[#002C3E]">Lesson materials</h2>
-    <p className="mt-1 text-sm text-[#637981]">Open a lesson to upload or manage its files.</p>
+    <h2 className="font-semibold text-[#002C3E]">Tài liệu bài học</h2>
+    <p className="mt-1 text-sm text-[#637981]">Mở bài học để tải lên hoặc quản lý tệp.</p>
     {error && <p role="alert" className="mt-4 text-sm text-red-600">{error}</p>}
-    {loading ? <p className="mt-5 text-sm text-[#637981]">Loading…</p> : items.length === 0 ? <p className="mt-5 text-sm text-[#637981]">No files in this course yet.</p> :
+    {loading ? <p className="mt-5 text-sm text-[#637981]">Loading…</p> : items.length === 0 ? <p className="mt-5 text-sm text-[#637981]">Khóa học này chưa có tệp nào.</p> :
       <ul className="mt-5 divide-y divide-[#dfe6df]">{items.map((item) => <li key={item.id}>
         <Link href={`/content-manager/learning-content/lessons/${item.lesson_id}`} className="flex items-center gap-3 py-3 hover:text-[#F7444E]">
           <span className="text-[#F7444E]"><MaterialIcon type={item.file_type} /></span>

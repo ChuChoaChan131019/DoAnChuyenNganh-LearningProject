@@ -10,19 +10,19 @@ import {
 
 const stats = [
   {
-    label: "Total courses",
+    label: "Tổng số khóa học",
     value: "24",
     delta: "+3 this month",
     icon: BookOpen,
   },
   {
-    label: "Total lessons",
+    label: "Tổng số bài học",
     value: "126",
     delta: "+18 this month",
     icon: FileText,
   },
   {
-    label: "Total questions",
+    label: "Tổng số câu hỏi",
     value: "965",
     delta: "+153 this month",
     icon: FileQuestion,
@@ -34,13 +34,13 @@ const stats = [
     icon: Rocket,
   },
   {
-    label: "Drafts",
+    label: "Bản nháp",
     value: "26",
     delta: "",
     icon: PenLine,
   },
   {
-    label: "AI generated",
+    label: "Tạo tự động",
     value: "268",
     delta: "27.8% of bank",
     icon: Sparkles,
@@ -53,20 +53,20 @@ export default function ContentManagerPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Content Dashboard
+            Bảng điều khiển nội dung
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Everything your team is building for the C# curriculum.
+            Tổng quan nội dung C# mà nhóm đang xây dựng.
           </p>
         </div>
 
         <div className="flex gap-2">
           <button className="rounded-xl border px-4 py-2 text-sm">
-            Generate with AI
+            Tạo bằng trí tuệ nhân tạo
           </button>
 
           <button className="rounded-xl bg-primary px-4 py-2 text-sm text-white">
-            + New course
+            + Tạo khóa học
           </button>
         </div>
       </header>
@@ -100,9 +100,9 @@ export default function ContentManagerPage() {
 
       <section className="grid gap-4 xl:grid-cols-3">
         <div className="min-h-[320px] rounded-2xl border bg-card p-5 xl:col-span-2">
-          <h2 className="font-semibold">Content growth</h2>
+          <h2 className="font-semibold">Tăng trưởng nội dung</h2>
           <p className="text-sm text-muted-foreground">
-            Lessons and questions produced per month
+            Số bài học và câu hỏi được tạo mỗi tháng
           </p>
 
           <div className="mt-8 flex h-56 items-end gap-3">
@@ -117,17 +117,17 @@ export default function ContentManagerPage() {
         </div>
 
         <div className="min-h-[320px] rounded-2xl border bg-card p-5">
-          <h2 className="font-semibold">Content status</h2>
+          <h2 className="font-semibold">Trạng thái nội dung</h2>
           <p className="text-sm text-muted-foreground">
-            Distribution across workflow
+            Phân bố theo quy trình
           </p>
 
           <div className="mx-auto mt-10 h-40 w-40 rounded-full border-[28px] border-warning border-r-primary border-b-brand" />
 
           <div className="mt-6 flex justify-center gap-3 text-xs">
-            <span>Published</span>
-            <span>Approved</span>
-            <span>Draft</span>
+            <span>Đã xuất bản</span>
+            <span>Đã duyệt</span>
+            <span>Bản nháp</span>
           </div>
         </div>
       </section>
@@ -136,9 +136,9 @@ export default function ContentManagerPage() {
         <div className="flex items-center gap-3">
           <Activity className="h-5 w-5 text-primary" />
           <div>
-            <h2 className="font-semibold">Recent activity</h2>
+            <h2 className="font-semibold">Hoạt động gần đây</h2>
             <p className="text-sm text-muted-foreground">
-              Latest changes across the curriculum
+              Các cập nhật mới nhất trong chương trình học
             </p>
           </div>
         </div>

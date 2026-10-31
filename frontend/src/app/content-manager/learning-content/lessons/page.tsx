@@ -14,6 +14,7 @@ const statusStyles: Record<ContentStatus, string> = {
   "In review": "border-amber-200 bg-amber-50 text-amber-700",
   Draft: "border-slate-200 bg-slate-100 text-slate-600",
 };
+const statusLabels: Record<ContentStatus, string> = { Published: "Đã xuất bản", Approved: "Đã duyệt", "In review": "Đang chờ duyệt", Draft: "Bản nháp" };
 
 function StatusBadge({ status }: { status: ContentStatus }) {
   return (
@@ -21,7 +22,7 @@ function StatusBadge({ status }: { status: ContentStatus }) {
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusStyles[status]}`}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
-      {status}
+      {statusLabels[status]}
     </span>
   );
 }
@@ -60,7 +61,7 @@ export default function LessonsPage() {
       })
       .catch(() => {
         if (isActive) {
-          setLoadError("Unable to load lessons.");
+          setLoadError("Không thể tải danh sách bài học.");
           setIsLoading(false);
         }
       });
@@ -93,7 +94,7 @@ export default function LessonsPage() {
         ? { ...row, status: action === "approve" ? "Approved" : "Published" }
         : row));
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Unable to change lesson status.");
+      setActionError(error instanceof Error ? error.message : "Không thể thay đổi trạng thái bài học.");
     } finally {
       setBusyId(null);
     }
@@ -104,10 +105,10 @@ export default function LessonsPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-[#002C3E]">
-            Lessons
+            Bài học
           </h1>
           <p className="mt-1 text-sm text-[#637981]">
-            All C# lesson content, from “What is C#?” to “async / await”.
+            Toàn bộ nội dung bài học C#, từ câu hỏi “C# là gì?” đến “async / await”.
           </p>
         </div>
         <Link
@@ -115,19 +116,19 @@ export default function LessonsPage() {
           className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#F7444E] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#df3540]"
         >
           <Plus className="h-4 w-4" />
-          New lesson
+          Tạo bài học
         </Link>
       </header>
       <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-[0_8px_24px_rgba(0,44,62,0.06)]">
         {actionError && <p role="alert" className="border-b border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700">{actionError}</p>}
         <div className="border-b border-[#dfe6df] px-4 py-4 sm:px-5">
           <label className="relative block w-full max-w-[348px]">
-            <span className="sr-only">Search lessons</span>
+            <span className="sr-only">Tìm bài học</span>
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71878c]" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search lessons..."
+              placeholder="Tìm bài học..."
               className="h-10 w-full rounded-xl border border-[#dfe6df] pl-10 pr-3 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
             />
           </label>
@@ -135,7 +136,7 @@ export default function LessonsPage() {
         <div>
           {isLoading && (
             <p className="px-5 py-12 text-center text-sm text-[#637981]">
-              Loading lessons...
+              Đang tải bài học...
             </p>
           )}
           {!isLoading && loadError && (
@@ -151,17 +152,17 @@ export default function LessonsPage() {
               </Link>
               <div className="flex shrink-0 items-center gap-3">
                 <span className="hidden items-center gap-1 text-xs text-[#637981] sm:flex"><Clock3 className="h-3.5 w-3.5" />{lesson.duration}</span>
-                {lesson.ai && <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 text-[11px] font-semibold text-cyan-700">✣ AI</span>}
+                {lesson.ai && <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 text-[11px] font-semibold text-cyan-700">✣ Tự động</span>}
                 <StatusBadge status={lesson.status} />
-                {lesson.status === "Draft" && <button type="button" onClick={() => void changeStatus(lesson, "approve")} disabled={!!busyId} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#F7444E] px-3 text-xs font-semibold text-white disabled:opacity-50"><Check className="h-3.5 w-3.5" />Approve</button>}
-                {lesson.status === "Approved" && <button type="button" onClick={() => void changeStatus(lesson, "publish")} disabled={!!busyId} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#14919B] px-3 text-xs font-semibold text-white disabled:opacity-50"><Globe2 className="h-3.5 w-3.5" />Publish</button>}
+                {lesson.status === "Draft" && <button type="button" onClick={() => void changeStatus(lesson, "approve")} disabled={!!busyId} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#F7444E] px-3 text-xs font-semibold text-white disabled:opacity-50"><Check className="h-3.5 w-3.5" />Duyệt</button>}
+                {lesson.status === "Approved" && <button type="button" onClick={() => void changeStatus(lesson, "publish")} disabled={!!busyId} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#14919B] px-3 text-xs font-semibold text-white disabled:opacity-50"><Globe2 className="h-3.5 w-3.5" />Xuất bản</button>}
               </div>
             </div>
           ))}
         </div>
         {!isLoading && !loadError && filteredLessons.length === 0 && (
           <p className="px-5 py-12 text-center text-sm text-[#637981]">
-            No lessons found.
+            Không tìm thấy bài học.
           </p>
         )}
       </section>

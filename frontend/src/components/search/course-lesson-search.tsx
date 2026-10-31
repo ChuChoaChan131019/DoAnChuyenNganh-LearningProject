@@ -4,9 +4,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { BookOpen, Check, ChevronDown, FileText, Search } from 'lucide-react';
 import { ApiClientError, courseApi } from '@/lib/api';
+import { vietnameseStatus } from '@/lib/ui-labels';
 import type { Course } from '@/types/learning-content';
 
-type SearchKind = 'all' | 'courses' | 'chapters' | 'lessons' | 'questions' | 'resources';
+type SearchKind = 'all' | 'khóa học' | 'chương' | 'bài học' | 'câu hỏi' | 'resources';
 
 type LessonResult = {
   id: string;
@@ -66,7 +67,7 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
       })
       .catch((requestError: unknown) => {
         if (active) {
-          setError(requestError instanceof ApiClientError ? requestError.message : 'Unable to load searchable content.');
+          setError(requestError instanceof ApiClientError ? requestError.message : 'Không thể tải nội dung để tìm kiếm.');
         }
       })
       .finally(() => {
@@ -94,29 +95,29 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
       .some((value) => value.toLowerCase().includes(term)));
   }, [lessons, query]);
 
-  const showCourses = kind === 'all' || kind === 'courses';
-  const showChapters = kind === 'all' || kind === 'chapters';
-  const showLessons = kind === 'all' || kind === 'lessons';
-  const showQuestions = kind === 'all' || kind === 'questions';
+  const showCourses = kind === 'all' || kind === 'khóa học';
+  const showChapters = kind === 'all' || kind === 'chương';
+  const showLessons = kind === 'all' || kind === 'bài học';
+  const showQuestions = kind === 'all' || kind === 'câu hỏi';
   const showResources = kind === 'all' || kind === 'resources';
   const resultCount = (showCourses ? visibleCourses.length : 0) + (showLessons ? visibleLessons.length : 0);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-12">
       <header>
-        <h1 className="text-3xl font-bold tracking-tight text-[#002c3e]">Search</h1>
-        <p className="mt-2 text-sm text-slate-500">One search across courses, chapters, lessons, resources and questions.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-[#002c3e]">Tìm kiếm</h1>
+        <p className="mt-2 text-sm text-slate-500">Tìm kiếm khóa học, chương, bài học, tài liệu và câu hỏi tại cùng một nơi.</p>
       </header>
 
       <section className="flex flex-col gap-3 rounded-2xl border border-[#dfe6df] bg-white p-3 shadow-sm sm:flex-row">
         <label className="relative flex-1">
-          <span className="sr-only">Search courses or lessons</span>
+          <span className="sr-only">Tìm khóa học hoặc bài học</span>
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             autoFocus
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder='Try "polymorphism", "LINQ", "async"...'
+            placeholder='Thử tìm "đa hình", "LINQ", "async"...'
             className="h-11 w-full rounded-xl border border-rose-300 px-10 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-rose-500/20"
           />
         </label>
@@ -125,11 +126,11 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
           onChange={(value) => setKind(value as SearchKind)}
           options={[
             ['all', 'All content types'],
-            ['courses', 'Courses'],
-            ['chapters', 'Chapters'],
-            ['lessons', 'Lessons'],
-            ['questions', 'Questions'],
-            ['resources', 'Resources'],
+            ['khóa học', 'Khóa học'],
+            ['chương', 'Chương'],
+            ['bài học', 'Bài học'],
+            ['câu hỏi', 'Câu hỏi'],
+            ['resources', 'Tài liệu'],
           ]}
         />
         <FilterDropdown
@@ -137,17 +138,17 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
           onChange={setLevel}
           options={[
             ['all', 'Any level'],
-            ['beginner', 'Beginner'],
-            ['intermediate', 'Intermediate'],
-            ['advanced', 'Advanced'],
+            ['beginner', 'Cơ bản'],
+            ['intermediate', 'Trung cấp'],
+            ['advanced', 'Nâng cao'],
           ]}
         />
       </section>
 
-      {loading && <p className="text-sm text-slate-500">Loading content...</p>}
-      {!loading && loadingLessons && showLessons && <p className="text-sm text-slate-500">Loading lessons...</p>}
+      {loading && <p className="text-sm text-slate-500">Đang tải nội dung...</p>}
+      {!loading && loadingLessons && showLessons && <p className="text-sm text-slate-500">Đang tải bài học...</p>}
       {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}
-      {!loading && !loadingLessons && !error && resultCount === 0 && !showChapters && !showQuestions && !showResources && <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-sm text-slate-500">No courses or lessons match your search.</div>}
+      {!loading && !loadingLessons && !error && resultCount === 0 && !showChapters && !showQuestions && !showResources && <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-sm text-slate-500">Không tìm thấy khóa học hoặc bài học phù hợp.</div>}
 
       {!loading && !error && (resultCount > 0 || showChapters || showQuestions || showResources) && (
         <div className="space-y-6">
@@ -157,16 +158,16 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
               {!learner && <StatusBadge status={course.status} />}
             </Link>)}
           </ResultSection>}
-          {showChapters && <ResultSection title="Chapters" emptyMessage="No chapters available yet." />}
-          {showLessons && <ResultSection title={`Lessons · ${visibleLessons.length}`} emptyMessage="No lessons match your search.">
+          {showChapters && <ResultSection title="Chương" emptyMessage="No chapters available yet." />}
+          {showLessons && <ResultSection title={`Lessons · ${visibleLessons.length}`} emptyMessage="Chưa có bài học match your search.">
             {visibleLessons.map((lesson) => <Link key={lesson.id} href={learner ? `/learner/courses/${lesson.courseSlug}/lessons/${lesson.id}` : `/content-manager/learning-content/lessons/${lesson.id}`} className="flex items-center gap-3 px-6 py-4 hover:bg-slate-50">
               <FileText className="h-4 w-4 shrink-0 text-[#78bcc4]" />
               <span className="min-w-0 flex-1 text-sm font-medium text-slate-700"><span className="block truncate">{lesson.title}</span><span className="mt-1 block truncate text-xs font-normal text-slate-400">{lesson.courseTitle} · {lesson.chapterTitle}</span></span>
               {!learner && <StatusBadge status={lesson.status} />}
             </Link>)}
           </ResultSection>}
-          {showQuestions && <ResultSection title="Questions" emptyMessage="No questions available yet." />}
-          {showResources && <ResultSection title="Resources" emptyMessage="No resources available yet." />}
+          {showQuestions && <ResultSection title="Câu hỏi" emptyMessage="No questions available yet." />}
+          {showResources && <ResultSection title="Tài liệu" emptyMessage="No resources available yet." />}
         </div>
       )}
     </div>
@@ -179,7 +180,7 @@ function ResultSection({ title, emptyMessage, children }: { title: string; empty
 
 function StatusBadge({ status }: { status: string }) {
   const normalizedStatus = status.replace('_', ' ').toLowerCase();
-  const label = normalizedStatus.replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const label = vietnameseStatus(normalizedStatus);
   const styles = normalizedStatus === 'published'
     ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
     : normalizedStatus === 'approved'
