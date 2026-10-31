@@ -7,12 +7,13 @@ import { Clock3, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { ApiClientError, quizApi } from '@/lib/api';
 import type { QuizAttempt, QuizAttemptQuestion, QuizAnswerSubmission } from '@/types/quiz';
 import type { DifficultyLevel, QuestionType } from '@/types/question';
+import { vietnameseDifficulty } from '@/lib/ui-labels';
 
 const TYPE_LABELS: Record<QuestionType, string> = {
-  single_choice: 'Single Choice',
-  multiple_choice: 'Multiple Choice',
-  true_false: 'True / False',
-  fill_in_blank: 'Fill in the Blank',
+  single_choice: 'Một đáp án',
+  multiple_choice: 'Nhiều đáp án',
+  true_false: 'Đúng / Sai',
+  fill_in_blank: 'Điền vào chỗ trống',
 };
 
 const DIFFICULTY_STYLES: Record<DifficultyLevel, string> = {
@@ -25,13 +26,13 @@ function DifficultyBadge({ difficulty }: { difficulty?: DifficultyLevel }) {
   const level = difficulty || 'medium';
   return (
     <span className={`rounded-md border px-2 py-0.5 text-xs font-semibold ${DIFFICULTY_STYLES[level]}`}>
-      {level.charAt(0).toUpperCase() + level.slice(1)}
+      {vietnameseDifficulty(level)}
     </span>
   );
 }
 
 function errorMessage(error: unknown) {
-  return error instanceof ApiClientError ? error.message : 'Unable to initialize the quiz.';
+  return error instanceof ApiClientError ? error.message : 'Không thể khởi tạo bài trắc nghiệm.';
 }
 
 const attemptPromises: Record<string, Promise<any>> = {};
@@ -88,7 +89,7 @@ export default function CourseTestTakePage() {
               const q = item.questions || item;
               return {
                 question_id: String(item.question_id || q.id),
-                content: q.content || 'Question',
+                content: q.content || 'Câu hỏi',
                 question_type: (q.question_type || 'single_choice') as QuestionType,
                 difficulty: (q.difficulty || 'medium') as DifficultyLevel,
                 options: (q.options || q.question_options || []).map((o: any, idx: number) => ({
@@ -216,7 +217,7 @@ export default function CourseTestTakePage() {
   if (isLoading || !attempt) {
     return (
       <div className="mx-auto max-w-2xl rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm">
-        <p className="text-sm font-medium text-slate-500">Initializing quiz questions...</p>
+        <p className="text-sm font-medium text-slate-500">Đang chuẩn bị câu hỏi...</p>
       </div>
     );
   }
@@ -224,13 +225,13 @@ export default function CourseTestTakePage() {
   if (error || !attempt.questions || attempt.questions.length === 0) {
     return (
       <div className="mx-auto max-w-2xl rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center shadow-sm">
-        <h2 className="text-lg font-bold text-rose-700">No questions available</h2>
+        <h2 className="text-lg font-bold text-rose-700">Không có câu hỏi nào</h2>
         <p className="mt-2 text-sm text-rose-600">{error || 'This quiz does not have any questions assigned yet.'}</p>
         <Link
           href={`/learner/courses/${slug}`}
           className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#c93f3a]"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to course
+          <ArrowLeft className="h-4 w-4" /> Quay lại khóa học
         </Link>
       </div>
     );
@@ -256,7 +257,7 @@ export default function CourseTestTakePage() {
             href={`/learner/courses/${slug}`}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Exit test
+            <ArrowLeft className="h-3.5 w-3.5" /> Thoát bài kiểm tra
           </Link>
           <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
             {quizDetails?.title || attempt.quiz_title || 'Quiz Assessment'}
@@ -337,7 +338,7 @@ export default function CourseTestTakePage() {
             onClick={() => setCurrentIndex((idx) => idx - 1)}
             className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Previous
+            <ArrowLeft className="h-3.5 w-3.5" /> Trước đó
           </button>
 
           <div className="flex items-center gap-3">
@@ -348,7 +349,7 @@ export default function CourseTestTakePage() {
                 onClick={() => void handleSubmitQuiz()}
                 className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#c93f3a] disabled:opacity-50"
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Quiz'}
+                {isSubmitting ? 'Đang gửi...' : 'Submit Quiz'}
               </button>
             ) : (
               <button
@@ -356,7 +357,7 @@ export default function CourseTestTakePage() {
                 onClick={() => setCurrentIndex((idx) => idx + 1)}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-[#F7444E] px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#c93f3a]"
               >
-                Next question <ArrowRight className="h-3.5 w-3.5" />
+                Câu hỏi tiếp theo <ArrowRight className="h-3.5 w-3.5" />
               </button>
             )}
           </div>

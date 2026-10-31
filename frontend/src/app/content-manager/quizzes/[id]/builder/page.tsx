@@ -6,13 +6,14 @@ import { ArrowDown, ArrowUp, BookOpen, Check, Layers, Plus, Save, Trash2 } from 
 import { ApiClientError, questionApi, quizApi } from '@/lib/api';
 import type { ChapterOption, CourseOption, LessonOption, QuestionItem, QuestionType } from '@/types/question';
 import type { QuizItem, QuizStatus, QuizType, QuizVisibility } from '@/types/quiz';
+import { vietnameseDifficulty } from '@/lib/ui-labels';
 
 
 const TYPE_LABELS: Record<QuestionType, string> = {
-  single_choice: 'Single Choice',
-  multiple_choice: 'Multiple Choice',
-  true_false: 'True / False',
-  fill_in_blank: 'Fill in the Blank',
+  single_choice: 'Một đáp án',
+  multiple_choice: 'Nhiều đáp án',
+  true_false: 'Đúng / Sai',
+  fill_in_blank: 'Điền vào chỗ trống',
 };
 
 type AssignedQuestion = { question: QuestionItem; score_weight: number };
@@ -38,7 +39,7 @@ const inputClass =
   'w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-800 outline-none transition focus:border-[#F7444E] focus:ring-2 focus:ring-[#F7444E]/20 disabled:bg-gray-50';
 
 function getErrorMessage(error: unknown) {
-  return error instanceof ApiClientError ? error.message : 'Unable to complete the request. Please try again.';
+  return error instanceof ApiClientError ? error.message : 'Không thể hoàn tất yêu cầu. Vui lòng thử lại.';
 }
 
 function QuestionMeta({ question }: { question: QuestionItem }) {
@@ -48,7 +49,7 @@ function QuestionMeta({ question }: { question: QuestionItem }) {
         {TYPE_LABELS[question.question_type] || question.question_type}
       </span>
       <span className="rounded-md border border-amber-200/70 bg-amber-50 px-2 py-0.5 text-amber-700 capitalize">
-        {question.difficulty}
+        {vietnameseDifficulty(question.difficulty)}
       </span>
       {question.lesson?.title && <span>{question.lesson.title}</span>}
     </div>
@@ -81,7 +82,7 @@ export default function QuizBuilderPage() {
 
   const [quiz, setQuiz] = useState<QuizItem | null>(null);
   const [settings, setSettings] = useState<SettingsState>({
-    title: 'Untitled Quiz',
+    title: 'Bài kiểm tra chưa đặt tên',
     description: '',
     course_id: '',
     chapter_id: null,
@@ -287,22 +288,22 @@ export default function QuizBuilderPage() {
     const selectedCourse = courses.find((course) => course.id === settings.course_id);
     const selectedChapter = chapters.find((chapter) => chapter.id === settings.chapter_id);
 
-    if (!settings.title.trim()) return setError('Title is required.');
-    if (!selectedCourse) return setError('Select a valid course.');
+    if (!settings.title.trim()) return setError('Vui lòng nhập tiêu đề.');
+    if (!selectedCourse) return setError('Vui lòng chọn khóa học hợp lệ.');
     if (settings.chapter_id && (!selectedChapter || selectedChapter.course_id !== settings.course_id)) {
-      return setError('Select a valid chapter for the selected course.');
+      return setError('Vui lòng chọn chương hợp lệ trong khóa học đã chọn.');
     }
     if (
       settings.duration_minutes !== null &&
       (!Number.isInteger(settings.duration_minutes) || settings.duration_minutes < 1)
     ) {
-      return setError('Duration must be a positive whole number or unlimited.');
+      return setError('Thời lượng phải là số nguyên dương hoặc không giới hạn.');
     }
     if (settings.pass_percentage < 0 || settings.pass_percentage > 100) {
-      return setError('Pass score (%) must be between 0 and 100.');
+      return setError('Điểm đạt (%) phải nằm trong khoảng từ 0 đến 100.');
     }
     if (assignedQuestions.some((item) => !Number.isFinite(item.score_weight) || item.score_weight < 0.1)) {
-      return setError('Each question score must be at least 0.1.');
+      return setError('Điểm của mỗi câu hỏi phải từ 0,1 trở lên.');
     }
 
     setIsSaving(true);
@@ -350,7 +351,7 @@ export default function QuizBuilderPage() {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-7xl p-8 text-sm text-gray-500">
-        Loading quiz builder...
+        Đang tải công cụ tạo bài kiểm tra...
       </div>
     );
   }
@@ -361,10 +362,10 @@ export default function QuizBuilderPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-              Test Setting
+              Cài đặt bài kiểm tra
             </h1>
             <p className="mt-1 text-sm text-gray-500">
-              Configure information, delivery rules, and approved questions.
+              Thiết lập thông tin, cách tổ chức và câu hỏi đã duyệt.
             </p>
           </div>
           <button
@@ -374,7 +375,7 @@ export default function QuizBuilderPage() {
             className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#d93e47] disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
-            {isSaving ? 'Saving...' : 'Save quiz'}
+            {isSaving ? 'Đang lưu...' : 'Save quiz'}
           </button>
         </div>
       </header>
@@ -394,11 +395,11 @@ export default function QuizBuilderPage() {
       <section className="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
         <div className="mb-5 flex items-center gap-2 border-b border-gray-100 pb-4">
           <Layers className="h-5 w-5 text-[#F7444E]" />
-          <h2 className="font-semibold text-gray-900">Quiz information and settings</h2>
+          <h2 className="font-semibold text-gray-900">Thông tin và cài đặt bài kiểm tra</h2>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <label className="lg:col-span-2">
-            <span className="label">Title</span>
+            <span className="label">Tiêu đề</span>
             <input
               className={inputClass}
               value={settings.title}
@@ -406,18 +407,18 @@ export default function QuizBuilderPage() {
             />
           </label>
           <label>
-            <span className="label">Quiz type</span>
+            <span className="label">Loại bài kiểm tra</span>
             <select
               className={inputClass}
               value={settings.quiz_type}
               onChange={(e) => updateSettings('quiz_type', e.target.value as QuizType)}
             >
-              <option value="exam">Exam</option>
-              <option value="exercise">Exercise</option>
+              <option value="exam">Bài thi</option>
+              <option value="exercise">Bài tập</option>
             </select>
           </label>
           <label className="md:col-span-2 lg:col-span-3">
-            <span className="label">Description</span>
+            <span className="label">Mô tả</span>
             <textarea
               className={`${inputClass} min-h-20`}
               value={settings.description}
@@ -425,13 +426,13 @@ export default function QuizBuilderPage() {
             />
           </label>
           <label>
-            <span className="label">Course</span>
+            <span className="label">Khóa học</span>
             <select
               className={inputClass}
               value={settings.course_id}
               onChange={(e) => handleSettingsCourse(e.target.value)}
             >
-              <option value="">Select course</option>
+              <option value="">Chọn khóa học</option>
               {courses.map((course) => (
                 <option key={course.id} value={course.id}>
                   {course.title}
@@ -440,14 +441,14 @@ export default function QuizBuilderPage() {
             </select>
           </label>
           <label>
-            <span className="label">Chapter</span>
+            <span className="label">Chương</span>
             <select
               className={inputClass}
               value={settings.chapter_id ?? ''}
               disabled={!settings.course_id || isLoadingPlacement}
               onChange={(e) => handleSettingsChapter(e.target.value)}
             >
-              <option value="">Whole course</option>
+              <option value="">Toàn khóa học</option>
               {chapters.map((chapter) => (
                 <option key={chapter.id} value={chapter.id}>
                   {chapter.title}
@@ -456,19 +457,19 @@ export default function QuizBuilderPage() {
             </select>
           </label>
           <label>
-            <span className="label">Status</span>
+            <span className="label">Trạng thái</span>
             <select
               className={inputClass}
               value={settings.status}
               onChange={(e) => updateSettings('status', e.target.value as QuizStatus)}
             >
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-              <option value="archived">Archived</option>
+              <option value="draft">Bản nháp</option>
+              <option value="published">Đã xuất bản</option>
+              <option value="archived">Đã lưu trữ</option>
             </select>
           </label>
           <label>
-            <span className="label">Duration (minutes)</span>
+            <span className="label">Thời lượng (phút)</span>
             <div className="flex gap-2">
               <input
                 className={`${inputClass} flex-1`}
@@ -493,7 +494,7 @@ export default function QuizBuilderPage() {
             </div>
           </label>
           <label>
-            <span className="label">Pass score (%)</span>
+            <span className="label">Điểm đạt (%)</span>
             <input
               className={inputClass}
               type="number"
@@ -505,14 +506,14 @@ export default function QuizBuilderPage() {
             />
           </label>
           <label>
-            <span className="label">Visibility</span>
+            <span className="label">Chế độ hiển thị</span>
             <select
               className={inputClass}
               value={settings.visibility}
               onChange={(e) => updateSettings('visibility', e.target.value as QuizVisibility)}
             >
-              <option value="private">Private</option>
-              <option value="public">Public</option>
+              <option value="private">Riêng tư</option>
+              <option value="public">Công khai</option>
             </select>
           </label>
         </div>
@@ -525,7 +526,7 @@ export default function QuizBuilderPage() {
               checked={settings.shuffle_questions}
               onChange={(e) => updateSettings('shuffle_questions', e.target.checked)}
             />
-            Shuffle questions
+            Xáo trộn câu hỏi
           </label>
           <label className="inline-flex items-center gap-2 cursor-pointer">
             <input
@@ -534,7 +535,7 @@ export default function QuizBuilderPage() {
               checked={settings.shuffle_options}
               onChange={(e) => updateSettings('shuffle_options', e.target.checked)}
             />
-            Shuffle options
+            Xáo trộn phương án
           </label>
           <label className="inline-flex items-center gap-2 cursor-pointer">
             <input
@@ -543,7 +544,7 @@ export default function QuizBuilderPage() {
               checked={settings.is_active}
               onChange={(e) => updateSettings('is_active', e.target.checked)}
             />
-            Is Active
+            Đang hoạt động
           </label>
           <label className="inline-flex items-center gap-2 cursor-pointer">
             <input
@@ -552,7 +553,7 @@ export default function QuizBuilderPage() {
               checked={settings.is_required}
               onChange={(e) => updateSettings('is_required', e.target.checked)}
             />
-            Required
+            Bắt buộc
           </label>
           <label className="inline-flex items-center gap-2 cursor-pointer">
             <input
@@ -561,7 +562,7 @@ export default function QuizBuilderPage() {
               checked={settings.counts_toward_progress}
               onChange={(e) => updateSettings('counts_toward_progress', e.target.checked)}
             />
-            Counts toward progress
+            Tính vào tiến độ học tập
           </label>
         </div>
       </section>
@@ -574,9 +575,9 @@ export default function QuizBuilderPage() {
             <div>
               <div className="flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-[#F7444E]" />
-                <h2 className="font-semibold text-gray-900">Question bank</h2>
+                <h2 className="font-semibold text-gray-900">Ngân hàng câu hỏi</h2>
               </div>
-              <p className="mt-1 text-xs text-gray-500">Only approved questions are shown.</p>
+              <p className="mt-1 text-xs text-gray-500">Chỉ hiển thị câu hỏi đã duyệt.</p>
             </div>
             <span className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-[#F7444E]">
               {filteredQuestions.length} available
@@ -585,9 +586,9 @@ export default function QuizBuilderPage() {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label>
-              <span className="label">Course</span>
+              <span className="label">Khóa học</span>
               <select className={inputClass} value={courseFilter} onChange={(e) => void handleFilterCourse(e.target.value)}>
-                <option value="">All courses</option>
+                <option value="">Tất cả khóa học</option>
                 {courses.map((course) => (
                   <option key={course.id} value={course.id}>
                     {course.title}
@@ -596,14 +597,14 @@ export default function QuizBuilderPage() {
               </select>
             </label>
             <label>
-              <span className="label">Chapter</span>
+              <span className="label">Chương</span>
               <select
                 className={inputClass}
                 value={chapterFilter}
                 disabled={!courseFilter}
                 onChange={(e) => void handleFilterChapter(e.target.value)}
               >
-                <option value="">All chapters</option>
+                <option value="">Tất cả chương</option>
                 {chapters.map((chapter) => (
                   <option key={chapter.id} value={chapter.id}>
                     {chapter.title}
@@ -612,14 +613,14 @@ export default function QuizBuilderPage() {
               </select>
             </label>
             <label>
-              <span className="label">Lesson</span>
+              <span className="label">Bài học</span>
               <select
                 className={inputClass}
                 value={lessonFilter}
                 disabled={!chapterFilter}
                 onChange={(e) => setLessonFilter(e.target.value)}
               >
-                <option value="">All lessons</option>
+                <option value="">Tất cả bài học</option>
                 {lessons.map((lesson) => (
                   <option key={lesson.id} value={lesson.id}>
                     {lesson.title}
@@ -628,9 +629,9 @@ export default function QuizBuilderPage() {
               </select>
             </label>
             <label>
-              <span className="label">Question type</span>
+              <span className="label">Dạng câu hỏi</span>
               <select className={inputClass} value={questionType} onChange={(e) => setQuestionType(e.target.value)}>
-                <option value="">All types</option>
+                <option value="">Tất cả dạng câu hỏi</option>
                 {Object.entries(TYPE_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -639,19 +640,19 @@ export default function QuizBuilderPage() {
               </select>
             </label>
             <label>
-              <span className="label">Difficulty</span>
+              <span className="label">Độ khó</span>
               <select className={inputClass} value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
-                <option value="">All difficulties</option>
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
+                <option value="">Tất cả mức độ</option>
+                <option value="easy">Dễ</option>
+                <option value="medium">Trung bình</option>
+                <option value="hard">Khó</option>
               </select>
             </label>
             <label>
-              <span className="label">Search</span>
+              <span className="label">Tìm kiếm</span>
               <input
                 className={inputClass}
-                placeholder="Search question content"
+                placeholder="Tìm nội dung câu hỏi"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -661,7 +662,7 @@ export default function QuizBuilderPage() {
           <div className="mt-5 flex items-center justify-between border-y border-gray-100 py-3">
             <label className="inline-flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer">
               <input type="checkbox" checked={allVisibleSelected} onChange={toggleVisible} className="accent-[#F7444E]" />
-              Select all visible
+              Chọn tất cả mục đang hiển thị
             </label>
             <button
               type="button"
@@ -704,7 +705,7 @@ export default function QuizBuilderPage() {
             })}
             {!filteredQuestions.length && (
               <div className="rounded-xl border border-dashed border-gray-200 px-4 py-10 text-center text-sm text-gray-500">
-                No approved questions match these filters.
+                Không có câu hỏi đã duyệt phù hợp với bộ lọc.
               </div>
             )}
           </div>
@@ -716,9 +717,9 @@ export default function QuizBuilderPage() {
             <div>
               <div className="flex items-center gap-2">
                 <Layers className="h-5 w-5 text-[#F7444E]" />
-                <h2 className="font-semibold text-gray-900">Selected questions</h2>
+                <h2 className="font-semibold text-gray-900">Câu hỏi đã chọn</h2>
               </div>
-              <p className="mt-1 text-xs text-gray-500">Reorder, score, or remove questions.</p>
+              <p className="mt-1 text-xs text-gray-500">Sắp xếp, chấm điểm hoặc xóa câu hỏi.</p>
             </div>
             <div className="text-right">
               <p className="text-2xl font-bold text-gray-900">{assignedQuestions.length}</p>
@@ -740,7 +741,7 @@ export default function QuizBuilderPage() {
                   <div className="flex shrink-0 gap-1">
                     <button
                       type="button"
-                      title="Move up"
+                      title="Di chuyển lên"
                       disabled={index === 0}
                       onClick={() => moveQuestion(index, -1)}
                       className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-30"
@@ -749,7 +750,7 @@ export default function QuizBuilderPage() {
                     </button>
                     <button
                       type="button"
-                      title="Move down"
+                      title="Di chuyển xuống"
                       disabled={index === assignedQuestions.length - 1}
                       onClick={() => moveQuestion(index, 1)}
                       className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 disabled:opacity-30"
@@ -758,7 +759,7 @@ export default function QuizBuilderPage() {
                     </button>
                     <button
                       type="button"
-                      title="Remove question"
+                      title="Xóa câu hỏi"
                       onClick={() =>
                         setAssignedQuestions((current) =>
                           current.filter((c) => c.question.id !== item.question.id)
@@ -771,7 +772,7 @@ export default function QuizBuilderPage() {
                   </div>
                 </div>
                 <label className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-semibold text-gray-500">
-                  Score weight
+                  Trọng số điểm
                   <input
                     type="number"
                     min="0.1"
@@ -793,7 +794,7 @@ export default function QuizBuilderPage() {
             ))}
             {!assignedQuestions.length && (
               <div className="rounded-xl border border-dashed border-gray-200 px-4 py-12 text-center text-sm text-gray-500">
-                Add approved questions from the bank.
+                Thêm câu hỏi đã duyệt từ ngân hàng câu hỏi.
               </div>
             )}
           </div>

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { courseApi } from '@/lib/api';
+import { courseApi, quizApi } from '@/lib/api';
 import LearnerLessonMaterials from '@/components/learner/lesson-materials';
 import {
   ArrowLeft,
@@ -16,7 +16,6 @@ import {
   Check,
   Code2,
   Terminal,
-  Trophy,
   Zap,
   X,
   Layers,
@@ -27,71 +26,71 @@ import {
 // DỮ LIỆU ĐỒNG BỘ TRỰC TIẾP TỪ PAGE_7.TSX
 const COURSE_MAP: Record<string, any> = {
   'csharp-fundamentals': {
-    title: 'C# Fundamentals',
-    level: 'Beginner',
+    title: 'C# cơ bản',
+    level: 'Cơ bản',
     instructor: 'Dr. Lan Nguyen',
-    instructorRole: 'Content author • C# instructor',
+    instructorRole: 'Người biên soạn · Giảng viên C#',
     resources: [
-      { name: 'C# Language Cheat Sheet', type: 'PDF · 1.2 MB', isVideo: false },
+      { name: 'Tài liệu tóm tắt ngôn ngữ C#', type: 'PDF · 1.2 MB', isVideo: false },
       { name: 'Installing the .NET SDK (walkthrough)', type: 'Video · 84 MB', isVideo: true },
     ],
     tests: [
       {
         id: 'variables-quiz',
-        title: 'Variables & Data Types Quiz',
+        title: 'Trắc nghiệm về biến và kiểu dữ liệu',
         description: '15 questions in this attempt',
         duration: '20 minutes, timed',
-        difficulty: 'Easy',
+        difficulty: 'Dễ',
       },
       {
         id: 'final-assessment',
-        title: 'C# Fundamentals — Final Assessment',
+        title: 'C# cơ bản — Bài đánh giá cuối khóa',
         description: '6 questions in this attempt',
         duration: '60 minutes, timed',
-        difficulty: 'Medium',
+        difficulty: 'Trung bình',
       },
     ],
     chapters: [
       {
-        title: 'Introduction to C#',
+        title: 'Giới thiệu về C#',
         lessons: [
-          { id: 'what-is-csharp', title: 'What is C#?', duration: '8 min', completed: true },
-          { id: 'installing-dotnet', title: 'Installing .NET', duration: '10 min', completed: true },
-          { id: 'your-first-csharp-program', title: 'Your First C# Program', duration: '12 min', completed: true },
+          { id: 'what-is-csharp', title: 'C# là gì?', duration: '8 min', completed: true },
+          { id: 'installing-dotnet', title: 'Cài đặt .NET', duration: '10 min', completed: true },
+          { id: 'your-first-csharp-program', title: 'Chương trình C# đầu tiên của bạn', duration: '12 min', completed: true },
         ],
       },
       {
-        title: 'Variables and Data Types',
+        title: 'Biến và kiểu dữ liệu',
         lessons: [
-          { id: 'variables-overview', title: 'Variables Overview & Syntax', duration: '11 min', completed: true },
-          { id: 'primitive-data-types', title: 'Primitive Data Types', duration: '14 min', completed: true },
-          { id: 'type-conversion', title: 'Type Conversion & Casting', duration: '9 min', completed: true },
-          { id: 'nullable-types', title: 'Nullable Value Types in C#', duration: '12 min', completed: true },
+          { id: 'variables-overview', title: 'Tổng quan về biến và cú pháp', duration: '11 min', completed: true },
+          { id: 'primitive-data-types', title: 'Các kiểu dữ liệu nguyên thủy', duration: '14 min', completed: true },
+          { id: 'type-conversion', title: 'Chuyển đổi và ép kiểu', duration: '9 min', completed: true },
+          { id: 'nullable-types', title: 'Kiểu giá trị nullable trong C#', duration: '12 min', completed: true },
         ],
       },
       {
-        title: 'Control Flow',
+        title: 'Luồng điều khiển',
         lessons: [
-          { id: 'if-else-switch', title: 'if / else and switch', duration: '13 min', completed: true },
-          { id: 'loops', title: 'for, while and foreach', duration: '15 min', completed: true },
-          { id: 'break-continue', title: 'break, continue and goto', duration: '7 min', completed: true },
+          { id: 'if-else-switch', title: 'Câu lệnh if / else và switch', duration: '13 min', completed: true },
+          { id: 'loops', title: 'Vòng lặp for, while và foreach', duration: '15 min', completed: true },
+          { id: 'break-continue', title: 'Các câu lệnh break, continue và goto', duration: '7 min', completed: true },
         ],
       },
       {
-        title: 'Methods',
+        title: 'Phương thức',
         lessons: [
-          { id: 'what-are-methods', title: 'What are methods?', duration: '8 min', completed: false },
-          { id: 'parameters-and-returns', title: 'Parameters and return values', duration: '12 min', completed: false },
-          { id: 'method-overloads', title: 'Method overloads', duration: '10 min', completed: false },
+          { id: 'what-are-methods', title: 'Phương thức là gì?', duration: '8 min', completed: false },
+          { id: 'parameters-and-returns', title: 'Tham số và giá trị trả về', duration: '12 min', completed: false },
+          { id: 'method-overloads', title: 'Nạp chồng phương thức', duration: '10 min', completed: false },
         ],
       },
     ],
   },
   'object-oriented-programming-in-csharp': {
-    title: 'Object-Oriented Programming in C#',
-    level: 'Intermediate',
+    title: 'Lập trình hướng đối tượng với C#',
+    level: 'Trung cấp',
     instructor: 'Dr. Lan Nguyen',
-    instructorRole: 'Content author • C# instructor',
+    instructorRole: 'Người biên soạn · Giảng viên C#',
     resources: [
       { name: 'OOP Practice Sheet', type: 'PDF · 2.1 MB', isVideo: false },
       { name: 'Class Design Checklist', type: 'Document · 68 KB', isVideo: false },
@@ -99,25 +98,25 @@ const COURSE_MAP: Record<string, any> = {
     tests: [
       {
         id: 'oop-quick-check',
-        title: 'OOP Quick Check',
+        title: 'Kiểm tra nhanh lập trình hướng đối tượng',
         description: '5 questions in this attempt',
         duration: '25 minutes, timed',
-        difficulty: 'Medium',
+        difficulty: 'Trung bình',
       },
     ],
     chapters: [
       {
-        title: 'Classes and Objects',
+        title: 'Lớp và đối tượng',
         lessons: [
-          { id: 'classes-and-objects', title: 'Classes and Objects', duration: '9 min', completed: true },
-          { id: 'constructors', title: 'Constructors', duration: '11 min', completed: true },
-          { id: 'properties', title: 'Properties', duration: '8 min', completed: false },
+          { id: 'classes-and-objects', title: 'Lớp và đối tượng', duration: '9 min', completed: true },
+          { id: 'constructors', title: 'Hàm khởi tạo', duration: '11 min', completed: true },
+          { id: 'properties', title: 'Thuộc tính', duration: '8 min', completed: false },
         ],
       },
       {
-        title: 'Encapsulation',
+        title: 'Tính đóng gói',
         lessons: [
-          { id: 'access-modifiers', title: 'Access modifiers', duration: '12 min', completed: true },
+          { id: 'access-modifiers', title: 'Phạm vi truy cập', duration: '12 min', completed: true },
           { id: 'fields-and-methods', title: 'Fields and methods', duration: '10 min', completed: true },
           { id: 'readonly-and-static', title: 'Readonly and static', duration: '9 min', completed: false },
         ],
@@ -166,9 +165,9 @@ const LESSON_DATABASE: Record<string, LessonDetail> = {
   'what-is-csharp': {
     id: 'what-is-csharp',
     order: 1,
-    title: 'What is C#?',
+    title: 'C# là gì?',
     duration: '8 min',
-    chapter: 'Introduction to C#',
+    chapter: 'Giới thiệu về C#',
     objectives: [
       'Hiểu rõ vị trí của ngôn ngữ C# và nền tảng .NET hiện đại.',
       'Nắm được quá trình biên dịch từ C# sang mã IL (Intermediate Language) và chạy trên CLR.',
@@ -205,9 +204,9 @@ public class Program
   'installing-dotnet': {
     id: 'installing-dotnet',
     order: 2,
-    title: 'Installing .NET',
+    title: 'Cài đặt .NET',
     duration: '10 min',
-    chapter: 'Introduction to C#',
+    chapter: 'Giới thiệu về C#',
     objectives: [
       'Phân biệt .NET SDK (dùng để code và build) và .NET Runtime (chỉ dùng để chạy).',
       'Cài đặt .NET SDK trên máy tính cá nhân.',
@@ -243,9 +242,9 @@ public class Program
   'your-first-csharp-program': {
     id: 'your-first-csharp-program',
     order: 3,
-    title: 'Your First C# Program',
+    title: 'Chương trình C# đầu tiên của bạn',
     duration: '12 min',
-    chapter: 'Introduction to C#',
+    chapter: 'Giới thiệu về C#',
     objectives: [
       'Hiểu cấu trúc của một tập tin C# chuẩn: namespace, class và hàm Main.',
       'Khái niệm Top-Level Statements được giới thiệu từ C# 9 đến nay.',
@@ -277,9 +276,9 @@ Console.WriteLine($"Xin chào, {name}! Chúc bạn học tốt C#.");`,
   'variables-overview': {
     id: 'variables-overview',
     order: 1,
-    title: 'Variables Overview & Syntax',
+    title: 'Tổng quan về biến và cú pháp',
     duration: '11 min',
-    chapter: 'Variables and Data Types',
+    chapter: 'Biến và kiểu dữ liệu',
     objectives: [
       'Hiểu khái niệm biến và vùng nhớ lưu trữ trong C#.',
       'Nắm vững cú pháp khai báo và khởi tạo giá trị biến.',
@@ -302,7 +301,7 @@ public class Program
 {
     public static void Main()
     {
-        string courseName = "C# Fundamentals";
+        string courseName = "C# cơ bản";
         var lessonNumber = 1;
         var isPublished = true;
 
@@ -310,7 +309,7 @@ public class Program
         Console.WriteLine($"Bài số: {lessonNumber} - Đã đăng: {isPublished}");
     }
 }`,
-    defaultOutput: 'Khóa học: C# Fundamentals\nBài số: 1 - Đã đăng: True\n\nProcess finished with exit code 0.',
+    defaultOutput: 'Khóa học: C# cơ bản\nBài số: 1 - Đã đăng: True\n\nProcess finished with exit code 0.',
     proTipTitle: 'Khi nào nên dùng "var"?',
     proTipContent:
       'Chỉ nên dùng "var" khi vế phải đã thể hiện rõ kiểu dữ liệu (ví dụ: var list = new List<string>();) để tránh làm code khó đọc.',
@@ -319,9 +318,9 @@ public class Program
   'primitive-data-types': {
     id: 'primitive-data-types',
     order: 2,
-    title: 'Primitive Data Types',
+    title: 'Các kiểu dữ liệu nguyên thủy',
     duration: '14 min',
-    chapter: 'Variables and Data Types',
+    chapter: 'Biến và kiểu dữ liệu',
     objectives: [
       'Phân biệt nhóm kiểu số nguyên, số thực dấu phẩy động và boolean.',
       'Nắm rõ kích thước bộ nhớ (bytes) và phạm vi lưu trữ trên CLR 64-bit.',
@@ -366,9 +365,9 @@ public class Program
   'type-conversion': {
     id: 'type-conversion',
     order: 3,
-    title: 'Type Conversion & Casting',
+    title: 'Chuyển đổi và ép kiểu',
     duration: '9 min',
-    chapter: 'Variables and Data Types',
+    chapter: 'Biến và kiểu dữ liệu',
     objectives: [
       'Nắm vững chuyển đổi ngầm định (Implicit Conversion).',
       'Thực hiện ép kiểu tường minh (Explicit Casting).',
@@ -413,9 +412,9 @@ public class Program
   'nullable-types': {
     id: 'nullable-types',
     order: 4,
-    title: 'Nullable Value Types in C#',
+    title: 'Kiểu giá trị nullable trong C#',
     duration: '12 min',
-    chapter: 'Variables and Data Types',
+    chapter: 'Biến và kiểu dữ liệu',
     objectives: [
       'Hiểu vì sao Value Type thông thường không thể nhận giá trị null.',
       'Khai báo Nullable Type với cú pháp T? hoặc Nullable<T>.',
@@ -461,6 +460,13 @@ export default function LearnerLessonPage() {
 
   const [databaseCourseTitle, setDatabaseCourseTitle] = useState<string | null>(null);
   const [databaseChapters, setDatabaseChapters] = useState<LearnerLessonChapter[] | null>(null);
+  const [quizState, setQuizState] = useState<{
+    slug: string;
+    quizzes: Awaited<ReturnType<typeof quizApi.list>>;
+    error: boolean;
+  } | null>(null);
+  const [loadedSlug, setLoadedSlug] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -470,12 +476,19 @@ export default function LearnerLessonPage() {
         if (isActive) {
           setDatabaseCourseTitle(response.course.title);
           setDatabaseChapters(response.chapters);
+          setLoadError(null);
+          setLoadedSlug(slug);
+          void quizApi.list({ course_id: response.course.id, status: 'published' })
+            .then((quizzes) => { if (isActive) setQuizState({ slug, quizzes, error: false }); })
+            .catch(() => { if (isActive) setQuizState({ slug, quizzes: [], error: true }); });
         }
       })
       .catch(() => {
         if (isActive) {
           setDatabaseCourseTitle(null);
           setDatabaseChapters(null);
+          setLoadError('Không thể tải bài học. Vui lòng thử lại sau.');
+          setLoadedSlug(slug);
         }
       });
 
@@ -487,8 +500,9 @@ export default function LearnerLessonPage() {
   const fallbackCourse = COURSE_MAP[slug] || COURSE_MAP['csharp-fundamentals'];
   const currentCourse = databaseChapters
     ? {
-        ...fallbackCourse,
-      title: databaseCourseTitle ?? fallbackCourse.title,
+        title: databaseCourseTitle ?? '',
+        level: '',
+        tests: [],
         chapters: databaseChapters.map((chapter) => ({
           title: chapter.title,
           lessons: chapter.lessons.map((lesson) => ({
@@ -512,10 +526,19 @@ export default function LearnerLessonPage() {
 
   // Tìm bài học hiện tại (nếu chưa có trong LESSON_DATABASE thì lấy fallback)
   const activeLessonId = lessonIdParam || 'what-is-csharp';
-  const currentLessonMeta = allCourseLessons.find((l) => l.id === activeLessonId) || allCourseLessons[0];
+  const currentLessonMeta = allCourseLessons.find((l) => l.id === activeLessonId) || allCourseLessons[0] || {
+    id: activeLessonId, title: '', duration: '', completed: false, chapterTitle: '',
+  };
   const databaseLesson = databaseChapters
     ?.flatMap((chapter) => chapter.lessons)
     .find((lesson) => lesson.id === activeLessonId);
+  const currentChapterId = databaseChapters?.find((chapter) =>
+    chapter.lessons.some((lesson) => lesson.id === activeLessonId))?.id;
+  const courseQuizzes = quizState?.slug === slug ? quizState.quizzes : [];
+  const quizzesLoading = quizState?.slug !== slug;
+  const quizzesError = quizState?.slug === slug && quizState.error;
+  const visibleQuizzes = courseQuizzes.filter((quiz) =>
+    !quiz.chapter_id || quiz.chapter_id === currentChapterId);
   
   const currentLesson: LessonDetail = LESSON_DATABASE[activeLessonId] || {
     id: currentLessonMeta.id,
@@ -588,7 +611,7 @@ export default function LearnerLessonPage() {
 
   const activeLessonCode = databaseLesson
     ? databaseLesson.codeExample?.trim() || ''
-    : currentLesson.initialCode;
+    : LESSON_DATABASE[activeLessonId]?.initialCode?.trim() || '';
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(activeLessonCode);
@@ -607,12 +630,15 @@ export default function LearnerLessonPage() {
   };
 
   // Lấy bài test liên quan
-  const currentQuiz = currentCourse.tests?.[0] || {
-    id: 'quiz',
-    title: 'Quiz kiểm tra nhanh',
-    description: '10 câu hỏi trắc nghiệm',
-    duration: '15 phút, tính giờ',
-  };
+  if (loadedSlug !== slug) {
+    return <div className="mx-auto max-w-[1240px] p-6 text-sm text-slate-600" role="status">Đang tải bài học…</div>;
+  }
+  if (loadError) {
+    return <div className="mx-auto max-w-[1240px] p-6 text-sm text-red-700" role="alert">{loadError}</div>;
+  }
+  if (!databaseLesson) {
+    return <div className="mx-auto max-w-[1240px] p-6 text-sm text-slate-600">Không tìm thấy bài học này.</div>;
+  }
 
   const outlineContent = (<>
             {/* Card mục lục chương */}
@@ -662,22 +688,28 @@ export default function LearnerLessonPage() {
 
             <LearnerLessonMaterials key={activeLessonId} lessonId={activeLessonId} />
 
-            {/* Card Tests: Đồng bộ từ tests của page_7.tsx */}
             <details className="group rounded-[18px] border border-[#dfe6df] bg-white p-4">
-              <summary className="mb-1 flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-bold text-slate-600 [&::-webkit-details-marker]:hidden">Bài kiểm tra <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" /></summary>
-              <div className="flex items-center gap-2 text-xs font-bold text-amber-700">
-                <Trophy className="h-4 w-4 text-amber-500" />
-                <span>{currentQuiz.title}</span>
-              </div>
-              <p className="mt-2 text-xs text-slate-600 leading-relaxed">
-                {currentQuiz.description} • {currentQuiz.duration}
-              </p>
-              <Link
-                href={`/learner/courses/${slug}/tests/${currentQuiz.id}`}
-                className="mt-3 block w-full text-center rounded-xl bg-[#F7444E] py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#e33b3b]"
-              >
-                Start test
-              </Link>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-bold text-slate-600 [&::-webkit-details-marker]:hidden">
+                <span>Bài kiểm tra ({visibleQuizzes.length})</span>
+                <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+              </summary>
+              {quizzesLoading ? (
+                <p className="mt-3 text-xs text-slate-500">Đang tải bài kiểm tra…</p>
+              ) : quizzesError ? (
+                <p className="mt-3 text-xs text-red-600">Không thể tải bài kiểm tra.</p>
+              ) : visibleQuizzes.length === 0 ? (
+                <p className="mt-3 text-xs text-slate-500">Chưa có bài kiểm tra cho khóa học hoặc chương này.</p>
+              ) : (
+                <ul className="mt-3 divide-y divide-slate-100">
+                  {visibleQuizzes.map((quiz) => (
+                    <li key={quiz.id} className="space-y-2 py-3 first:pt-0">
+                      <p className="break-words text-xs font-semibold leading-5 text-[#0f3741]">{quiz.title}</p>
+                      <p className="text-[11px] text-slate-500">{quiz.duration_minutes === null ? 'Không giới hạn thời gian' : `${quiz.duration_minutes} phút`}</p>
+                      <Link href={`/learner/courses/${slug}/tests/${quiz.id}`} className="block rounded-lg border border-[#f4b7b7] px-2 py-1.5 text-center text-xs font-semibold text-[#F7444E] hover:bg-rose-50">Vào làm bài</Link>
+                      </li>
+                    ))}
+                </ul>
+              )}
             </details>
   </>);
 
@@ -704,9 +736,9 @@ export default function LearnerLessonPage() {
                 {currentLesson.title}
               </h1>
               <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-                <span className="rounded-full border border-[#f7d0d0] bg-[#fbe7e9] px-2.5 py-0.5 text-[11px] font-bold text-[#f7444e]">
+                {currentCourse.level && <span className="rounded-full border border-[#f7d0d0] bg-[#fbe7e9] px-2.5 py-0.5 text-[11px] font-bold text-[#f7444e]">
                   {currentCourse.level}
-                </span>
+                </span>}
                 <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-600">
                   <Clock3 className="h-3 w-3 text-slate-400" />
                   {currentLesson.duration}
@@ -807,7 +839,7 @@ export default function LearnerLessonPage() {
               </div>}
 
               {/* Code Runner IDE */}
-              <div className="overflow-hidden rounded-xl border border-slate-800 bg-[#0d131a] shadow-lg">
+              {activeLessonCode && <div className="overflow-hidden rounded-xl border border-slate-800 bg-[#0d131a] shadow-lg">
                 <div className="flex flex-wrap items-center justify-between border-b border-slate-800 bg-[#161f28] px-4 py-2.5">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5">
@@ -833,11 +865,11 @@ export default function LearnerLessonPage() {
                         </>
                       ) : (
                         <>
-                          <Copy className="h-3 w-3" /> Copy
+                          <Copy className="h-3 w-3" /> Sao chép
                         </>
                       )}
                     </button>
-                    <button
+                    {!databaseLesson && <button
                       type="button"
                       onClick={handleRunCode}
                       disabled={isRunning}
@@ -845,7 +877,7 @@ export default function LearnerLessonPage() {
                     >
                       <Play className="h-3 w-3 fill-white" />
                       {isRunning ? 'Đang chạy...' : 'Chạy mã'}
-                    </button>
+                    </button>}
                   </div>
                 </div>
 
@@ -860,7 +892,7 @@ export default function LearnerLessonPage() {
                     <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5 font-sans font-semibold">
                       <div className="flex items-center gap-2">
                         <Terminal className="h-3.5 w-3.5 text-emerald-400" />
-                        <span>Terminal Output:</span>
+                        <span>Kết quả chạy chương trình:</span>
                       </div>
                       <div className="flex items-center gap-2">
                         {isRunning ? (
@@ -888,17 +920,18 @@ export default function LearnerLessonPage() {
                     </pre>
                   </div>
                 )}
-              </div>
+              </div>}
 
               {/* Mẹo phỏng vấn */}
-              <div className="rounded-xl border border-amber-200 bg-[#fffbeb] p-4 text-xs text-amber-900 shadow-sm">
+              {!databaseLesson && <div className="rounded-xl border border-amber-200 bg-[#fffbeb] p-4 text-xs text-amber-900 shadow-sm">
                 <div className="flex items-center gap-2 font-bold text-amber-800">
                   <Zap className="h-4 w-4 text-amber-600" />
                   <span>{currentLesson.proTipTitle}</span>
                 </div>
                 <p className="mt-1.5 leading-relaxed text-amber-800/90">{currentLesson.proTipContent}</p>
-              </div>
+              </div>}
             </div>
+
           </section>
 
         </div>

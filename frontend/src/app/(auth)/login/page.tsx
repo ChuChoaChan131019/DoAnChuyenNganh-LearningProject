@@ -24,9 +24,9 @@ import { getDefaultRouteByRole, isRouteAllowedForRole } from '@/config/roles';
 
 // ─── Hero panel: stats with icons ───────────────────────────────────
 const STATS = [
-  { value: '24 courses', sub: '126 lessons', icon: BookOpen },
-  { value: '965 questions', sub: '268 AI drafted', icon: Zap },
-  { value: '100% reviewed', sub: 'before publish', icon: ShieldCheck },
+  { value: '24 khóa học', sub: '126 bài học', icon: BookOpen },
+  { value: '965 câu hỏi', sub: '268 câu hỏi do AI tạo', icon: Zap },
+  { value: '100% đã kiểm duyệt', sub: 'trước khi xuất bản', icon: ShieldCheck },
 ];
 
 // ─── Fake C# code for the editor mockup (Syntax Highlighted) ──────────
@@ -223,17 +223,17 @@ function LoginFormContent() {
               CSharpHub
             </p>
             <p className="mt-0.5 text-[11px] leading-none text-slate-500">
-              C# &amp; OOP learning platform
+              Nền tảng học C# và lập trình hướng đối tượng
             </p>
           </div>
         </div>
 
         {/* Heading */}
         <h1 className="relative text-[28px] font-bold leading-tight text-slate-900">
-          Welcome back
+          Chào mừng bạn quay lại
         </h1>
         <p className="relative mt-1.5 text-sm text-slate-500">
-          Sign in to continue managing and learning C# content.
+          Đăng nhập để tiếp tục quản lý và học nội dung C#.
         </p>
 
         {/* Error Alert Box */}
@@ -255,7 +255,7 @@ function LoginFormContent() {
               htmlFor="login-email"
               className="block text-[11px] font-semibold uppercase tracking-widest text-slate-400"
             >
-              Email
+              Địa chỉ email
             </label>
             <div className="relative">
               <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -278,7 +278,7 @@ function LoginFormContent() {
                 htmlFor="login-password"
                 className="block text-[11px] font-semibold uppercase tracking-widest text-slate-400"
               >
-                Password
+                Mật khẩu
               </label>
 
             </div>
@@ -290,7 +290,7 @@ function LoginFormContent() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Your password"
+                placeholder="Nhập mật khẩu"
                 className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-10 text-sm text-slate-800 shadow-sm backdrop-blur-sm transition placeholder:text-slate-400 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
               />
               <button
@@ -314,7 +314,7 @@ function LoginFormContent() {
               {keepSignedIn && <CheckCircle2 className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />}
             </div>
             <span className="text-sm text-slate-600">
-              Keep me signed in
+              Duy trì đăng nhập
             </span>
           </label>
 
@@ -341,14 +341,14 @@ function LoginFormContent() {
 
         {/* Footer */}
         <p className="relative mt-8 text-center text-[11px] leading-relaxed text-slate-400">
-          Protected by the University SSO gateway · Accounts are provisioned by the User module.
+          Tài khoản được bảo vệ qua cổng đăng nhập SSO của trường và quản lý bởi hệ thống người dùng.
         </p>
 
         {/* Sign up link */}
         <p className="relative mt-3 text-center text-sm text-slate-500">
-          <span>Don&apos;t have an account?</span>{' '}
+          <span>Bạn chưa có tài khoản?</span>{' '}
           <Link href="/register" className="font-semibold text-rose-400 hover:text-rose-300 transition-colors">
-            Sign up
+            Đăng ký
           </Link>
         </p>
       </section>
@@ -363,10 +363,10 @@ function LoginFormContent() {
         {/* Headline */}
         <div className="space-y-4">
           <h2 className="max-w-xl text-[38px] font-bold leading-tight text-black">
-            Build, review and publish C# curriculum in one place.
+            Soạn, duyệt và xuất bản chương trình C# tại cùng một nơi.
           </h2>
           <p className="max-w-xl text-sm leading-relaxed text-slate-800">
-            Courses, chapters, lessons, resources, question banks and tests — with an AI generator whose output always passes through human review before publishing.
+            Khóa học, chương, bài học, tài liệu, ngân hàng câu hỏi và bài kiểm tra — cùng công cụ tạo nội dung tự động được con người kiểm duyệt trước khi xuất bản.
           </p>
         </div>
 

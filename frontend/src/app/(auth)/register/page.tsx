@@ -19,42 +19,42 @@ import {
 } from 'lucide-react';
 
 const BENEFITS = [
-  'Access all C# & OOP courses',
-  'AI-powered quiz generator',
-  'Track your learning progress',
-  'Human-reviewed content quality',
+  'Truy cập các khóa học C# và lập trình hướng đối tượng',
+  'Công cụ tạo bài trắc nghiệm bằng AI',
+  'Theo dõi tiến độ học tập',
+  'Nội dung được con người kiểm duyệt',
 ];
 
 const TESTIMONIALS = [
   {
     quote:
-      'The AI question generator saved us hundreds of hours. Every question still goes through human review — so quality is never compromised.',
+      'Công cụ tạo câu hỏi bằng AI giúp chúng tôi tiết kiệm hàng trăm giờ làm việc. Mỗi câu hỏi vẫn được con người kiểm duyệt để đảm bảo chất lượng.',
     author: 'Trần Anh Khoa',
-    role: 'Content Manager · OOP Module',
+    role: 'Quản lý nội dung · Học phần Lập trình hướng đối tượng',
     initials: 'TK',
     avatarGradient: 'from-rose-500 to-orange-500',
   },
   {
     quote:
-      'Structured OOP lessons and instant code feedback make mastering complex C# concepts fast and intuitive for university students.',
+      'Bài học lập trình hướng đối tượng có cấu trúc cùng phản hồi mã nguồn tức thì giúp sinh viên nắm bắt các khái niệm C# phức tạp nhanh chóng và trực quan.',
     author: 'TS. Nguyễn Minh Huy',
-    role: 'Lecturer · Faculty of Information Technology',
+    role: 'Giảng viên · Khoa Công nghệ thông tin',
     initials: 'MH',
     avatarGradient: 'from-sky-500 to-indigo-500',
   },
   {
     quote:
-      'From basic syntax to advanced design patterns, hands-on quizzes helped me build real-world .NET applications with confidence.',
+      'Từ cú pháp cơ bản đến các mẫu thiết kế nâng cao, bài trắc nghiệm thực hành giúp tôi tự tin xây dựng ứng dụng .NET thực tế.',
     author: 'Lê Thu Thảo',
-    role: "Top Learner · Software Engineering Class of '26",
+    role: "Học viên tiêu biểu · Lớp Kỹ thuật phần mềm khóa 2026",
     initials: 'TT',
     avatarGradient: 'from-emerald-500 to-teal-500',
   },
   {
     quote:
-      'Curated question banks and automated evaluation cut our exam preparation time by 70% while maintaining exceptionally high academic standards.',
+      'Ngân hàng câu hỏi được tuyển chọn và tính năng chấm điểm tự động giúp giảm 70% thời gian chuẩn bị thi mà vẫn duy trì tiêu chuẩn học thuật cao.',
     author: 'Phạm Quốc Dũng',
-    role: 'Curriculum Lead · C# Fundamentals',
+    role: 'Phụ trách chương trình · C# cơ bản',
     initials: 'QD',
     avatarGradient: 'from-violet-500 to-purple-500',
   },
@@ -83,10 +83,10 @@ export default function RegisterPage() {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!fullName.trim()) newErrors.fullName = 'Full name is required.';
-    if (!email.includes('@')) newErrors.email = 'Please enter a valid email.';
-    if (password.length < 8) newErrors.password = 'Password must be at least 8 characters.';
-    if (!agreed) newErrors.agreed = 'You must agree to the terms.';
+    if (!fullName.trim()) newErrors.fullName = 'Vui lòng nhập họ và tên.';
+    if (!email.includes('@')) newErrors.email = 'Vui lòng nhập địa chỉ email hợp lệ.';
+    if (password.length < 8) newErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự.';
+    if (!agreed) newErrors.agreed = 'Bạn cần đồng ý với các điều khoản.';
     return newErrors;
   };
 
@@ -147,17 +147,17 @@ export default function RegisterPage() {
               CSharpHub
             </p>
             <p className="text-[11px] text-slate-500 leading-none mt-0.5">
-              C# &amp; OOP learning platform
+              Nền tảng học C# và lập trình hướng đối tượng
             </p>
           </div>
         </div>
 
         {/* Heading */}
         <h1 className="relative text-[26px] font-bold leading-tight text-slate-900">
-          Create your account
+          Tạo tài khoản của bạn
         </h1>
         <p className="relative mt-1.5 text-sm text-slate-500">
-          Join the platform and start learning C# today.
+          Tham gia nền tảng và bắt đầu học C# ngay hôm nay.
         </p>
 
         {/* Role selector */}
@@ -174,7 +174,7 @@ export default function RegisterPage() {
             }`}
           >
             <GraduationCap className="h-4 w-4" />
-            Student
+            Học viên
           </button>
           <button
             type="button"
@@ -188,7 +188,7 @@ export default function RegisterPage() {
             }`}
           >
             <Monitor className="h-4 w-4" />
-            Content Manager
+            Quản lý nội dung
           </button>
         </div>
 
@@ -201,7 +201,7 @@ export default function RegisterPage() {
               htmlFor="register-fullname"
               className="block text-[11px] font-semibold uppercase tracking-widest text-slate-400"
             >
-              Full name
+              Họ và tên
             </label>
             <div className="relative">
               <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -228,7 +228,7 @@ export default function RegisterPage() {
               htmlFor="register-email"
               className="block text-[11px] font-semibold uppercase tracking-widest text-slate-400"
             >
-              Email
+              Địa chỉ email
             </label>
             <div className="relative">
               <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -255,7 +255,7 @@ export default function RegisterPage() {
               htmlFor="register-password"
               className="block text-[11px] font-semibold uppercase tracking-widest text-slate-400"
             >
-              Password
+              Mật khẩu
             </label>
             <div className="relative">
               <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -265,7 +265,7 @@ export default function RegisterPage() {
                 disabled={isLoading}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min. 8 characters"
+                placeholder="Ít nhất 8 ký tự"
                 className={`w-full rounded-xl border py-2.5 pl-10 pr-10 text-sm backdrop-blur-sm transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50 ${
                   errors.password
                     ? 'border-rose-500/60 bg-rose-50/30 text-slate-800 placeholder-slate-400 focus:border-rose-500 focus:ring-rose-500/20'
@@ -316,11 +316,11 @@ export default function RegisterPage() {
             <span className="text-xs leading-relaxed text-slate-600">
               I agree to the{' '}
               <Link href="/terms" className="font-medium text-rose-500 hover:text-rose-600 hover:underline transition-colors">
-                Terms of Service
+                Điều khoản dịch vụ
               </Link>{' '}
               and{' '}
               <Link href="/privacy" className="font-medium text-rose-500 hover:text-rose-600 hover:underline transition-colors">
-                Privacy Policy
+                Chính sách quyền riêng tư
               </Link>
             </span>
           </label>
@@ -338,7 +338,7 @@ export default function RegisterPage() {
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
             ) : (
               <>
-                <span>Create account</span>
+                <span>Tạo tài khoản</span>
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </>
             )}
@@ -349,7 +349,7 @@ export default function RegisterPage() {
         <p className="relative mt-5 text-center text-sm text-slate-500">
           Already have an account?{' '}
           <Link href="/login" className="font-semibold text-rose-500 hover:text-rose-600 transition-colors">
-            Sign in
+            Đăng nhập
           </Link>
         </p>
       </section>
@@ -366,11 +366,11 @@ export default function RegisterPage() {
           {/* Headline */}
           <div className="space-y-3 w-full">
             <h2 className="text-3xl lg:text-[38px] xl:text-[42px] font-bold leading-tight text-black">
-              Everything you need to master C# fast.
+              Mọi thứ bạn cần để thành thạo C# nhanh chóng.
             </h2>
             <p className="text-base lg:text-[17px] leading-relaxed text-slate-800">
-              Structured courses, interactive quizzes, AI-generated questions with expert review,
-              and real-time progress tracking — all in one place.
+              Khóa học có lộ trình, bài trắc nghiệm tương tác và câu hỏi được tạo tự động rồi chuyên gia kiểm duyệt,
+              cùng tính năng theo dõi tiến độ theo thời gian thực, tất cả trong một nơi.
             </p>
           </div>
 

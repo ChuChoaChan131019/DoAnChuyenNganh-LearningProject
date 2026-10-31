@@ -33,7 +33,7 @@ export default function PracticePage() {
       const nextOverview = await practiceApi.overview();
       setOverview(nextOverview);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to load practice overview.');
+      setError(requestError instanceof Error ? requestError.message : 'Không thể tải thông tin luyện tập.');
     } finally {
       setLoading(false);
     }
@@ -97,7 +97,7 @@ export default function PracticePage() {
       setResult(answer);
       if (answer.is_correct) setScore((value) => value + 1);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to check the answer.');
+      setError(requestError instanceof Error ? requestError.message : 'Không thể kiểm tra câu trả lời.');
     } finally {
       setChecking(false);
     }
@@ -110,7 +110,7 @@ export default function PracticePage() {
       try {
         await practiceApi.completeAttempt(attemptId);
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : 'Unable to save practice result.');
+        setError(requestError instanceof Error ? requestError.message : 'Không thể lưu kết quả luyện tập.');
         setFinishing(false);
         return;
       }
@@ -140,9 +140,9 @@ export default function PracticePage() {
         {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-[#145a68]">Practice session</p>
+            <p className="text-sm font-medium text-[#145a68]">Phiên luyện tập</p>
             <h1 className="text-2xl font-bold text-[#0f3741]">
-              {mode === 'ai' ? 'AI Practice' : mode === 'weak' ? 'Chương cần ôn' : mode === 'course' ? 'Course practice' : 'Quick drill'}
+              {mode === 'ai' ? 'Luyện tập tự động' : mode === 'weak' ? 'Chương cần ôn' : mode === 'course' ? 'Luyện tập theo khóa học' : 'Luyện tập nhanh'}
             </h1>
           </div>
           <span className="text-sm font-semibold text-slate-500">{currentIndex + 1} / {questions.length}</span>
@@ -152,7 +152,7 @@ export default function PracticePage() {
         </div>
         <section className="rounded-2xl border border-[#dfe6df] bg-white p-6 shadow-sm">
           <div className="mb-6 flex items-center justify-between gap-3 text-xs text-slate-500">
-            <span>{currentQuestion.courses?.title ?? 'Course'}{currentQuestion.chapters ? ` · ${currentQuestion.chapters.title}` : ''}</span>
+            <span>{currentQuestion.courses?.title ?? 'Khóa học'}{currentQuestion.chapters ? ` · ${currentQuestion.chapters.title}` : ''}</span>
             <span className="rounded-full bg-slate-100 px-2.5 py-1 capitalize">{currentQuestion.difficulty}</span>
           </div>
           <h2 className="text-xl font-semibold leading-relaxed text-[#0f3741]">{currentQuestion.content}</h2>
@@ -187,16 +187,16 @@ export default function PracticePage() {
             <div className={`mt-6 rounded-xl p-4 text-sm ${result.is_correct ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`}>
               <div className="flex items-center gap-2 font-semibold">
                 {result.is_correct ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                {result.is_correct ? 'Correct' : 'Not quite'}
+                {result.is_correct ? 'Đúng' : 'Not quite'}
               </div>
               {result.explanation && <p className="mt-2 leading-relaxed">{result.explanation}</p>}
             </div>
           )}
           <div className="mt-7 flex justify-end gap-3">
-            <button onClick={() => { setMode(null); setQuestions([]); setAttemptId(null); }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Exit</button>
+            <button onClick={() => { setMode(null); setQuestions([]); setAttemptId(null); }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Thoát</button>
             {result ? (
               <button onClick={currentIndex + 1 < questions.length ? nextQuestion : finishPractice} disabled={finishing} className="rounded-xl bg-[#f7444e] px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
-                {currentIndex + 1 < questions.length ? 'Next question' : finishing ? 'Saving...' : `Finish · ${displayedScore}/${questions.length}`}
+                {currentIndex + 1 < questions.length ? 'Câu hỏi tiếp theo' : finishing ? 'Đang lưu...' : `Finish · ${displayedScore}/${questions.length}`}
               </button>
             ) : (
               <button onClick={submitAnswer} disabled={checking || (!selectedOptions.length && !answerText.trim())} className="rounded-xl bg-[#f7444e] px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{checking ? 'Checking...' : 'Check answer'}</button>
@@ -210,21 +210,21 @@ export default function PracticePage() {
   return (
     <div className="mx-auto max-w-[1216px] space-y-[22px]">
       <header>
-        <p className="mb-1 text-sm font-medium text-[#145a68]">Learn</p>
-        <h1 className="text-[32px] font-bold tracking-tight text-[#0f3741]">Practice</h1>
+        <p className="mb-1 text-sm font-medium text-[#145a68]">Học tập</p>
+        <h1 className="text-[32px] font-bold tracking-tight text-[#0f3741]">Luyện tập</h1>
         <p className="mt-1 text-sm text-slate-500">Luyện tập ngắn, tập trung, với phản hồi và giải thích ngay sau mỗi câu.</p>
       </header>
       {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
       <div className="grid grid-cols-1 gap-[22px] md:grid-cols-3">
-        <PracticeCard icon={<Zap className="h-5 w-5" />} title="Quick drill" description="10 câu hỏi trộn từ tất cả khóa học bạn đang tham gia." onClick={() => startPractice('quick')} disabled={loading || starting} />
+        <PracticeCard icon={<Zap className="h-5 w-5" />} title="Luyện tập nhanh" description="10 câu hỏi trộn từ tất cả khóa học bạn đang tham gia." onClick={() => startPractice('quick')} disabled={loading || starting} />
         <PracticeCard icon={<Brain className="h-5 w-5" />} title="Chương cần ôn" description="Tập trung vào các chương có độ chính xác thấp nhất trong 30 ngày qua." onClick={() => startPractice('weak')} disabled={loading || starting || overview.weakChapters.length === 0} />
-        <AiPracticeCard icon={<Target className="h-5 w-5" />} title="AI Practice" description="Chọn chương khi nhập yêu cầu tạo câu hỏi mới." chapters={overview.chapters} courseNames={Object.fromEntries(overview.courses.map((course) => [course.id, course.title]))} onStart={(prompt, chapterId) => startPractice('ai', undefined, prompt, chapterId)} disabled={loading || starting} />
+        <AiPracticeCard icon={<Target className="h-5 w-5" />} title="Luyện tập tự động" description="Chọn chương khi nhập yêu cầu tạo câu hỏi mới." chapters={overview.chapters} courseNames={Object.fromEntries(overview.courses.map((course) => [course.id, course.title]))} onStart={(prompt, chapterId) => startPractice('ai', undefined, prompt, chapterId)} disabled={loading || starting} />
       </div>
       <div className="grid grid-cols-1 gap-[22px] md:grid-cols-2">
         <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">
-          <div className="border-b border-[#dfe6df] px-[18px] py-[15px]"><h2 className="text-[15px] font-bold text-[#0f3741]">Practice by course</h2></div>
+          <div className="border-b border-[#dfe6df] px-[18px] py-[15px]"><h2 className="text-[15px] font-bold text-[#0f3741]">Luyện tập theo khóa học</h2></div>
           <div className="space-y-2 p-[18px]">
-            {overview.courses.map((course) => <div key={course.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3"><span className="text-sm font-medium text-[#145a68]">{course.title}</span><button onClick={() => startPractice('course', course.id)} disabled={starting} className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">Practice</button></div>)}
+            {overview.courses.map((course) => <div key={course.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-3"><span className="text-sm font-medium text-[#145a68]">{course.title}</span><button onClick={() => startPractice('course', course.id)} disabled={starting} className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">Luyện tập</button></div>)}
             {!loading && overview.courses.length === 0 && <p className="text-sm text-slate-500">Bạn chưa tham gia khóa học nào.</p>}
           </div>
         </section>
@@ -240,7 +240,7 @@ export default function PracticePage() {
 }
 
 function PracticeCard({ icon, title, description, onClick, disabled }: { icon: React.ReactNode; title: string; description: string; onClick: () => void; disabled: boolean }) {
-  return <section className="flex flex-col rounded-2xl border border-[#dfe6df] bg-white p-[18px] shadow-sm"><div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-[#f7444e]">{icon}</div><h2 className="mb-1 text-[15px] font-bold text-[#0f3741]">{title}</h2><p className="mb-4 flex-1 text-sm leading-relaxed text-slate-500">{description}</p><button onClick={onClick} disabled={disabled} className="w-full rounded-xl bg-[#f7444e] py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50">Start</button></section>;
+  return <section className="flex flex-col rounded-2xl border border-[#dfe6df] bg-white p-[18px] shadow-sm"><div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-[#f7444e]">{icon}</div><h2 className="mb-1 text-[15px] font-bold text-[#0f3741]">{title}</h2><p className="mb-4 flex-1 text-sm leading-relaxed text-slate-500">{description}</p><button onClick={onClick} disabled={disabled} className="w-full rounded-xl bg-[#f7444e] py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50">Bắt đầu</button></section>;
 }
 
 function AiPracticeCard({ icon, title, description, chapters, courseNames, onStart, disabled }: { icon: React.ReactNode; title: string; description: string; chapters: PracticeChapter[]; courseNames: Record<string, string>; onStart: (prompt?: string, chapterId?: string) => void; disabled: boolean }) {
@@ -259,11 +259,11 @@ function AiPracticeCard({ icon, title, description, chapters, courseNames, onSta
         className="mb-4 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#f7444e]"
         disabled={disabled}
       />
-      <select value={chapterId} onChange={(event) => setChapterId(event.target.value)} disabled={disabled} className="mb-4 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#f7444e]" aria-label="Chương cho bài luyện tập AI">
+      <select value={chapterId} onChange={(event) => setChapterId(event.target.value)} disabled={disabled} className="mb-4 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#f7444e]" aria-label="Chương dùng để tạo bài luyện tập tự động">
         <option value="">{prompt.trim() ? 'Chọn chương để tạo câu hỏi...' : 'Không chọn chương'}</option>
-        {chapters.map((chapter) => <option key={chapter.id} value={chapter.id}>{courseNames[chapter.course_id] ?? 'Course'} / {chapter.title}</option>)}
+        {chapters.map((chapter) => <option key={chapter.id} value={chapter.id}>{courseNames[chapter.course_id] ?? 'Khóa học'} / {chapter.title}</option>)}
       </select>
-      <button onClick={() => onStart(prompt, chapterId || undefined)} disabled={disabled || Boolean(prompt.trim() && !chapterId)} className="w-full rounded-xl bg-[#f7444e] py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50">Start</button>
+      <button onClick={() => onStart(prompt, chapterId || undefined)} disabled={disabled || Boolean(prompt.trim() && !chapterId)} className="w-full rounded-xl bg-[#f7444e] py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50">Bắt đầu</button>
     </section>
   );
 }

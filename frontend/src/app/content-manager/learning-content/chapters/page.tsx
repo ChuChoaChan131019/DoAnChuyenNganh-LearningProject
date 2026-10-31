@@ -20,6 +20,7 @@ const statusStyles: Record<ContentStatus, string> = {
   "In review": "border-amber-200 bg-amber-50 text-amber-700",
   Draft: "border-slate-200 bg-slate-100 text-slate-600",
 };
+const statusLabels: Record<ContentStatus, string> = { Published: "Đã xuất bản", Approved: "Đã duyệt", "In review": "Đang chờ duyệt", Draft: "Bản nháp" };
 
 function StatusBadge({ status }: { status: ContentStatus }) {
   return (
@@ -27,7 +28,7 @@ function StatusBadge({ status }: { status: ContentStatus }) {
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusStyles[status]}`}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
-      {status}
+      {statusLabels[status]}
     </span>
   );
 }
@@ -68,7 +69,7 @@ export default function ChaptersPage() {
       }
     }).catch((error) => {
       if (!active) return;
-      setLoadError(error instanceof Error ? error.message : "Unable to load courses.");
+      setLoadError(error instanceof Error ? error.message : "Không thể tải khóa học.");
       setIsLoading(false);
     });
     return () => { active = false; };
@@ -86,7 +87,7 @@ export default function ChaptersPage() {
       setIsLoading(false);
     }).catch((error) => {
       if (!active) return;
-      setLoadError(error instanceof Error ? error.message : "Unable to load chapters.");
+      setLoadError(error instanceof Error ? error.message : "Không thể tải chương.");
       setChapters([]);
       setIsLoading(false);
     });
@@ -101,11 +102,11 @@ export default function ChaptersPage() {
 
   const saveChapter = async () => {
     if (!selectedCourseId) {
-      setFormError("No course is available to save this chapter.");
+      setFormError("Không có khóa học để lưu chương này.");
       return;
     }
     if (!chapterTitle.trim()) {
-      setFormError("Chapter title is required.");
+      setFormError("Vui lòng nhập tên chương.");
       return;
     }
 
@@ -139,7 +140,7 @@ export default function ChaptersPage() {
       setChapterDescription("");
       setIsModalOpen(false);
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Unable to save chapter.");
+      setFormError(error instanceof Error ? error.message : "Không thể lưu chương.");
     } finally {
       setIsSaving(false);
     }
@@ -168,7 +169,7 @@ export default function ChaptersPage() {
       setChapters((current) => current.filter((item) => item.id !== chapter.id));
       setExpanded((current) => current.filter((id) => id !== chapter.id));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Unable to delete chapter.");
+      window.alert(error instanceof Error ? error.message : "Không thể xóa chương.");
     }
   };
 
@@ -189,7 +190,7 @@ export default function ChaptersPage() {
       await courseApi.reorderChapters(selectedCourseId, next.map((chapter) => String(chapter.id)));
     } catch (error) {
       setChapters(previous);
-      window.alert(error instanceof Error ? error.message : "Unable to save chapter order.");
+      window.alert(error instanceof Error ? error.message : "Không thể lưu thứ tự chương.");
     }
   };
 
@@ -216,17 +217,17 @@ export default function ChaptersPage() {
       );
     } catch (error) {
       setChapters(previous);
-      window.alert(error instanceof Error ? error.message : "Unable to save lesson order.");
+      window.alert(error instanceof Error ? error.message : "Không thể lưu thứ tự bài học.");
     }
   };
 
   const addLesson = async () => {
     if (!selectedCourseId || !lessonChapterId) {
-      setFormError("No chapter is selected.");
+      setFormError("Chưa chọn chương.");
       return;
     }
     if (!lessonTitle.trim()) {
-      setFormError("Lesson title is required.");
+      setFormError("Vui lòng nhập tên bài học.");
       return;
     }
 
@@ -246,7 +247,7 @@ export default function ChaptersPage() {
       setLessonDuration("0");
       setLessonChapterId(null);
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Unable to create lesson.");
+      setFormError(error instanceof Error ? error.message : "Không thể tạo bài học.");
     } finally {
       setIsSaving(false);
     }
@@ -257,15 +258,14 @@ export default function ChaptersPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-[#002C3E]">
-            Chapter management
+            Quản lý chương
           </h1>
           <p className="mt-1 text-sm text-[#637981]">
-            Drag chapters to reorder the curriculum. Expand a chapter to manage
-            its lessons.
+            Kéo chương để sắp xếp lại chương trình. Mở rộng chương để quản lý bài học.
           </p>
         </div>
         <label className="relative flex h-10 min-w-[290px] items-center">
-          <span className="sr-only">Select course</span>
+          <span className="sr-only">Chọn khóa học</span>
           <select
             value={selectedCourseId ?? ""}
             onChange={(event) => handleCourseChange(event.target.value)}
@@ -282,7 +282,7 @@ export default function ChaptersPage() {
       <section className="space-y-4">
         {isLoading && (
           <div className="rounded-2xl border border-[#dfe6df] bg-white px-5 py-12 text-center text-sm text-[#637981]">
-            Loading chapters...
+            Đang tải chương...
           </div>
         )}
         {!isLoading && loadError && (
@@ -292,7 +292,7 @@ export default function ChaptersPage() {
         )}
         {!isLoading && !loadError && chapters.length === 0 && (
           <div className="rounded-2xl border border-dashed border-[#dfe6df] bg-white px-5 py-12 text-center text-sm text-[#637981]">
-            No chapters found for this course.
+            Khóa học này chưa có chương.
           </div>
         )}
         {!isLoading && !loadError && chapters.map((chapter, index) => {
@@ -309,7 +309,7 @@ export default function ChaptersPage() {
                   draggable
                   onDragStart={() => setDraggedChapterId(String(chapter.id))}
                   onDragEnd={() => setDraggedChapterId(null)}
-                  title="Drag to reorder chapter"
+                  title="Kéo để sắp xếp lại chương"
                   className="cursor-grab touch-none active:cursor-grabbing"
                 >
                   <GripVertical className="h-4 w-4 shrink-0 text-[#71878c]" />
@@ -344,7 +344,7 @@ export default function ChaptersPage() {
                   </button>
                   <button
                     type="button"
-                    aria-label={`${isExpanded ? "Collapse" : "Expand"} ${chapter.title}`}
+                    aria-label={`${isExpanded ? "Thu gọn" : "Mở rộng"} ${chapter.title}`}
                     onClick={() =>
                       setExpanded((current) =>
                         isExpanded
@@ -366,7 +366,7 @@ export default function ChaptersPage() {
                 <div className="bg-[#fbfcf8]">
                   {chapter.lessons.length === 0 && (
                     <p className="border-b border-[#e5ebe5] px-14 py-4 text-sm text-[#71878c]">
-                      No lessons
+                      Chưa có bài học
                     </p>
                   )}
                   {chapter.lessons.map((lesson, lessonIndex) => (
@@ -380,7 +380,7 @@ export default function ChaptersPage() {
                         draggable={Boolean(lesson.id)}
                         onDragStart={() => lesson.id && setDraggedLessonId(lesson.id)}
                         onDragEnd={() => setDraggedLessonId(null)}
-                        title="Drag to reorder lesson"
+                        title="Kéo để sắp xếp lại bài học"
                         className="cursor-grab touch-none active:cursor-grabbing"
                       >
                         <GripVertical className="h-4 w-4 shrink-0 text-[#a6b7b8]" />
@@ -399,7 +399,7 @@ export default function ChaptersPage() {
                         </span>
                         {lesson.ai && (
                           <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 text-[11px] font-semibold text-cyan-700">
-                            ✣ AI
+                            ✣ Tự động
                           </span>
                         )}
                         <StatusBadge status={lesson.status} />
@@ -415,7 +415,7 @@ export default function ChaptersPage() {
                     className="flex items-center gap-2 px-9 py-3 text-sm text-[#526f78] hover:text-[#F7444E]"
                   >
                     <Plus className="h-4 w-4" />
-                    Add lesson
+                    Thêm bài học
                   </button>
                 </div>
               )}
@@ -429,7 +429,7 @@ export default function ChaptersPage() {
         className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[#dfe6df] bg-white py-3 text-sm font-medium text-[#002C3E] hover:border-[#78BCC4] hover:bg-[#f8fbf9]"
       >
         <Plus className="h-4 w-4" />
-        Add chapter
+        Thêm chương
       </button>
       {isModalOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-[#002c3e]/40 px-4" role="dialog" aria-modal="true" aria-labelledby="add-chapter-title">
@@ -437,35 +437,35 @@ export default function ChaptersPage() {
             onSubmit={(event) => { event.preventDefault(); void saveChapter(); }}
             className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
           >
-            <h2 id="add-chapter-title" className="text-xl font-bold text-[#002C3E]">{editingChapter ? "Edit chapter" : "Add chapter"}</h2>
+            <h2 id="add-chapter-title" className="text-xl font-bold text-[#002C3E]">{editingChapter ? "Chỉnh sửa chương" : "Thêm chương"}</h2>
             <p className="mt-1 text-sm text-[#637981]">{editingChapter ? "Update this chapter." : `Create a draft chapter for ${selectedCourse}.`}</p>
             <label className="mt-5 block text-sm font-medium text-[#002C3E]">
-              Chapter title
+              Tên chương
               <input
                 value={chapterTitle}
                 onChange={(event) => setChapterTitle(event.target.value)}
                 maxLength={160}
                 autoFocus
                 className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
-                placeholder="e.g. Object-oriented programming"
+                placeholder="Ví dụ: Lập trình hướng đối tượng"
               />
             </label>
             <label className="mt-4 block text-sm font-medium text-[#002C3E]">
-              Description <span className="font-normal text-[#71878c]">(optional)</span>
+              Mô tả <span className="font-normal text-[#71878c]">(optional)</span>
               <textarea
                 value={chapterDescription}
                 onChange={(event) => setChapterDescription(event.target.value)}
                 maxLength={2000}
                 rows={4}
                 className="mt-2 w-full resize-none rounded-xl border border-[#dfe6df] px-3 py-2 text-sm outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
-                placeholder="What will learners study in this chapter?"
+                placeholder="Học viên sẽ học gì trong chương này?"
               />
             </label>
             {formError && <p className="mt-3 text-sm text-[#d9363e]">{formError}</p>}
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => { setEditingChapter(null); setIsModalOpen(false); }} className="rounded-xl px-4 py-2 text-sm font-medium text-[#526f78] hover:bg-[#f3f7f5]">Cancel</button>
+              <button type="button" onClick={() => { setEditingChapter(null); setIsModalOpen(false); }} className="rounded-xl px-4 py-2 text-sm font-medium text-[#526f78] hover:bg-[#f3f7f5]">Hủy</button>
               <button type="submit" disabled={isSaving} className="rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db3540] disabled:cursor-not-allowed disabled:opacity-60">
-                {isSaving ? "Saving..." : editingChapter ? "Save changes" : "Create chapter"}
+                {isSaving ? "Đang lưu..." : editingChapter ? "Lưu thay đổi" : "Create chapter"}
               </button>
             </div>
           </form>
@@ -477,20 +477,20 @@ export default function ChaptersPage() {
             onSubmit={(event) => { event.preventDefault(); void addLesson(); }}
             className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
           >
-            <h2 id="add-lesson-title" className="text-xl font-bold text-[#002C3E]">Add lesson</h2>
+            <h2 id="add-lesson-title" className="text-xl font-bold text-[#002C3E]">Thêm bài học</h2>
             <label className="mt-5 block text-sm font-medium text-[#002C3E]">
-              Lesson title
+              Tên bài học
               <input
                 value={lessonTitle}
                 onChange={(event) => setLessonTitle(event.target.value)}
                 maxLength={160}
                 autoFocus
                 className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none focus:border-[#78BCC4] focus:ring-2 focus:ring-[#78BCC4]/20"
-                placeholder="e.g. Defining a class"
+                placeholder="Ví dụ: Khai báo lớp"
               />
             </label>
             <label className="mt-4 block text-sm font-medium text-[#002C3E]">
-              Duration in minutes
+              Thời lượng (phút)
               <input
                 type="number"
                 min="0"
@@ -502,9 +502,9 @@ export default function ChaptersPage() {
             </label>
             {formError && <p className="mt-3 text-sm text-[#d9363e]">{formError}</p>}
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setLessonChapterId(null)} className="rounded-xl px-4 py-2 text-sm font-medium text-[#526f78] hover:bg-[#f3f7f5]">Cancel</button>
+              <button type="button" onClick={() => setLessonChapterId(null)} className="rounded-xl px-4 py-2 text-sm font-medium text-[#526f78] hover:bg-[#f3f7f5]">Hủy</button>
               <button type="submit" disabled={isSaving} className="rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db3540] disabled:cursor-not-allowed disabled:opacity-60">
-                {isSaving ? "Saving..." : "Create lesson"}
+                {isSaving ? "Đang lưu..." : "Tạo bài học"}
               </button>
             </div>
           </form>

@@ -18,6 +18,7 @@ import type {
   QuizSubmissionPayload,
   QuizStatus,
 } from '../types/quiz';
+import { vietnameseErrorMessage } from './ui-labels';
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 let refreshInFlight: Promise<void> | null = null;
@@ -45,7 +46,7 @@ export class ApiClientError extends Error {
   status: number;
 
   constructor(message: string, code = 'INTERNAL_ERROR', status = 500) {
-    super(message);
+    super(vietnameseErrorMessage(message));
     this.name = 'ApiClientError';
     this.code = code;
     this.status = status;

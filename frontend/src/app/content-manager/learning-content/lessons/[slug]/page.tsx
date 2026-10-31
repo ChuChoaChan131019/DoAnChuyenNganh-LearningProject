@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { courseApi } from "@/lib/api";
 import LessonMaterials from "@/components/content-manager/lesson-materials";
+import { vietnameseDifficulty, vietnameseStatus } from "@/lib/ui-labels";
 
 type EditorLesson = {
   title: string;
@@ -69,7 +70,7 @@ export default function LessonEditorPage() {
       }
       setSaveMessage("Lesson saved successfully.");
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Unable to save lesson.");
+      setLoadError(error instanceof Error ? error.message : "Không thể lưu bài học.");
     } finally {
       setIsSaving(false);
     }
@@ -78,7 +79,7 @@ export default function LessonEditorPage() {
   const changeStatus = async (action: "approve" | "publish") => {
     if (!selectedSlug) return;
     if (title.trim() !== savedFields.title || content !== savedFields.content || codeExample !== savedFields.codeExample) {
-      setLoadError("Save your changes before changing the lesson status.");
+      setLoadError("Hãy lưu thay đổi trước khi cập nhật trạng thái bài học.");
       return;
     }
     if (!window.confirm(action === "approve" ? "Approve this lesson?" : "Publish this lesson?")) return;
@@ -92,7 +93,7 @@ export default function LessonEditorPage() {
       setStatus(action === "approve" ? "Approved" : "Published");
       setSaveMessage(action === "approve" ? "Lesson approved." : "Lesson published.");
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Unable to change lesson status.");
+      setLoadError(error instanceof Error ? error.message : "Không thể thay đổi trạng thái bài học.");
     } finally {
       setIsSaving(false);
     }
@@ -109,7 +110,7 @@ export default function LessonEditorPage() {
       await courseApi.removeLesson(selectedSlug);
       router.push("/content-manager/learning-content/lessons");
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Unable to delete lesson.");
+      setLoadError(error instanceof Error ? error.message : "Không thể xóa bài học.");
       setIsSaving(false);
     }
   };
@@ -159,7 +160,7 @@ export default function LessonEditorPage() {
       })
       .catch(() => {
         if (!isActive) return;
-        setLoadError("Unable to load this lesson from Supabase.");
+        setLoadError("Không thể tải bài học từ cơ sở dữ liệu.");
         setIsLoading(false);
       });
 
@@ -176,16 +177,16 @@ export default function LessonEditorPage() {
           className="inline-flex items-center gap-2 text-sm text-[#637981] hover:text-[#002C3E]"
         >
           <ArrowLeft className="h-4 w-4" />
-          All lessons
+          Tất cả bài học
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href={selectedSlug ? `/content-manager/learning-content/lessons/${selectedSlug}/preview` : "#"}
-            onClick={(event) => { if (title.trim() !== savedFields.title || content !== savedFields.content || codeExample !== savedFields.codeExample) { event.preventDefault(); setLoadError("Save your changes before previewing the saved lesson."); } }}
+            onClick={(event) => { if (title.trim() !== savedFields.title || content !== savedFields.content || codeExample !== savedFields.codeExample) { event.preventDefault(); setLoadError("Hãy lưu thay đổi trước khi xem trước bài học."); } }}
             className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#002C3E] shadow-sm hover:bg-[#f8fbf9]"
           >
             <Eye className="h-4 w-4" />
-            Preview saved lesson
+            Xem trước bài học đã lưu
           </Link>
           <button
             type="button"
@@ -194,23 +195,23 @@ export default function LessonEditorPage() {
             className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#002C3E] shadow-sm hover:bg-[#f8fbf9]"
           >
             <Save className="h-4 w-4" />
-            Save draft
+            Lưu bản nháp
           </button>
           <button
             type="button"
             className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#002C3E] shadow-sm hover:bg-[#f8fbf9]"
           >
             <WandSparkles className="h-4 w-4" />
-            Generate with AI
+            Tạo bằng trí tuệ nhân tạo
           </button>
-          {status === "Draft" && <button type="button" onClick={() => void changeStatus("approve")} disabled={isLoading || isSaving} className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50"><Check className="h-4 w-4" />Approve</button>}
-          {status === "Approved" && <button type="button" onClick={() => void changeStatus("publish")} disabled={isLoading || isSaving} className="inline-flex items-center gap-2 rounded-xl bg-[#14919B] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50"><Globe2 className="h-4 w-4" />Publish</button>}
+          {status === "Draft" && <button type="button" onClick={() => void changeStatus("approve")} disabled={isLoading || isSaving} className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50"><Check className="h-4 w-4" />Duyệt</button>}
+          {status === "Approved" && <button type="button" onClick={() => void changeStatus("publish")} disabled={isLoading || isSaving} className="inline-flex items-center gap-2 rounded-xl bg-[#14919B] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50"><Globe2 className="h-4 w-4" />Xuất bản</button>}
         </div>
       </div>
       <header>
         <div className="flex items-center gap-2 text-xs text-[#637981]">
           <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
-            {status}
+            {vietnameseStatus(status)}
           </span>
           <span>{chapterTitle}</span>
         </div>
@@ -220,7 +221,7 @@ export default function LessonEditorPage() {
       </header>
       {isLoading && (
         <p className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-800">
-          Loading lesson data...
+          Đang tải dữ liệu bài học...
         </p>
       )}
       {loadError && (
@@ -236,7 +237,7 @@ export default function LessonEditorPage() {
       <div className="grid items-start gap-4 xl:grid-cols-[250px_minmax(0,1fr)_290px]">
         <aside className="rounded-2xl border border-[#dfe6df] bg-white p-3 shadow-sm">
           <p className="px-2 py-2 text-xs font-bold uppercase tracking-wider text-[#637981]">
-            Structure
+            Cấu trúc
           </p>
           <nav className="space-y-1">
             {lessons.map((lesson) => (
@@ -261,7 +262,7 @@ export default function LessonEditorPage() {
               <Code2 className="h-4 w-4" />
               <Table2 className="h-4 w-4" />
               <ImageIcon className="h-4 w-4" />
-              <span className="ml-auto text-xs">Markdown supported</span>
+              <span className="ml-auto text-xs">Có thể dùng Markdown</span>
             </div>
             <textarea
               value={content}
@@ -272,23 +273,23 @@ export default function LessonEditorPage() {
           </section>
           <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">
             <div className="border-b border-[#dfe6df] px-5 py-4">
-              <h2 className="font-semibold text-[#002C3E]">C# example</h2>
+              <h2 className="font-semibold text-[#002C3E]">Ví dụ C#</h2>
               <p className="text-xs text-[#637981]">
-                Rendered with syntax highlighting for students
+                Hiển thị mã nguồn với tô màu cú pháp cho học viên
               </p>
             </div>
             <textarea
               value={codeExample}
               readOnly={status === "Published"}
               onChange={(event) => setCodeExample(event.target.value)}
-              placeholder="Add a C# code example..."
+              placeholder="Thêm ví dụ mã C#..."
               className="mx-4 my-4 min-h-[180px] w-[calc(100%-2rem)] resize-y rounded-xl bg-[#061d26] p-5 font-mono text-sm leading-7 text-[#d8e9e8] outline-none focus:ring-2 focus:ring-[#78BCC4]/40"
             />
           </section>
           {selectedSlug && status === "Draft" && <LessonMaterials key={selectedSlug} lessonId={selectedSlug} />}
           <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">
             <div className="border-b border-[#dfe6df] px-5 py-4">
-              <h2 className="font-semibold text-[#002C3E]">Exercises</h2>
+              <h2 className="font-semibold text-[#002C3E]">Bài tập</h2>
             </div>
             {exercises.length > 0 ? (
               <div className="space-y-3 p-4">
@@ -303,7 +304,7 @@ export default function LessonEditorPage() {
                     <div>
                       <p>{exercise.content}</p>
                       <p className="mt-1 text-xs text-[#637981]">
-                        {exercise.type} · {exercise.difficulty} · {exercise.status}
+                        {exercise.type} · {vietnameseDifficulty(exercise.difficulty)} · {vietnameseStatus(exercise.status)}
                       </p>
                     </div>
                   </div>
@@ -311,7 +312,7 @@ export default function LessonEditorPage() {
               </div>
             ) : (
               <p className="px-5 py-8 text-sm text-[#637981]">
-                No exercises have been added to this lesson yet.
+                Bài học này chưa có bài tập.
               </p>
             )}
           </section>
@@ -319,10 +320,10 @@ export default function LessonEditorPage() {
         <aside className="space-y-4">
           <section className="rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-sm">
             <h2 className="border-b border-[#dfe6df] pb-4 font-semibold text-[#002C3E]">
-              Lesson settings
+              Cài đặt bài học
             </h2>
             <label className="mt-4 block text-xs font-semibold text-[#526f78]">
-              Title
+              Tiêu đề
               <input
                 value={title}
                 readOnly={status === "Published"}
@@ -331,7 +332,7 @@ export default function LessonEditorPage() {
               />
             </label>
             <label className="mt-4 block text-xs font-semibold text-[#526f78]">
-              Lesson ID
+              Mã bài học
               <input
                 value={slug}
                 readOnly
@@ -339,17 +340,17 @@ export default function LessonEditorPage() {
               />
             </label>
             <label className="mt-4 block text-xs font-semibold text-[#526f78]">
-              Chapter
+              Chương
               <select value={chapterTitle} onChange={(event) => setChapterTitle(event.target.value)} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] bg-white px-3 text-sm text-[#002C3E]">
                 <option>{chapterTitle}</option>
               </select>
             </label>
             <label className="mt-4 block text-xs font-semibold text-[#526f78]">
-              Status
-              <span className="mt-1.5 block rounded-xl border border-[#dfe6df] bg-slate-50 px-3 py-2 text-sm text-[#002C3E]">{status} · v{version}</span>
+              Trạng thái
+              <span className="mt-1.5 block rounded-xl border border-[#dfe6df] bg-slate-50 px-3 py-2 text-sm text-[#002C3E]">{vietnameseStatus(status)} · phiên bản {version}</span>
             </label>
             <label className="mt-5 flex items-center justify-between text-sm text-[#526f78]">
-              Show code playground
+              Hiển thị khu vực thực hành mã
               <button
                 type="button"
                 role="switch"
@@ -364,9 +365,9 @@ export default function LessonEditorPage() {
             </label>
           </section>
           <section className="rounded-2xl border border-rose-200 bg-white p-5 shadow-sm">
-            <h2 className="font-semibold text-rose-700">Danger zone</h2>
+            <h2 className="font-semibold text-rose-700">Thao tác nguy hiểm</h2>
             <p className="mt-2 text-xs leading-5 text-[#637981]">
-              A lesson with related learning data cannot be deleted.
+              Không thể xóa bài học đang có dữ liệu học tập liên quan.
             </p>
             <button
               type="button"
@@ -375,10 +376,10 @@ export default function LessonEditorPage() {
               className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Trash2 className="h-4 w-4" />
-              Delete lesson
+              Xóa bài học
             </button>
           </section>
-          <Link href="/content-manager/ai/review-queue" className="block rounded-2xl border border-[#dfe6df] bg-white p-5 text-sm font-semibold text-[#14919B] shadow-sm">Open lesson review queue</Link>
+          <Link href="/content-manager/ai/review-queue" className="block rounded-2xl border border-[#dfe6df] bg-white p-5 text-sm font-semibold text-[#14919B] shadow-sm">Mở danh sách duyệt bài học</Link>
         </aside>
       </div>
     </div>

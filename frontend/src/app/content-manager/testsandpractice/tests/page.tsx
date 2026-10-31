@@ -6,6 +6,7 @@ import { Plus, Clock, Users } from 'lucide-react';
 import { TestItem, TestStatus } from '@/types/test-and-practice';
 import { DifficultyLevel } from '@/types/question';
 import { quizApi, courseApi } from '@/lib/api';
+import { vietnameseDifficulty } from '@/lib/ui-labels';
 
 const STYLES = {
   pageContainer: 'mx-auto max-w-7xl space-y-6 pb-12',
@@ -25,23 +26,23 @@ const STYLES = {
     published: {
       bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
       dot: 'bg-emerald-500',
-      label: 'Published',
+      label: 'Đã xuất bản',
     },
     approved: {
       bg: 'bg-sky-50 text-sky-700 border-sky-200/60',
       dot: 'bg-sky-500',
-      label: 'Approved',
+      label: 'Đã duyệt',
     },
     draft: {
       bg: 'bg-gray-100 text-gray-600 border-gray-200',
       dot: 'bg-gray-400',
-      label: 'Draft',
+      label: 'Bản nháp',
     },
   },
 };
 
 function DifficultyBadge({ level }: { level: DifficultyLevel }) {
-  const formatted = level ? level.charAt(0).toUpperCase() + level.slice(1) : 'Medium';
+  const formatted = level ? vietnameseDifficulty(level) : 'Trung bình';
   const badgeStyle = STYLES.difficultyBadges[level] || STYLES.difficultyBadges.medium;
   return (
     <span
@@ -101,7 +102,7 @@ export default function TestsPage() {
 
             const formattedDate = q.created_at
               ? new Date(q.created_at).toISOString().split('T')[0]
-              : 'N/A';
+              : 'Không có thông tin';
 
             return {
               id: String(q.id),
@@ -157,10 +158,10 @@ export default function TestsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-            Tests
+            Bài kiểm tra
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Assessments built from the C# question bank.
+            Bài kiểm tra được tạo từ ngân hàng câu hỏi C#.
           </p>
         </div>
 
@@ -171,7 +172,7 @@ export default function TestsPage() {
             className={STYLES.createBtn}
           >
             <Plus className="h-4 w-4" />
-            Create test
+            Tạo bài kiểm tra
           </button>
         </div>
       </div>
@@ -182,20 +183,20 @@ export default function TestsPage() {
           <table className="w-full text-left text-sm text-gray-600">
             <thead className={STYLES.thead}>
               <tr>
-                <th scope="col" className="py-4 pl-6 pr-4">Test</th>
-                <th scope="col" className="px-4 py-4">Course</th>
-                <th scope="col" className="px-4 py-4">Questions</th>
-                <th scope="col" className="px-4 py-4">Duration</th>
-                <th scope="col" className="px-4 py-4">Difficulty</th>
-                <th scope="col" className="px-4 py-4">Status</th>
-                <th scope="col" className="py-4 pl-4 pr-6">Attempts</th>
+                <th scope="col" className="py-4 pl-6 pr-4">Bài kiểm tra</th>
+                <th scope="col" className="px-4 py-4">Khóa học</th>
+                <th scope="col" className="px-4 py-4">Câu hỏi</th>
+                <th scope="col" className="px-4 py-4">Thời lượng</th>
+                <th scope="col" className="px-4 py-4">Độ khó</th>
+                <th scope="col" className="px-4 py-4">Trạng thái</th>
+                <th scope="col" className="py-4 pl-4 pr-6">Lượt làm bài</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">
-                    Loading tests from database...
+                    Đang tải bài kiểm tra...
                   </td>
                 </tr>
               ) : error ? (
@@ -207,7 +208,7 @@ export default function TestsPage() {
               ) : tests.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">
-                    Chưa có bài test nào trong database. Hãy bấm &quot;Create test&quot; để tạo mới.
+                    Chưa có bài test nào trong database. Hãy bấm &quot;Tạo bài kiểm tra&quot; để tạo mới.
                   </td>
                 </tr>
               ) : (

@@ -150,10 +150,10 @@ function AITutorContent() {
     <div className="mx-auto max-w-[1216px] space-y-[22px]">
       {/* Header */}
       <div>
-        <p className="mb-1 text-sm font-medium text-[#145a68]">Learn</p>
-        <h1 className="text-[32px] font-bold tracking-tight text-[#0f3741]">AI Tutor</h1>
+        <p className="mb-1 text-sm font-medium text-[#145a68]">Học tập</p>
+        <h1 className="text-[32px] font-bold tracking-tight text-[#0f3741]">Trợ giảng trí tuệ nhân tạo</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Course-aware explanations with real C# examples, available any time.
+          Giải thích theo khóa học kèm ví dụ C# thực tế, luôn sẵn sàng hỗ trợ.
         </p>
       </div>
 
@@ -162,12 +162,12 @@ function AITutorContent() {
         <div className="relative flex h-[520px] min-h-0 flex-col overflow-hidden rounded-[16px] border border-[#dfe6df] bg-white shadow-[0_8px_18px_rgba(0,44,62,0.06)]">
           {/* Chat Header (Có đường kẻ ngang giống ảnh mẫu) */}
           <div className="flex items-center justify-between border-b border-slate-100 px-[18px] py-[15px]">
-            <h2 className="text-[15px] font-bold text-[#0f3741]">Conversation</h2>
+            <h2 className="text-[15px] font-bold text-[#0f3741]">Cuộc trò chuyện</h2>
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                aria-label="New chat"
-                title="New chat"
+                aria-label="Cuộc trò chuyện mới"
+                title="Cuộc trò chuyện mới"
                 onClick={startNewConversation}
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-[#145a68]"
               >
@@ -186,9 +186,9 @@ function AITutorContent() {
 
           {isHistoryOpen && (
             <div className="absolute right-4 top-[52px] z-10 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
-              <p className="px-2 text-xs font-bold uppercase tracking-wide text-slate-500">Chat history</p>
+              <p className="px-2 text-xs font-bold uppercase tracking-wide text-slate-500">Lịch sử trò chuyện</p>
               {!history.length ? (
-                <p className="px-2 py-4 text-sm text-slate-500">No saved conversations yet.</p>
+                <p className="px-2 py-4 text-sm text-slate-500">Chưa có cuộc trò chuyện nào được lưu.</p>
               ) : (
                 <div className="mt-2 max-h-48 space-y-1 overflow-y-auto">
                   {history.map((conversation) => (
@@ -232,7 +232,7 @@ function AITutorContent() {
                 <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[#e8a3a0] text-white">
                   <Bot className="h-[15px] w-[15px]" />
                 </div>
-                <div className="flex h-[47px] items-center gap-1 rounded-[18px] rounded-tl-sm bg-[#f4f5f0] px-4 text-[#145a68]" aria-label="AI is typing">
+                <div className="flex h-[47px] items-center gap-1 rounded-[18px] rounded-tl-sm bg-[#f4f5f0] px-4 text-[#145a68]" aria-label="AI đang trả lời">
                   <span className="h-2 w-2 animate-bounce rounded-full bg-[#78bcc4] [animation-delay:-0.3s]" />
                   <span className="h-2 w-2 animate-bounce rounded-full bg-[#78bcc4] [animation-delay:-0.15s]" />
                   <span className="h-2 w-2 animate-bounce rounded-full bg-[#78bcc4]" />
@@ -248,7 +248,7 @@ function AITutorContent() {
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Ask about a C# or OOP concept..."
+                placeholder="Hỏi về C# hoặc lập trình hướng đối tượng..."
                 disabled={isSending}
                 className="h-[35px] flex-1 rounded-[13px] border border-slate-200 bg-white px-3 text-sm text-slate-700 placeholder-slate-400 shadow-sm transition-all focus:border-[#78bcc4] focus:outline-none focus:ring-4 focus:ring-[#78bcc4]/10"
                 onKeyDown={(e) => {
@@ -260,7 +260,7 @@ function AITutorContent() {
               />
               <button
                 type="button"
-                aria-label="Send question"
+                aria-label="Gửi câu hỏi"
                 onClick={() => void sendMessage()}
                 disabled={!isReady || isSending || !inputValue.trim()}
                 className="flex h-[35px] w-[45px] shrink-0 items-center justify-center rounded-[12px] bg-[#f7949a] text-white shadow-sm transition-colors hover:bg-rose-400"
@@ -273,7 +273,7 @@ function AITutorContent() {
 
         {/* Right: Suggested Questions */}
         <div className="w-full shrink-0 rounded-[16px] border border-[#dfe6df] bg-[#fbfdf9] p-[18px] shadow-[0_8px_18px_rgba(0,44,62,0.06)]">
-          <h2 className="text-[15px] font-bold text-[#0f3741]">Try asking</h2>
+          <h2 className="text-[15px] font-bold text-[#0f3741]">Thử hỏi</h2>
           <div className="mt-4 flex flex-col gap-2">
             {SUGGESTIONS.map((suggestion, index) => (
               <button
@@ -294,7 +294,7 @@ function AITutorContent() {
 
 export default function AITutorPage() {
   return (
-    <Suspense fallback={<div className="mx-auto max-w-[1216px] text-sm text-slate-500">Loading tutor...</div>}>
+    <Suspense fallback={<div className="mx-auto max-w-[1216px] text-sm text-slate-500">Đang tải trợ giảng...</div>}>
       <AITutorContent />
     </Suspense>
   );
