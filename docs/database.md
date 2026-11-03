@@ -1,5 +1,7 @@
 # Từ điển dữ liệu hiện tại — Phân hệ Nội dung
 
+> **Cập nhật C02 ngày 03/11/2026:** Đã đối chiếu ba bảng `code_exercises`, `code_exercise_revisions`, `code_test_cases` và hàm `save_code_exercise_draft` đang có trên Supabase. Migration tái tạo cấu trúc được lưu tại `database/migrations/20261103135132_code_exercises.sql`; xem mục Phòng thực hành C# bên dưới. Các số liệu trong ảnh chụp ngày 21/10 không bao gồm ba bảng này.
+
 > **Cập nhật 30/10/2026 (duyệt bài cá nhân):** Đã áp dụng `database/migrations/20261030_allow_lesson_author_approval.sql`. Tài khoản `content_manager` hoặc `admin` có thể duyệt bài do chính mình tạo. Vẫn yêu cầu tiêu đề, nội dung, đúng phiên bản và ghi lịch sử duyệt.
 
 > **Cập nhật 30/10/2026:** Đã áp dụng `database/migrations/20261030_lesson_direct_approval.sql`. Bài học đi trực tiếp `draft → approved → published`; thao tác gửi duyệt và trạng thái `in_review` không còn dùng. Bài cũ ở `in_review` được chuyển về `draft` và có sự kiện `workflow_migration` trong lịch sử. Các cột `submitted_by`/`submitted_at` và sự kiện `submit` cũ được giữ để đọc lịch sử.
@@ -295,9 +297,25 @@ Lưu câu hỏi của học sinh, câu trả lời AI và vai trò người gử
 | `created_at` | `timestamptz` | Không | Thời điểm gửi/lưu tin nhắn. |
 | `conversation_id` | `uuid`, FK → `ai_tutor_conversations.id` | Có | Cuộc trò chuyện chứa tin nhắn. |
 
+## 7. Phòng thực hành C# — C02
+
+Migration `database/migrations/20261103135132_code_exercises.sql` bổ sung ba bảng và hàm lưu nháp. Cần có sẵn `public.profiles(id, role)`, `public.lessons(id)` và các role Supabase `anon`, `authenticated`, `service_role`. Migration có thể chạy lại trên schema C02 hiện tại mà không xóa dữ liệu.
+
+| Bảng | Trường và ràng buộc chính |
+| --- | --- |
+| `code_exercises` | `id` UUID; `lesson_id` FK → `lessons`; `created_by` FK → `profiles`; `published_revision_id`; `archived_at`; `created_at`, `updated_at`. FK ghép bảo đảm phiên bản xuất bản thuộc đúng bài. |
+| `code_exercise_revisions` | `id`, `exercise_id`, `revision_no`, `edit_version`; tiêu đề, mục tiêu, mô tả, độ khó `easy/medium/hard`, định dạng đầu vào/đầu ra, mã khởi đầu, `hint_1/2/3`, mã và giải thích lời giải; trạng thái `draft/published/superseded`; thời điểm tạo/cập nhật. Mỗi bài chỉ có tối đa một nháp và một bản xuất bản. |
+| `code_test_cases` | `id`, `revision_id`, `input_text`, `expected_output`, `is_public`, `order_index`, `created_at`. Thứ tự phải dương và duy nhất trong từng phiên bản; đầu vào/đầu ra cho phép rỗng và được giữ nguyên xuống dòng. |
+
+`save_code_exercise_draft(p_actor_id, p_payload, p_exercise_id, p_expected_version)` lưu nội dung và toàn bộ bộ kiểm tra trong một giao dịch. Bài mới luôn là nháp. Khi cập nhật nháp, truyền `edit_version` hiện tại; khi tạo bài hoặc tạo nháp mới từ bài đã xuất bản, truyền `0`. Hàm khóa bài/nháp, tăng phiên bản khi lưu, từ chối lưu cũ (`PT409`), sai chủ sở hữu (`42501`), bài/bài học không tồn tại (`P0002`) và bài đã lưu trữ (`PT409`). Sửa bài đã xuất bản tạo phiên bản nháp mới, giữ nguyên nội dung/bộ kiểm tra đang xuất bản. `test_cases` là danh sách thay thế toàn bộ; bỏ trường này tương đương danh sách rỗng.
+
+Ba bảng bật RLS và không cấp quyền cho `anon`/`authenticated`; RPC cũng chỉ cấp `EXECUTE` cho `service_role`. Backend lấy người thực hiện từ token, kiểm tra vai trò `content_manager/admin`, giới hạn người biên soạn với bài của mình. Không gọi RPC từ frontend hoặc tin `p_actor_id` do trình duyệt gửi. Xóa bài qua API là cập nhật `archived_at`, giữ các phiên bản và bộ kiểm tra.
+
+Kiểm thử tự động nằm ở `backend/src/modules/code-exercises/`: test service, validation DTO và PostgreSQL cô lập bằng PGlite. Test database chạy chính tệp migration trên database mới, thử chạy lại khi đã có dữ liệu, kiểm tra lưu nháp, giao dịch rollback, phiên bản, quyền truy cập và bảo toàn bản xuất bản; không cần thông tin kết nối Supabase. Chạy `npm test -w backend -- src/modules/code-exercises` hoặc toàn bộ `npm test -w backend`.
+
 ## Những phần chưa có bảng riêng
 
-- Chưa có bảng lưu **bài thực hành viết code C#**, bộ kiểm tra code, bài nộp code hoặc tiến độ làm code. `practice_attempts` hiện chỉ lưu luyện câu hỏi.
+- Chưa có bảng lưu **bài nộp code và tiến độ làm code**. C02 đã có ba bảng biên soạn bài và bộ kiểm tra ở mục 7; `practice_attempts` vẫn chỉ lưu luyện câu hỏi.
 - Chưa có bảng lưu **bài đăng thảo luận**, bình luận, đánh dấu hữu ích hoặc báo cáo nội dung.
 - Chưa có bảng tiến độ đọc bài học riêng trong 17 bảng `public` đang tồn tại. Không suy ra học sinh đã học xong bài chỉ từ bảng `lessons`.
 
