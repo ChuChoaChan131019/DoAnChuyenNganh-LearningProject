@@ -1,5 +1,7 @@
 # Từ điển dữ liệu hiện tại — Phân hệ Nội dung
 
+> **Cập nhật D01 ngày 03/11/2026:** Bảng `discussion_posts`, các ràng buộc, chỉ mục và trigger đã được đối chiếu với Supabase. Migration tái tạo cấu trúc nằm ở `database/migrations/20261103143449_discussion_posts.sql`; xem mục 8 và hợp đồng API tại `docs/d01-thao-luan-api.md`.
+
 > **Cập nhật C02 ngày 03/11/2026:** Đã đối chiếu ba bảng `code_exercises`, `code_exercise_revisions`, `code_test_cases` và hàm `save_code_exercise_draft` đang có trên Supabase. Migration tái tạo cấu trúc được lưu tại `database/migrations/20261103135132_code_exercises.sql`; xem mục Phòng thực hành C# bên dưới. Các số liệu trong ảnh chụp ngày 21/10 không bao gồm ba bảng này.
 
 > **Cập nhật 30/10/2026 (duyệt bài cá nhân):** Đã áp dụng `database/migrations/20261030_allow_lesson_author_approval.sql`. Tài khoản `content_manager` hoặc `admin` có thể duyệt bài do chính mình tạo. Vẫn yêu cầu tiêu đề, nội dung, đúng phiên bản và ghi lịch sử duyệt.
@@ -313,10 +315,20 @@ Ba bảng bật RLS và không cấp quyền cho `anon`/`authenticated`; RPC cũ
 
 Kiểm thử tự động nằm ở `backend/src/modules/code-exercises/`: test service, validation DTO và PostgreSQL cô lập bằng PGlite. Test database chạy chính tệp migration trên database mới, thử chạy lại khi đã có dữ liệu, kiểm tra lưu nháp, giao dịch rollback, phiên bản, quyền truy cập và bảo toàn bản xuất bản; không cần thông tin kết nối Supabase. Chạy `npm test -w backend -- src/modules/code-exercises` hoặc toàn bộ `npm test -w backend`.
 
+## 8. Bài đăng thảo luận — D01
+
+`discussion_posts` gồm `id`, `chapter_id` bắt buộc, `lesson_id` tùy chọn, `author_id`, `post_type` (`question/note/resource`), `title`, `content`, `resource_url`, `status` (`visible/hidden/removed`), `created_at`, `updated_at`, `deleted_at`. Các ID liên kết có FK đến `chapters`, `lessons`, `profiles` với `ON DELETE RESTRICT` để giữ lịch sử. Khi tạo qua API, chỉ gửi một trong `chapter_id`/`lesson_id`; backend xác định chương từ bài học nếu cần.
+
+Tiêu đề sau khi bỏ khoảng trắng đầu/cuối dài 5–160 ký tự, nội dung dài 10–20.000 ký tự. Bài `resource` phải có URL HTTPS tối đa 2.000 ký tự; bài `question/note` không có `resource_url`. Trigger `validate_discussion_post_target` kiểm tra chương/khóa học đã xuất bản và bài học thuộc đúng chương, đã xuất bản khi tạo hoặc đổi vị trí bài đăng. Backend kiểm tra lại toàn bộ trạng thái xuất bản trước khi sửa nội dung.
+
+Bảng bật RLS và không cho `anon`/`authenticated` truy cập trực tiếp; chỉ backend dùng `service_role` và lọc theo tác giả lấy từ token. Sửa/xóa chỉ áp dụng bài `visible` chưa bị xóa; xóa mềm bằng `deleted_at` giữ nội dung cũ. Tác giả vẫn có thể xóa bài đang hiển thị của mình sau khi khóa học bị thu hồi, nhưng không thể sửa hoặc tạo thêm. Các chỉ mục hỗ trợ tra cứu theo chương, bài học và tác giả. Migration có thể chạy lại mà không xóa bài đăng đã có.
+
+Test D01 gồm validation DTO, service và service chạy trên PostgreSQL cô lập bằng PGlite với chính migration đã lưu. Chạy `npm test -w backend -- src/modules/discussion`; không cần Supabase token hoặc database thật.
+
 ## Những phần chưa có bảng riêng
 
 - Chưa có bảng lưu **bài nộp code và tiến độ làm code**. C02 đã có ba bảng biên soạn bài và bộ kiểm tra ở mục 7; `practice_attempts` vẫn chỉ lưu luyện câu hỏi.
-- Chưa có bảng lưu **bài đăng thảo luận**, bình luận, đánh dấu hữu ích hoặc báo cáo nội dung.
+- D01 đã có bảng **bài đăng thảo luận** ở mục 8; chưa có bảng bình luận, đánh dấu hữu ích hoặc báo cáo nội dung.
 - Chưa có bảng tiến độ đọc bài học riêng trong 17 bảng `public` đang tồn tại. Không suy ra học sinh đã học xong bài chỉ từ bảng `lessons`.
 
 Khi thêm tính năng hoặc migration, cần đọc lại schema Supabase và cập nhật tài liệu này cùng PR tương ứng.
