@@ -29,6 +29,7 @@ export enum QuestionDifficulty {
 export enum QuestionStatus {
   DRAFT = 'draft',
   APPROVED = 'approved',
+  REJECTED = 'rejected',
 }
 
 export class QuestionOptionDto {

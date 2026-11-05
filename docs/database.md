@@ -133,7 +133,7 @@ Câu hỏi gắn khóa học và có thể gắn chương, bài học. Câu hỏ
 | `difficulty` | `varchar(20)` | Không | Độ khó `easy`, `medium`, `hard`. |
 | `content` | `text` | Có | Nội dung đề bài/câu hỏi. |
 | `explanation` | `text` | Không | Giải thích đáp án sau khi làm bài. |
-| `status` | `varchar(20)` | Không | `draft` hoặc `approved`; mặc định `draft`. API chỉ đưa câu đã duyệt vào bài làm phù hợp. |
+| `status` | `varchar(20)` | Không | `draft`, `approved` hoặc `rejected`; mặc định `draft`. API chỉ đưa câu đã duyệt vào bài làm phù hợp. |
 | `is_ai_generated` | `boolean` | Không | Câu hỏi có nguồn gốc AI hay không; mặc định `false`. |
 | `created_at` | `timestamptz` | Không | Thời điểm tạo câu hỏi. |
 | `course_id` | `uuid`, FK → `courses.id` | Có | Khóa học của câu hỏi. |

@@ -401,7 +401,23 @@ export const courseApi = {
   ),
 };
 
+export const QUESTION_REVIEW_COUNT_CHANGED_EVENT = 'question-review-count-changed';
+
+function notifyQuestionReviewCountChanged() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(QUESTION_REVIEW_COUNT_CHANGED_EVENT));
+  }
+}
+
+async function questionMutation<T>(requestPromise: Promise<T>): Promise<T> {
+  const result = await requestPromise;
+  notifyQuestionReviewCountChanged();
+  return result;
+}
+
 export const questionApi = {
+  pendingReviewCount: () =>
+    request<{ count: number }>('/api/v1/questions/review-count'),
   list: (filters: {
     search?: string;
     course_id?: string;
@@ -437,18 +453,18 @@ export const questionApi = {
     request<LessonOption[]>(
       `/api/v1/courses/${encodeURIComponent(String(courseId))}/chapters/${encodeURIComponent(String(chapterId))}/lessons`,
     ),
-  create: (payload: QuestionPayload) => request<{ id: string }>('/api/v1/questions', {
+  create: (payload: QuestionPayload) => questionMutation(request<{ id: string }>('/api/v1/questions', {
     method: 'POST', body: JSON.stringify(payload),
-  }),
-  update: (id: string, payload: QuestionPayload) => request<{ id: string }>(`/api/v1/questions/${id}`, {
+  })),
+  update: (id: string, payload: QuestionPayload) => questionMutation(request<{ id: string }>(`/api/v1/questions/${id}`, {
     method: 'PUT', body: JSON.stringify(payload),
-  }),
-  updateStatus: (id: string, status: import('../types/question').QuestionStatus) => request<{ id: string; status: string }>(`/api/v1/questions/${id}/status`, {
+  })),
+  updateStatus: (id: string, status: import('../types/question').QuestionStatus) => questionMutation(request<{ id: string; status: string }>(`/api/v1/questions/${id}/status`, {
     method: 'PATCH', body: JSON.stringify({ status }),
-  }),
-  submitForReview: (id: string) => request<{ id: string; review_pending: boolean }>(`/api/v1/questions/${id}/submit-review`, {
+  })),
+  submitForReview: (id: string) => questionMutation(request<{ id: string; review_pending: boolean }>(`/api/v1/questions/${id}/submit-review`, {
     method: 'POST', body: JSON.stringify({}),
-  }),
+  })),
   remove: (id: string) => request<{ id: string; deleted: boolean }>(`/api/v1/questions/${id}`, {
     method: 'DELETE',
   }),

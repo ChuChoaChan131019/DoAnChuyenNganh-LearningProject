@@ -4,7 +4,7 @@ import { Roles } from '../../common/decorators/roles.decorator.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import {
   QuestionDto,
-  QuestionStatus,
+  SubmitQuestionDto,
 } from './dto/question.dto.js';
 import { QuestionsService } from './questions.service.js';
 
@@ -28,6 +28,11 @@ export class QuestionsController {
     return this.questionsService.listQuestions(filters);
   }
 
+  @Get('questions/review-count')
+  getPendingReviewCount() {
+    return this.questionsService.countPendingReview();
+  }
+
   @Get('questions/:id')
   getById(@Param('id') id: string) {
     return this.questionsService.getById(id);
@@ -44,7 +49,7 @@ export class QuestionsController {
   }
 
   @Patch('questions/:id/status')
-  updateStatus(@Param('id') id: string, @Body() body: { status: QuestionStatus }, @Req() request: any) {
+  updateStatus(@Param('id') id: string, @Body() body: SubmitQuestionDto, @Req() request: any) {
     return this.questionsService.updateStatus(id, body.status, request.user.id);
   }
 
