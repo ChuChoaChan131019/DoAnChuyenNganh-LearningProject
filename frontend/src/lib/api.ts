@@ -542,15 +542,35 @@ export const practiceApi = {
     if (courseId) params.set('course_id', courseId);
     return request(`/api/v1/practice/questions?${params.toString()}`);
   },
-  ai: (courseId?: string, count = 10, prompt?: string, chapterId?: string): Promise<{
-    mode: string;
-    difficulty: string;
-    rationale: string;
-    questions: { mode: string; questions: import('../types/practice').PracticeQuestion[] } | import('../types/practice').PracticeQuestion[];
-  }> => request('/api/v1/practice/ai', {
+  ai: (payload: import('../types/practice').GenerateAiPracticeRequest): Promise<import('../types/practice').GenerateAiPracticeResponse> => request('/api/v1/practice/ai', {
     method: 'POST',
-    body: JSON.stringify({ course_id: courseId, chapter_id: chapterId, count, prompt }),
+    body: JSON.stringify({
+      lesson_id: payload.lessonId,
+      course_id: payload.courseId,
+      chapter_id: payload.chapterId,
+      count: payload.count ?? 5,
+      difficulty: payload.difficulty ?? 'mixed',
+      prompt: payload.prompt,
+    }),
   }),
+  createAiSet: (payload: import('../types/practice').CreateAiPracticeSetRequest): Promise<import('../types/practice').CreatedAiPracticeSet> =>
+    request('/api/v1/practice/ai-sets', {
+      method: 'POST',
+      body: JSON.stringify({
+        lesson_id: payload.lessonId,
+        count: payload.count ?? 5,
+        difficulty: payload.difficulty ?? 'mixed',
+        prompt: payload.prompt,
+      }),
+    }),
+  aiSets: (chapterId: string): Promise<{ sets: import('../types/practice').AiPracticeSet[] }> =>
+    request(`/api/v1/practice/ai-sets?chapter_id=${encodeURIComponent(chapterId)}`),
+  aiSetQuestions: (setId: string): Promise<import('../types/practice').AiPracticeSetQuestionsResponse> =>
+    request(`/api/v1/practice/ai-sets/${encodeURIComponent(setId)}/questions`),
+  retryAiSet: (setId: string): Promise<import('../types/practice').CreatedAiPracticeSet> =>
+    request(`/api/v1/practice/ai-sets/${encodeURIComponent(setId)}/retry`, {
+      method: 'POST',
+    }),
   createAttempt: (payload: { mode: 'quick' | 'weak' | 'course' | 'ai'; course_id?: string; total_questions: number }) =>
     request<{ id: string }>('/api/v1/practice/attempts', {
       method: 'POST',

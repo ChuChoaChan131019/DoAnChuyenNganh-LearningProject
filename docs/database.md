@@ -135,10 +135,16 @@ Câu hỏi gắn khóa học và có thể gắn chương, bài học. Câu hỏ
 | `explanation` | `text` | Không | Giải thích đáp án sau khi làm bài. |
 | `status` | `varchar(20)` | Không | `draft` hoặc `approved`; mặc định `draft`. API chỉ đưa câu đã duyệt vào bài làm phù hợp. |
 | `is_ai_generated` | `boolean` | Không | Câu hỏi có nguồn gốc AI hay không; mặc định `false`. |
+| `generated_for_user_id` | `uuid`, FK → `profiles.id` | Không | Học viên sở hữu câu luyện tập do AI tạo riêng. `NULL` nghĩa là câu thuộc ngân hàng dùng chung. |
+| `ai_practice_set_id` | `uuid`, FK → `ai_practice_sets.id` | Không | Bộ luyện tập AI chứa câu hỏi; `NULL` với câu hỏi không thuộc một bộ AI cá nhân. |
 | `created_at` | `timestamptz` | Không | Thời điểm tạo câu hỏi. |
 | `course_id` | `uuid`, FK → `courses.id` | Có | Khóa học của câu hỏi. |
 | `chapter_id` | `uuid`, FK → `chapters.id` | Không | Chương kiến thức của câu hỏi; có thể trống ở dữ liệu cũ. |
 | `lesson_id` | `uuid`, FK → `lessons.id` | Không | Bài học liên quan chi tiết, nếu câu hỏi thuộc một bài cụ thể. |
+
+Migration `database/migrations/20261105004802_lesson_ai_practice.sql` thêm quyền sở hữu cho câu AI cá nhân và chỉ mục một phần `(generated_for_user_id, created_at desc)` trên các dòng có chủ sở hữu. Các truy vấn ngân hàng câu hỏi và luyện tập chung phải lọc `generated_for_user_id is null`; API luyện tập AI chỉ trả hoặc chấm câu riêng khi trường này trùng người dùng từ token.
+
+Hàm `save_ai_practice_questions(p_user_id, p_lesson_id, p_questions)` kiểm tra hồ sơ learner, quan hệ khóa học–chương–bài học và trạng thái `published`, sau đó lưu toàn bộ câu hỏi cùng phương án trong một giao dịch. Hàm chạy với quyền người gọi, chỉ cấp `EXECUTE` cho `service_role`; frontend không được gọi trực tiếp và không được tự cung cấp `p_user_id`.
 
 ### `question_options` — Phương án trả lời
 
@@ -240,6 +246,30 @@ Lưu từng phương án trắc nghiệm được học sinh chọn cho một c�
 | `option_id` | `uuid`, FK → `question_options.id` | Có | Phương án học sinh đã chọn. |
 
 ## 5. Luyện tập câu hỏi
+
+### `ai_practice_sets` — Bộ luyện tập AI cá nhân
+
+Mỗi dòng đại diện cho một lần học viên yêu cầu AI tạo câu hỏi từ một bài học. Bộ được liệt kê theo chương nhưng câu hỏi chỉ lấy context từ `lesson_id`. Backend luôn lọc đồng thời `user_id` và ID bộ/chương; UUID không thay thế kiểm tra quyền sở hữu.
+
+| Trường | Kiểu | Bắt buộc | Chức năng |
+| --- | --- | --- | --- |
+| `id` | `uuid`, PK | Có | ID bộ luyện tập AI. |
+| `user_id` | `uuid`, FK → `profiles.id` | Có | Học viên sở hữu bộ; không nhận giá trị này từ frontend. |
+| `course_id` | `uuid`, FK → `courses.id` | Có | Khóa học suy ra từ bài học. |
+| `chapter_id` | `uuid`, FK → `chapters.id` | Có | Chương dùng để liệt kê các bộ. |
+| `lesson_id` | `uuid`, FK → `lessons.id` | Có | Bài học duy nhất cung cấp context cho AI. |
+| `status` | `text` | Có | `generating`, `ready` hoặc `failed`. |
+| `difficulty` | `text` | Có | `easy`, `medium`, `hard` hoặc `mixed`. |
+| `requested_count` | `integer` | Có | Số câu yêu cầu, từ 3 đến 10. |
+| `generated_count` | `integer` | Có | Số câu đã lưu thành công. |
+| `prompt` | `text` | Không | Yêu cầu bổ sung, tối đa 500 ký tự. |
+| `error_code` | `text` | Không | Mã lỗi an toàn để hiển thị trạng thái, không chứa lỗi provider thô. |
+| `attempt_count` | `integer` | Có | Số lần backend đã thử tạo bộ. |
+| `created_at` | `timestamptz` | Có | Thời điểm tạo card. |
+| `processing_started_at` | `timestamptz` | Không | Thời điểm bắt đầu lần xử lý gần nhất. |
+| `completed_at` | `timestamptz` | Không | Thời điểm bộ chuyển sang `ready` hoặc `failed`. |
+
+Migration `database/migrations/20261105231314_ai_practice_sets.sql` bật RLS, cho authenticated user chỉ đọc metadata bộ của chính họ, không cấp quyền ghi trực tiếp cho frontend và dùng `ON DELETE RESTRICT`. Hàm `save_ai_practice_set_questions(p_user_id, p_set_id, p_questions)` lưu toàn bộ câu hỏi/phương án rồi chuyển bộ sang `ready` trong cùng một transaction; chỉ `service_role` được gọi hàm.
 
 ### `practice_attempts` — Lượt luyện tập
 

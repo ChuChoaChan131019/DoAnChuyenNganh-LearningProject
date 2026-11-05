@@ -106,6 +106,7 @@ export class QuestionsService {
         status: dto.status,
       })
       .eq('id', id)
+      .is('generated_for_user_id', null)
       .select('id')
       .single();
     this.throwMutationError(questionError);
@@ -141,6 +142,7 @@ export class QuestionsService {
       .from('questions')
       .update({ status })
       .eq('id', id)
+      .is('generated_for_user_id', null)
       .select('id, status')
       .single();
     this.throwMutationError(error);
@@ -157,6 +159,7 @@ export class QuestionsService {
       .from('questions')
       .update({ status })
       .eq('id', id)
+      .is('generated_for_user_id', null)
       .select('id')
       .single();
     this.throwMutationError(error);
@@ -176,6 +179,7 @@ export class QuestionsService {
         options:question_options(*)
       `)
       .eq('id', id)
+      .is('generated_for_user_id', null)
       .maybeSingle();
     this.throwQueryError(error);
     if (!data) throw new NotFoundException('Question not found');
@@ -191,6 +195,18 @@ export class QuestionsService {
     await this.assertQuestionManager(actorId);
     const supabase = this.supabaseService.getClient();
     const questionIds = dto.questions.map((question) => question.question_id);
+
+    if (questionIds.length > 0) {
+      const { data: sharedQuestions, error: sharedQuestionsError } = await supabase
+        .from('questions')
+        .select('id')
+        .in('id', questionIds)
+        .is('generated_for_user_id', null);
+      this.throwQueryError(sharedQuestionsError);
+      if ((sharedQuestions ?? []).length !== new Set(questionIds).size) {
+        throw new BadRequestException('Quiz can only use shared question bank content');
+      }
+    }
 
     const { data: existingLinks, error: existingLinksError } = await supabase
       .from('quiz_questions')
@@ -296,6 +312,7 @@ export class QuestionsService {
       .from('questions')
       .select('id, course_id, chapter_id, lesson_id')
       .eq('id', id)
+      .is('generated_for_user_id', null)
       .maybeSingle();
     this.throwQueryError(error);
     if (!data) throw new NotFoundException('Question not found');
@@ -368,6 +385,7 @@ export class QuestionsService {
       lesson:lessons(id, title),
       options:question_options(id, option_text, is_correct, order_index)
     `)
+    .is('generated_for_user_id', null)
     .order('created_at', { ascending: false });
 
   if (filters?.search) {
