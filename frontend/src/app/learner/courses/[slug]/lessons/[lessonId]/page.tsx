@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { courseApi, practiceApi, quizApi } from '@/lib/api';
 import LearnerLessonMaterials from '@/components/learner/lesson-materials';
+import { DiscussionSection } from '@/components/learner/discussion/discussion-section';
 import {
   ArrowLeft,
   ArrowRight,
@@ -960,6 +961,16 @@ export default function LearnerLessonPage() {
           </section>
 
         </div>
+
+        {databaseLesson && currentChapterId && (
+          <DiscussionSection
+            key={databaseLesson.id}
+            chapterId={currentChapterId}
+            lessonId={databaseLesson.id}
+            title="Thảo luận bài học"
+            description="Các bài đăng và bình luận chỉ thuộc bài học bạn đang xem."
+          />
+        )}
 
         {databaseLesson && !loadError && (
           <section className="flex flex-col gap-4 rounded-2xl border border-violet-200 bg-violet-50 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">

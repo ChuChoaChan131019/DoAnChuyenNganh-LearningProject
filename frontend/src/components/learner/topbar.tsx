@@ -11,6 +11,7 @@ import {
   Compass,
   Target,
   Bot,
+  MessagesSquare,
   Search,
   Bell,
 } from 'lucide-react';
@@ -26,12 +27,15 @@ export function LearnerTopbar() {
   const pathname = usePathname();
   const { role } = useAuth();
   const isSearchActive = pathname.startsWith('/learner/search');
+  const discussionHref = '/learner/discussions';
+  const isDiscussionActive = pathname.startsWith('/learner/discussions')
+    || pathname.includes('/discussion');
 
   return (
     <header className="sticky top-0 z-30 w-full border-b border-gray-200/70 bg-[#F7F8F3]">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
         {/* Left: Logo & Main Navigation */}
-        <div className="flex items-center gap-8">
+        <div className="flex min-w-0 items-center gap-3 lg:gap-6">
           {/* Logo */}
           <Link href="/learner/dashboard" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(135deg,#f47c83,#78bcc4)] shadow-sm">
@@ -41,37 +45,57 @@ export function LearnerTopbar() {
           </Link>
 
           {/* Navigation Links */}
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-1 md:flex" aria-label="Điều hướng chính">
             {NAV_ITEMS.map((item) => {
-              const isActive = pathname.startsWith(item.href);
+              const isActive = item.href === '/learner/courses'
+                ? pathname.startsWith(item.href) && !isDiscussionActive
+                : pathname.startsWith(item.href);
               const Icon = item.icon;
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                  aria-label={item.label}
+                  title={item.label}
+                  className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-2.5 py-2 text-sm font-medium transition-colors xl:px-3 ${
                     isActive
                       ? 'bg-rose-50 text-[#F7444E]'
                       : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
-                  {item.label}
+                  <span className="hidden xl:inline">{item.label}</span>
                 </Link>
               );
             })}
 
             <Link
+              href={discussionHref}
+              aria-label="Thảo luận học tập"
+              title="Thảo luận học tập"
+              className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-2.5 py-2 text-sm font-medium transition-colors xl:px-3 ${
+                isDiscussionActive
+                  ? 'bg-rose-50 text-[#F7444E]'
+                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+              }`}
+            >
+              <MessagesSquare className="h-4 w-4" />
+              <span className="hidden xl:inline">Thảo luận</span>
+            </Link>
+
+            <Link
               href="/learner/search"
-              className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+              aria-label="Tìm kiếm"
+              title="Tìm kiếm"
+              className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-2.5 py-2 text-sm font-medium transition-colors xl:px-3 ${
                 isSearchActive
                   ? 'bg-rose-50 text-[#F7444E]'
                   : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
               }`}
             >
               <Search className="h-4 w-4" />
-              Tìm kiếm
+              <span className="hidden xl:inline">Tìm kiếm</span>
             </Link>
           </nav>
         </div>

@@ -6,15 +6,18 @@ import { RolesGuard } from '../../common/guards/roles.guard.js';
 
 import { DiscussionPostsController } from './discussion-posts.controller.js';
 import { DiscussionPostsService } from './discussion-posts.service.js';
+import { DiscussionCommentsController } from './discussion-comments.controller.js';
+import { DiscussionCommentsService } from './discussion-comments.service.js';
 
 @Module({
   imports: [SupabaseModule],
-  controllers: [DiscussionPostsController],
+  controllers: [DiscussionPostsController, DiscussionCommentsController],
   providers: [
     DiscussionPostsService,
+    DiscussionCommentsService,
     JwtAuthGuard,
     RolesGuard,
   ],
-  exports: [DiscussionPostsService],
+  exports: [DiscussionPostsService, DiscussionCommentsService],
 })
 export class DiscussionModule {}

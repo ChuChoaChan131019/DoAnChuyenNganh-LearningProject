@@ -2,6 +2,8 @@
 
 > **Cập nhật D01 ngày 03/11/2026:** Bảng `discussion_posts`, các ràng buộc, chỉ mục và trigger đã được đối chiếu với Supabase. Migration tái tạo cấu trúc nằm ở `database/migrations/20261103143449_discussion_posts.sql`; xem mục 8 và hợp đồng API tại `docs/d01-thao-luan-api.md`.
 
+> **Cập nhật D02 ngày 06/11/2026:** Migration `database/migrations/20261106140000_discussion_comments.sql` bổ sung bình luận, tìm kiếm toàn văn và chỉ mục cho danh sách thảo luận. Hợp đồng API nằm tại `docs/d02-thao-luan-api.md`.
+
 > **Cập nhật C02 ngày 03/11/2026:** Đã đối chiếu ba bảng `code_exercises`, `code_exercise_revisions`, `code_test_cases` và hàm `save_code_exercise_draft` đang có trên Supabase. Migration tái tạo cấu trúc được lưu tại `database/migrations/20261103135132_code_exercises.sql`; xem mục Phòng thực hành C# bên dưới. Các số liệu trong ảnh chụp ngày 21/10 không bao gồm ba bảng này.
 
 > **Cập nhật 30/10/2026 (duyệt bài cá nhân):** Đã áp dụng `database/migrations/20261030_allow_lesson_author_approval.sql`. Tài khoản `content_manager` hoặc `admin` có thể duyệt bài do chính mình tạo. Vẫn yêu cầu tiêu đề, nội dung, đúng phiên bản và ghi lịch sử duyệt.
@@ -355,10 +357,22 @@ Bảng bật RLS và không cho `anon`/`authenticated` truy cập trực tiếp;
 
 Test D01 gồm validation DTO, service và service chạy trên PostgreSQL cô lập bằng PGlite với chính migration đã lưu. Chạy `npm test -w backend -- src/modules/discussion`; không cần Supabase token hoặc database thật.
 
+## 9. Danh sách thảo luận và bình luận — D02
+
+Migration `database/migrations/20261106140000_discussion_comments.sql` tạo bảng `discussion_comments` gồm `id`, `post_id`, `author_id`, `content`, `status`, `created_at`, `updated_at`, `deleted_at`. `post_id` và `author_id` có FK `ON DELETE RESTRICT` tới `discussion_posts` và `profiles` để giữ lịch sử. Nội dung sau trim dài 1–5.000 ký tự; trạng thái dùng chung `visible/hidden/removed`.
+
+Bình luận được đọc theo `(post_id, created_at, id)` và chỉ hiển thị khi `status = 'visible'` cùng `deleted_at IS NULL`. Chỉ mục một phần `idx_discussion_comments_post_visible` hỗ trợ đúng truy vấn này; `author_id` có chỉ mục riêng. Xóa từ API chỉ cập nhật `deleted_at` và `updated_at`.
+
+Migration cũng thêm cột sinh `discussion_posts.search_vector` bằng `to_tsvector('simple', title || content)` và GIN index một phần cho bài còn hiển thị. API luôn giới hạn tìm kiếm trong một chương hoặc bài học và phân trang theo con trỏ `(created_at, id)`.
+
+`discussion_comments` bật RLS, thu hồi toàn bộ quyền của `PUBLIC`, `anon`, `authenticated` và chỉ cấp `SELECT/INSERT/UPDATE` cho `service_role`. Frontend gọi NestJS; backend lấy tác giả từ token và kiểm tra bài cha, trạng thái xuất bản cùng quyền sở hữu trước khi ghi.
+
+Test D02 chạy cả migration D01/D02 trên PGlite, kiểm tra chạy lại migration không mất dữ liệu, tìm kiếm, số bình luận, thứ tự, quyền tác giả, xóa mềm, nội dung bị ẩn/thu hồi và quyền database. Chạy `npm test -w backend -- src/modules/discussion`.
+
 ## Những phần chưa có bảng riêng
 
 - Chưa có bảng lưu **bài nộp code và tiến độ làm code**. C02 đã có ba bảng biên soạn bài và bộ kiểm tra ở mục 7; `practice_attempts` vẫn chỉ lưu luyện câu hỏi.
-- D01 đã có bảng **bài đăng thảo luận** ở mục 8; chưa có bảng bình luận, đánh dấu hữu ích hoặc báo cáo nội dung.
+- D01/D02 đã có bảng **bài đăng và bình luận thảo luận** ở mục 8–9; chưa có bảng đánh dấu hữu ích hoặc báo cáo nội dung.
 - Chưa có bảng tiến độ đọc bài học riêng trong 17 bảng `public` đang tồn tại. Không suy ra học sinh đã học xong bài chỉ từ bảng `lessons`.
 
 Khi thêm tính năng hoặc migration, cần đọc lại schema Supabase và cập nhật tài liệu này cùng PR tương ứng.

@@ -41,6 +41,134 @@ function setup(results: Array<{ data: unknown; error?: unknown }>) {
 }
 
 describe('DiscussionPostsService', () => {
+  it('lists all visible posts with their published course locations', async () => {
+    const courseId = '00000000-0000-4000-8000-000000000030';
+    const chapterId = '00000000-0000-4000-8000-000000000031';
+    const lessonId = '00000000-0000-4000-8000-000000000032';
+    const postRow = {
+      id: '00000000-0000-4000-8000-000000000033',
+      chapter_id: chapterId,
+      lesson_id: lessonId,
+      author_id: author,
+      post_type: 'question',
+      title: 'Global discussion question',
+      content: 'Question content with enough details',
+      resource_url: null,
+      status: 'visible',
+      created_at: '2026-11-06T00:00:00.000Z',
+      updated_at: '2026-11-06T00:00:00.000Z',
+      deleted_at: null,
+    };
+    const results = [
+      {
+        data: [{ id: courseId, title: 'C# Basics', slug: 'csharp-basics' }],
+        error: null,
+      },
+      {
+        data: [{ id: chapterId, title: 'Variables', course_id: courseId }],
+        error: null,
+      },
+      { data: [postRow], error: null },
+      { data: [], error: null },
+      { data: [{ id: lessonId, title: 'Local variables' }], error: null },
+    ];
+    const from = vi.fn((table: string) => {
+      const result = results.shift();
+      if (!result) throw new Error(`Unexpected query on ${table}`);
+      const builder: Record<string, any> = {};
+      for (const method of [
+        'select', 'eq', 'is', 'in', 'textSearch', 'or', 'order',
+      ]) {
+        builder[method] = vi.fn(() => builder);
+      }
+      builder.limit = vi.fn(async () => result);
+      // Supabase query builders are intentionally thenable; mirror that API here.
+      // oxlint-disable-next-line unicorn/no-thenable
+      builder.then = (resolve: (value: unknown) => unknown) => resolve(result);
+      return builder;
+    });
+    const service = new DiscussionPostsService({
+      getClient: () => ({ from }),
+    } as never);
+
+    const page = await service.findAll({ scope: 'all', limit: 20 }, author);
+
+    expect(page.items).toEqual([
+      expect.objectContaining({
+        id: postRow.id,
+        course_id: courseId,
+        course_title: 'C# Basics',
+        course_slug: 'csharp-basics',
+        chapter_title: 'Variables',
+        lesson_title: 'Local variables',
+      }),
+    ]);
+  });
+
+  it('lists posts across every published chapter in a published course', async () => {
+    const courseId = '00000000-0000-4000-8000-000000000010';
+    const chapterIds = [
+      '00000000-0000-4000-8000-000000000011',
+      '00000000-0000-4000-8000-000000000012',
+    ];
+    const postRows = chapterIds.map((chapterId, index) => ({
+      id: `00000000-0000-4000-8000-00000000002${index}`,
+      chapter_id: chapterId,
+      lesson_id: null,
+      author_id: author,
+      post_type: 'question',
+      title: `Question ${index + 1}`,
+      content: 'Question content with details',
+      resource_url: null,
+      status: 'visible',
+      created_at: `2026-11-0${index + 1}T00:00:00.000Z`,
+      updated_at: `2026-11-0${index + 1}T00:00:00.000Z`,
+      deleted_at: null,
+    }));
+    const calls: Array<{ table: string; method: string; args: unknown[] }> = [];
+    const results = [
+      { data: { id: courseId, status: 'published' }, error: null },
+      { data: chapterIds.map((id) => ({ id })), error: null },
+      { data: postRows, error: null },
+      { data: [], error: null },
+    ];
+    const from = vi.fn((table: string) => {
+      const result = results.shift();
+      if (!result) throw new Error(`Unexpected query on ${table}`);
+      const builder: Record<string, any> = {};
+      for (const method of [
+        'select', 'eq', 'is', 'in', 'textSearch', 'or', 'order',
+      ]) {
+        builder[method] = vi.fn((...args: unknown[]) => {
+          calls.push({ table, method, args });
+          return builder;
+        });
+      }
+      builder.maybeSingle = vi.fn(async () => result);
+      builder.limit = vi.fn(async (...args: unknown[]) => {
+        calls.push({ table, method: 'limit', args });
+        return result;
+      });
+      // Supabase query builders are intentionally thenable; mirror that API here.
+      // oxlint-disable-next-line unicorn/no-thenable
+      builder.then = (resolve: (value: unknown) => unknown) => resolve(result);
+      return builder;
+    });
+    const service = new DiscussionPostsService({
+      getClient: () => ({ from }),
+    } as never);
+
+    const page = await service.findAll({ course_id: courseId, limit: 20 }, author);
+
+    expect(page.items).toHaveLength(2);
+    expect(calls).toContainEqual({
+      table: 'discussion_posts',
+      method: 'in',
+      args: ['chapter_id', chapterIds],
+    });
+    expect(page.items.map((item) => item.chapter_id)).toEqual(chapterIds);
+  });
+
   it('derives the chapter from the lesson and records the authenticated author', async () => {
     const { service, builders } = setup([
       { data: lesson },

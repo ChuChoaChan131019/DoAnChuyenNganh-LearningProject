@@ -19,6 +19,13 @@ import type {
   QuizStatus,
 } from '../types/quiz';
 import { vietnameseErrorMessage } from './ui-labels';
+import type {
+  CursorPage,
+  DiscussionComment,
+  DiscussionPostDetail,
+  DiscussionPostFilters,
+  DiscussionPostListItem,
+} from '../types/discussion';
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 let refreshInFlight: Promise<void> | null = null;
@@ -184,6 +191,49 @@ export const aiTutorApi = {
     request<{ conversationId: string; message: { id: string; conversation_id: string; sender_role: 'assistant'; message_content: string; created_at: string } }>(
       '/api/v1/ai/tutor/message',
       { method: 'POST', body: JSON.stringify(payload) },
+    ),
+};
+
+export const discussionApi = {
+  listPosts: (filters: DiscussionPostFilters) => {
+    const params = new URLSearchParams();
+    if (filters.scope) params.set('scope', filters.scope);
+    if (filters.course_id) params.set('course_id', filters.course_id);
+    if (filters.chapter_id) params.set('chapter_id', filters.chapter_id);
+    if (filters.lesson_id) params.set('lesson_id', filters.lesson_id);
+    if (filters.post_type) params.set('post_type', filters.post_type);
+    if (filters.search) params.set('search', filters.search);
+    if (filters.limit) params.set('limit', String(filters.limit));
+    if (filters.cursor) params.set('cursor', filters.cursor);
+    return request<CursorPage<DiscussionPostListItem>>(
+      `/api/v1/discussion/posts?${params.toString()}`,
+    );
+  },
+  getPost: (postId: string) =>
+    request<DiscussionPostDetail>(
+      `/api/v1/discussion/posts/${encodeURIComponent(postId)}`,
+    ),
+  listComments: (postId: string, cursor?: string, limit = 30) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (cursor) params.set('cursor', cursor);
+    return request<CursorPage<DiscussionComment>>(
+      `/api/v1/discussion/posts/${encodeURIComponent(postId)}/comments?${params.toString()}`,
+    );
+  },
+  createComment: (postId: string, content: string) =>
+    request<DiscussionComment>(
+      `/api/v1/discussion/posts/${encodeURIComponent(postId)}/comments`,
+      { method: 'POST', body: JSON.stringify({ content }) },
+    ),
+  updateComment: (commentId: string, content: string) =>
+    request<DiscussionComment>(
+      `/api/v1/discussion/comments/${encodeURIComponent(commentId)}`,
+      { method: 'PATCH', body: JSON.stringify({ content }) },
+    ),
+  removeComment: (commentId: string) =>
+    request<{ id: string; deleted: true; deleted_at: string }>(
+      `/api/v1/discussion/comments/${encodeURIComponent(commentId)}`,
+      { method: 'DELETE' },
     ),
 };
 
