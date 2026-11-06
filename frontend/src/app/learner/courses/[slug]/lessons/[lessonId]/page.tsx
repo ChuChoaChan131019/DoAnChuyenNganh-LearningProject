@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { courseApi, quizApi } from '@/lib/api';
+import { useParams, useRouter } from 'next/navigation';
+import { courseApi, practiceApi, quizApi } from '@/lib/api';
 import LearnerLessonMaterials from '@/components/learner/lesson-materials';
 import {
   ArrowLeft,
@@ -21,6 +21,8 @@ import {
   Layers,
   PanelLeft,
   ChevronDown,
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
 
 // DỮ LIỆU ĐỒNG BỘ TRỰC TIẾP TỪ PAGE_7.TSX
@@ -455,6 +457,7 @@ public class Program
 
 export default function LearnerLessonPage() {
   const params = useParams();
+  const router = useRouter();
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug || 'csharp-fundamentals';
   const lessonIdParam = Array.isArray(params?.lessonId) ? params.lessonId[0] : params?.lessonId;
 
@@ -467,6 +470,9 @@ export default function LearnerLessonPage() {
   } | null>(null);
   const [loadedSlug, setLoadedSlug] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isCreatingAiSet, setIsCreatingAiSet] = useState(false);
+  const [aiSetError, setAiSetError] = useState<string | null>(null);
+  const [aiQuestionCount, setAiQuestionCount] = useState(5);
 
   useEffect(() => {
     let isActive = true;
@@ -612,6 +618,25 @@ export default function LearnerLessonPage() {
   const activeLessonCode = databaseLesson
     ? databaseLesson.codeExample?.trim() || ''
     : LESSON_DATABASE[activeLessonId]?.initialCode?.trim() || '';
+
+  const handleCreateAiPracticeSet = async () => {
+    if (!databaseLesson || isCreatingAiSet) return;
+    setIsCreatingAiSet(true);
+    setAiSetError(null);
+    try {
+      const practiceSet = await practiceApi.createAiSet({
+        lessonId: databaseLesson.id,
+        count: aiQuestionCount,
+        difficulty: 'mixed',
+      });
+      router.push(`/learner/practice/ai/chapters/${encodeURIComponent(practiceSet.chapter_id)}?created=${encodeURIComponent(practiceSet.id)}`);
+    } catch (requestError) {
+      setAiSetError(requestError instanceof Error
+        ? requestError.message
+        : 'Không thể tạo bộ câu hỏi AI.');
+      setIsCreatingAiSet(false);
+    }
+  };
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(activeLessonCode);
@@ -935,6 +960,59 @@ export default function LearnerLessonPage() {
           </section>
 
         </div>
+
+        {databaseLesson && !loadError && (
+          <section className="flex flex-col gap-4 rounded-2xl border border-violet-200 bg-violet-50 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-base font-bold text-violet-950">
+                <Sparkles className="h-5 w-5 text-violet-600" />
+                Luyện tập ngay sau bài học
+              </h2>
+              <p className="mt-1 text-sm text-violet-800/80">
+                AI sẽ tạo riêng {aiQuestionCount} câu hỏi dựa trên nội dung của bài học này.
+              </p>
+              <label className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-violet-900">
+                Số câu hỏi
+                <select
+                  value={aiQuestionCount}
+                  onChange={(event) => setAiQuestionCount(Number(event.target.value))}
+                  disabled={isCreatingAiSet}
+                  className="h-10 rounded-lg border border-violet-300 bg-white px-3 text-sm font-bold text-violet-800 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-200 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="Số câu hỏi AI cần tạo"
+                >
+                  {Array.from({ length: 8 }, (_, index) => index + 3).map((count) => (
+                    <option key={count} value={count}>{count} câu</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="flex shrink-0 flex-col items-stretch gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleCreateAiPracticeSet()}
+                  disabled={isCreatingAiSet}
+                  className="inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-violet-600 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isCreatingAiSet
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Sparkles className="h-4 w-4" />}
+                  {isCreatingAiSet ? 'Đang tạo bộ luyện tập...' : 'Tạo câu hỏi'}
+                </button>
+                {currentChapterId && (
+                  <Link
+                    href={`/learner/practice/ai/chapters/${encodeURIComponent(currentChapterId)}`}
+                    className="inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-violet-300 bg-white px-5 text-sm font-bold text-violet-700 transition hover:border-violet-400 hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
+                  >
+                    <Layers className="h-4 w-4" />
+                    Xem các bộ câu hỏi AI của chương
+                  </Link>
+                )}
+              </div>
+              {aiSetError && <p className="max-w-xs text-xs font-medium text-rose-700">{aiSetError}</p>}
+            </div>
+          </section>
+        )}
 
         {/* FOOTER ĐIỀU HƯỚNG BÀI TRƯỚC / TIẾP THEO */}
         <footer className="py-3">

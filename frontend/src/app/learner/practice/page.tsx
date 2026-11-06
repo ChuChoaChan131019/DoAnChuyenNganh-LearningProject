@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Brain, CheckCircle2, Loader2, Target, XCircle, Zap } from 'lucide-react';
 import { practiceApi } from '@/lib/api';
 import type { PracticeChapter, PracticeOverview, PracticeQuestion } from '@/types/practice';
@@ -13,6 +14,17 @@ type AnswerResult = {
 };
 
 export default function PracticePage() {
+  return (
+    <Suspense fallback={<PracticeLoading />}>
+      <PracticeContent />
+    </Suspense>
+  );
+}
+
+function PracticeContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const autoStarted = useRef(false);
   const [overview, setOverview] = useState<PracticeOverview>({ courses: [], chapters: [], weakChapters: [] });
   const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
   const [mode, setMode] = useState<PracticeMode | null>(null);
@@ -27,6 +39,7 @@ export default function PracticePage() {
   const [checking, setChecking] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState('');
+  const [aiSetChapterId, setAiSetChapterId] = useState<string | null>(null);
 
   const loadOverview = async () => {
     try {
@@ -46,7 +59,14 @@ export default function PracticePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const startPractice = async (nextMode: PracticeMode, courseId?: string, prompt?: string, chapterId?: string) => {
+  const startPractice = useCallback(async (
+    nextMode: PracticeMode,
+    courseId?: string,
+    prompt?: string,
+    chapterId?: string,
+    lessonId?: string,
+    setId?: string,
+  ) => {
     setStarting(true);
     setError('');
     setResult(null);
@@ -58,16 +78,32 @@ export default function PracticePage() {
     try {
       let nextQuestions: PracticeQuestion[];
       if (nextMode === 'ai') {
-        const response = await practiceApi.ai(courseId, 10, prompt, chapterId);
-        nextQuestions = Array.isArray(response.questions) 
-          ? response.questions
-          : response.questions.questions;
+        if (setId) {
+          const response = await practiceApi.aiSetQuestions(setId);
+          nextQuestions = response.questions;
+          courseId = response.set.course_id;
+          setAiSetChapterId(response.set.chapter_id);
+        } else {
+          const response = await practiceApi.ai({
+            courseId,
+            chapterId,
+            lessonId,
+            count: lessonId ? 5 : 10,
+            difficulty: 'mixed',
+            prompt,
+          });
+          nextQuestions = response.questions;
+        }
       } else {
         const response = await practiceApi.questions(nextMode, courseId);
         nextQuestions = response.questions;
       }
       const attempt = nextQuestions.length
-        ? await practiceApi.createAttempt({ mode: nextMode, course_id: courseId, total_questions: nextQuestions.length })
+        ? await practiceApi.createAttempt({
+            mode: nextMode,
+            course_id: courseId ?? nextQuestions[0]?.course_id,
+            total_questions: nextQuestions.length,
+          })
         : null;
       setQuestions(nextQuestions);
       setCurrentIndex(0);
@@ -79,7 +115,20 @@ export default function PracticePage() {
     } finally {
       setStarting(false);
     }
-  };
+  }, []);
+
+  const requestedLessonId = searchParams.get('mode') === 'ai'
+    ? searchParams.get('lesson_id')
+    : null;
+  const requestedSetId = searchParams.get('mode') === 'ai'
+    ? searchParams.get('set_id')
+    : null;
+
+  useEffect(() => {
+    if ((!requestedLessonId && !requestedSetId) || autoStarted.current) return;
+    autoStarted.current = true;
+    void startPractice('ai', undefined, undefined, undefined, requestedLessonId ?? undefined, requestedSetId ?? undefined);
+  }, [requestedLessonId, requestedSetId, startPractice]);
 
   const submitAnswer = async () => {
     const currentQuestion = questions[currentIndex];
@@ -114,6 +163,10 @@ export default function PracticePage() {
         setFinishing(false);
         return;
       }
+    }
+    if (requestedSetId && aiSetChapterId) {
+      router.push(`/learner/practice/ai/chapters/${encodeURIComponent(aiSetChapterId)}`);
+      return;
     }
     await loadOverview();
     setMode(null);
@@ -152,7 +205,11 @@ export default function PracticePage() {
         </div>
         <section className="rounded-2xl border border-[#dfe6df] bg-white p-6 shadow-sm">
           <div className="mb-6 flex items-center justify-between gap-3 text-xs text-slate-500">
-            <span>{currentQuestion.courses?.title ?? 'Khóa học'}{currentQuestion.chapters ? ` · ${currentQuestion.chapters.title}` : ''}</span>
+            <span>
+              {currentQuestion.courses?.title ?? 'Khóa học'}
+              {currentQuestion.chapters ? ` · ${currentQuestion.chapters.title}` : ''}
+              {currentQuestion.lessons ? ` · ${currentQuestion.lessons.title}` : ''}
+            </span>
             <span className="rounded-full bg-slate-100 px-2.5 py-1 capitalize">{currentQuestion.difficulty}</span>
           </div>
           <h2 className="text-xl font-semibold leading-relaxed text-[#0f3741]">{currentQuestion.content}</h2>
@@ -193,7 +250,15 @@ export default function PracticePage() {
             </div>
           )}
           <div className="mt-7 flex justify-end gap-3">
-            <button onClick={() => { setMode(null); setQuestions([]); setAttemptId(null); }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Thoát</button>
+            <button onClick={() => {
+              if (requestedSetId && aiSetChapterId) {
+                router.push(`/learner/practice/ai/chapters/${encodeURIComponent(aiSetChapterId)}`);
+                return;
+              }
+              setMode(null);
+              setQuestions([]);
+              setAttemptId(null);
+            }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Thoát</button>
             {result ? (
               <button onClick={currentIndex + 1 < questions.length ? nextQuestion : finishPractice} disabled={finishing} className="rounded-xl bg-[#f7444e] px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
                 {currentIndex + 1 < questions.length ? 'Câu hỏi tiếp theo' : finishing ? 'Đang lưu...' : `Finish · ${displayedScore}/${questions.length}`}
@@ -207,6 +272,30 @@ export default function PracticePage() {
     );
   }
 
+  if (requestedSetId) {
+    return (
+      <div className="mx-auto flex min-h-[320px] max-w-[760px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 text-center shadow-sm">
+        {starting ? (
+          <>
+            <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+            <h1 className="mt-4 text-xl font-bold text-[#0f3741]">Đang mở bộ câu hỏi AI</h1>
+            <p className="mt-2 text-sm text-slate-500">Hệ thống đang tải đúng bộ luyện tập bạn đã chọn.</p>
+          </>
+        ) : (
+          <>
+            <XCircle className="h-8 w-8 text-rose-500" />
+            <h1 className="mt-4 text-xl font-bold text-[#0f3741]">Không thể mở bộ câu hỏi</h1>
+            <p className="mt-2 text-sm text-rose-700">{error || 'Bộ câu hỏi chưa sẵn sàng.'}</p>
+            <div className="mt-5 flex gap-3">
+              <button type="button" onClick={() => router.back()} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Quay lại</button>
+              <button type="button" onClick={() => void startPractice('ai', undefined, undefined, undefined, undefined, requestedSetId)} className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white">Thử lại</button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-[1216px] space-y-[22px]">
       <header>
@@ -214,7 +303,21 @@ export default function PracticePage() {
         <h1 className="text-[32px] font-bold tracking-tight text-[#0f3741]">Luyện tập</h1>
         <p className="mt-1 text-sm text-slate-500">Luyện tập ngắn, tập trung, với phản hồi và giải thích ngay sau mỗi câu.</p>
       </header>
-      {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      {error && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <span>{error}</span>
+          {requestedLessonId && (
+            <button
+              type="button"
+              onClick={() => void startPractice('ai', undefined, undefined, undefined, requestedLessonId)}
+              disabled={starting}
+              className="shrink-0 rounded-lg border border-rose-300 bg-white px-3 py-1.5 font-semibold disabled:opacity-50"
+            >
+              Thử lại
+            </button>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-[22px] md:grid-cols-3">
         <PracticeCard icon={<Zap className="h-5 w-5" />} title="Luyện tập nhanh" description="10 câu hỏi trộn từ tất cả khóa học bạn đang tham gia." onClick={() => startPractice('quick')} disabled={loading || starting} />
         <PracticeCard icon={<Brain className="h-5 w-5" />} title="Chương cần ôn" description="Tập trung vào các chương có độ chính xác thấp nhất trong 30 ngày qua." onClick={() => startPractice('weak')} disabled={loading || starting || overview.weakChapters.length === 0} />
@@ -234,7 +337,16 @@ export default function PracticePage() {
           <button onClick={() => startPractice('weak')} disabled={starting || !overview.weakChapters.length} className="mx-[18px] mb-[18px] w-[calc(100%-36px)] rounded-xl border border-slate-300 py-2 text-sm font-semibold text-[#0f3741] disabled:opacity-50">Luyện chương cần ôn</button>
         </section>
       </div>
-      {starting && <div className="flex items-center justify-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Đang tạo bộ câu hỏi...</div>}
+      {starting && <div className="flex items-center justify-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> {requestedLessonId ? 'AI đang tạo câu hỏi từ bài học này...' : 'Đang tạo bộ câu hỏi...'}</div>}
+    </div>
+  );
+}
+
+function PracticeLoading() {
+  return (
+    <div className="flex min-h-[240px] items-center justify-center gap-2 text-sm text-slate-500">
+      <Loader2 className="h-4 w-4 animate-spin" />
+      Đang tải trang luyện tập...
     </div>
   );
 }
