@@ -2,7 +2,7 @@
 
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Brain, CheckCircle2, Loader2, Target, XCircle, Zap } from 'lucide-react';
+import { Brain, CheckCircle2, Code2, Loader2, Target, XCircle, Zap } from 'lucide-react';
 import { practiceApi } from '@/lib/api';
 import type { PracticeChapter, PracticeOverview, PracticeQuestion } from '@/types/practice';
 
@@ -318,10 +318,11 @@ function PracticeContent() {
           )}
         </div>
       )}
-      <div className="grid grid-cols-1 gap-[22px] md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-[22px] md:grid-cols-2 xl:grid-cols-4">
         <PracticeCard icon={<Zap className="h-5 w-5" />} title="Luyện tập nhanh" description="10 câu hỏi trộn từ tất cả khóa học bạn đang tham gia." onClick={() => startPractice('quick')} disabled={loading || starting} />
         <PracticeCard icon={<Brain className="h-5 w-5" />} title="Chương cần ôn" description="Tập trung vào các chương có độ chính xác thấp nhất trong 30 ngày qua." onClick={() => startPractice('weak')} disabled={loading || starting || overview.weakChapters.length === 0} />
         <AiPracticeCard icon={<Target className="h-5 w-5" />} title="Luyện tập tự động" description="Chọn chương khi nhập yêu cầu tạo câu hỏi mới." chapters={overview.chapters} courseNames={Object.fromEntries(overview.courses.map((course) => [course.id, course.title]))} onStart={(prompt, chapterId) => startPractice('ai', undefined, prompt, chapterId)} disabled={loading || starting} />
+        <PracticeCard icon={<Code2 className="h-5 w-5" />} title="Phòng thực hành C#" description="Chọn bài đã xuất bản, viết mã và tiếp tục từ phần đã lưu." onClick={() => router.push('/learner/code-exercises')} disabled={false} />
       </div>
       <div className="grid grid-cols-1 gap-[22px] md:grid-cols-2">
         <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">

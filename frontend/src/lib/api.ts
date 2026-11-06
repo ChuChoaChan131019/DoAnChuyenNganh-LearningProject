@@ -652,3 +652,36 @@ export const practiceApi = {
       body: JSON.stringify(payload),
     }),
 };
+
+export const codeExerciseApi = {
+  list: (filters: import('../types/code-exercise').CodeExerciseFilters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.search) params.set('search', filters.search);
+    if (filters.course_id) params.set('course_id', filters.course_id);
+    if (filters.chapter_id) params.set('chapter_id', filters.chapter_id);
+    if (filters.lesson_id) params.set('lesson_id', filters.lesson_id);
+    if (filters.difficulty) params.set('difficulty', filters.difficulty);
+    if (filters.progress_status) params.set('progress_status', filters.progress_status);
+    if (filters.limit) params.set('limit', String(filters.limit));
+    if (filters.cursor) params.set('cursor', filters.cursor);
+    const query = params.toString();
+    return request<import('../types/code-exercise').CodeExerciseListResponse>(
+      `/api/v1/learner/code-exercises${query ? `?${query}` : ''}`,
+    );
+  },
+  detail: (exerciseId: string) =>
+    request<import('../types/code-exercise').LearnerCodeExerciseDetail>(
+      `/api/v1/learner/code-exercises/${encodeURIComponent(exerciseId)}`,
+    ),
+  saveCode: (exerciseId: string, code: string, expectedSaveVersion: number) =>
+    request<import('../types/code-exercise').SaveLearnerCodeResponse>(
+      `/api/v1/learner/code-exercises/${encodeURIComponent(exerciseId)}/code`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          code,
+          expected_save_version: expectedSaveVersion,
+        }),
+      },
+    ),
+};

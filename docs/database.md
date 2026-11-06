@@ -331,7 +331,7 @@ Lưu câu hỏi của học sinh, câu trả lời AI và vai trò người gử
 | `created_at` | `timestamptz` | Không | Thời điểm gửi/lưu tin nhắn. |
 | `conversation_id` | `uuid`, FK → `ai_tutor_conversations.id` | Có | Cuộc trò chuyện chứa tin nhắn. |
 
-## 7. Phòng thực hành C# — C02
+## 7. Phòng thực hành C# — C02/C06
 
 Migration `database/migrations/20261103135132_code_exercises.sql` bổ sung ba bảng và hàm lưu nháp. Cần có sẵn `public.profiles(id, role)`, `public.lessons(id)` và các role Supabase `anon`, `authenticated`, `service_role`. Migration có thể chạy lại trên schema C02 hiện tại mà không xóa dữ liệu.
 
@@ -346,6 +346,10 @@ Migration `database/migrations/20261103135132_code_exercises.sql` bổ sung ba b
 Ba bảng bật RLS và không cấp quyền cho `anon`/`authenticated`; RPC cũng chỉ cấp `EXECUTE` cho `service_role`. Backend lấy người thực hiện từ token, kiểm tra vai trò `content_manager/admin`, giới hạn người biên soạn với bài của mình. Không gọi RPC từ frontend hoặc tin `p_actor_id` do trình duyệt gửi. Xóa bài qua API là cập nhật `archived_at`, giữ các phiên bản và bộ kiểm tra.
 
 Kiểm thử tự động nằm ở `backend/src/modules/code-exercises/`: test service, validation DTO và PostgreSQL cô lập bằng PGlite. Test database chạy chính tệp migration trên database mới, thử chạy lại khi đã có dữ liệu, kiểm tra lưu nháp, giao dịch rollback, phiên bản, quyền truy cập và bảo toàn bản xuất bản; không cần thông tin kết nối Supabase. Chạy `npm test -w backend -- src/modules/code-exercises` hoặc toàn bộ `npm test -w backend`.
+
+Migration C06 `database/migrations/20261106160000_code_exercise_progress.sql` bổ sung `code_exercise_progress`, lưu một bản mã hiện hành cho mỗi cặp `(learner_id, exercise_id)`. Bảng giữ `saved_code` kể cả chuỗi rỗng, revision nhìn thấy gần nhất, revision đã hoàn thành, trạng thái, số lần chạy, mức gợi ý và `save_version` dùng khóa lạc quan. FK ghép bảo đảm revision thuộc đúng bài; giới hạn mã là 100.000 ký tự. Dữ liệu không bị xóa khi chạy lại migration.
+
+`list_learner_code_exercises(...)` thực hiện tìm kiếm, lọc cây nội dung/độ khó/tiến độ và phân trang con trỏ ngay trong PostgreSQL; chỉ trả bài, revision và cây khóa học đang xuất bản. `save_learner_code_progress(...)` kiểm tra vai trò learner, khóa dòng hiện hành, từ chối version cũ bằng `PT409` rồi lưu nguyên tử. Cả hai RPC là `SECURITY INVOKER`, thu hồi quyền của `PUBLIC`, `anon`, `authenticated` và chỉ cấp `service_role`. API learner không trả test ẩn, gợi ý hoặc lời giải.
 
 ## 8. Bài đăng thảo luận — D01
 
@@ -371,7 +375,7 @@ Test D02 chạy cả migration D01/D02 trên PGlite, kiểm tra chạy lại mig
 
 ## Những phần chưa có bảng riêng
 
-- Chưa có bảng lưu **bài nộp code và tiến độ làm code**. C02 đã có ba bảng biên soạn bài và bộ kiểm tra ở mục 7; `practice_attempts` vẫn chỉ lưu luyện câu hỏi.
+- C06 đã có bảng **tiến độ và mã gần nhất của bài viết code** ở mục 7. Chưa có bảng lịch sử **bài nộp code**; `practice_attempts` vẫn chỉ lưu luyện câu hỏi.
 - D01/D02 đã có bảng **bài đăng và bình luận thảo luận** ở mục 8–9; chưa có bảng đánh dấu hữu ích hoặc báo cáo nội dung.
 - Chưa có bảng tiến độ đọc bài học riêng trong 17 bảng `public` đang tồn tại. Không suy ra học sinh đã học xong bài chỉ từ bảng `lessons`.
 

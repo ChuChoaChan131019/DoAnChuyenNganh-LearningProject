@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { courseApi, practiceApi, quizApi } from '@/lib/api';
 import LearnerLessonMaterials from '@/components/learner/lesson-materials';
 import { DiscussionSection } from '@/components/learner/discussion/discussion-section';
+import { LessonCodeExercises } from '@/components/learner/code-exercises/lesson-code-exercises';
 import {
   ArrowLeft,
   ArrowRight,
@@ -961,6 +962,10 @@ export default function LearnerLessonPage() {
           </section>
 
         </div>
+
+        {databaseLesson && !loadError && (
+          <LessonCodeExercises key={databaseLesson.id} lessonId={databaseLesson.id} />
+        )}
 
         {databaseLesson && currentChapterId && (
           <DiscussionSection
