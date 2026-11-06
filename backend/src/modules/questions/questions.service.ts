@@ -16,6 +16,16 @@ import {
 export class QuestionsService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
+  async countPendingReview() {
+    const { count, error } = await this.supabaseService
+      .getClient()
+      .from('questions')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', QuestionStatus.DRAFT);
+    this.throwQueryError(error);
+    return { count: count ?? 0 };
+  }
+
   async listCourses() {
     const { data, error } = await this.supabaseService
       .getClient()

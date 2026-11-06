@@ -16,7 +16,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { ApiClientError, questionApi } from '@/lib/api';
-import { ChapterOption, CourseOption, LessonOption, QuestionPayload } from '@/types/question';
+import { ChapterOption, CourseOption, LessonOption, QuestionPayload, QuestionStatus } from '@/types/question';
 
 // ==========================================
 // CENTRALIZED STYLES
@@ -85,7 +85,7 @@ export interface QuestionFormData {
   difficulty: Difficulty;
   content: string;
   explanation: string;
-  status: 'draft' | 'approved';
+  status: QuestionStatus;
   options: AnswerOption[];
 }
 
@@ -306,7 +306,7 @@ function QuestionEditorContent() {
     }
   };
 
-  const buildPayload = (status: 'draft' | 'approved'): QuestionPayload => ({
+  const buildPayload = (status: QuestionStatus): QuestionPayload => ({
     course_id: formData.course,
     chapter_id: formData.chapter,
     lesson_id: normalizeNullableId(formData.lesson),

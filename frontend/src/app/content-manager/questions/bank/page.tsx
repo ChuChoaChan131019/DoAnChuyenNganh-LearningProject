@@ -24,6 +24,7 @@ const TYPE_LABELS: Record<QuestionType, string> = {
 const STATUS_CONFIGS: Record<QuestionStatus, { dot: string; label: string; text: string }> = {
   approved: { dot: 'bg-emerald-500', label: 'Đã duyệt', text: 'text-emerald-700' },
   draft: { dot: 'bg-gray-400', label: 'Bản nháp', text: 'text-gray-600' },
+  rejected: { dot: 'bg-rose-500', label: 'Đã từ chối', text: 'text-rose-700' },
 };
 
 function DifficultyBadge({ level }: { level: DifficultyLevel }) {

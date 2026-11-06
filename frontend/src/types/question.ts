@@ -6,7 +6,7 @@ export type QuestionType =
 
 export type DifficultyLevel = 'easy' | 'medium' | 'hard';
 
-export type QuestionStatus = 'draft' | 'approved';
+export type QuestionStatus = 'draft' | 'approved' | 'rejected';
 
 export interface QuestionOption {
   id?: string;
