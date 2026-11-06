@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, CheckCircle2, Clock3 } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle2, Clock3, MessagesSquare } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { courseApi, quizApi } from '@/lib/api';
@@ -251,6 +251,7 @@ export default function LearnerCourseDetailPage() {
           );
 
           return {
+            id: chapter.id,
             title: chapter.title,
             description: fallbackChapter?.description ?? '',
             completed: false,
@@ -340,7 +341,16 @@ export default function LearnerCourseDetailPage() {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end border-t border-[#e1e6e3] pt-4">
+            <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-[#e1e6e3] pt-4">
+              {databaseCourse && (
+                <Link
+                  href={`/learner/courses/${slug}/discussion`}
+                  className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#78bcc4]/60 bg-[#eef7f7] px-4 py-3 text-sm font-bold text-[#145a68] transition hover:bg-[#e2f1f1]"
+                >
+                  <MessagesSquare className="h-4 w-4" />
+                  Tất cả thảo luận
+                </Link>
+              )}
               <Link
                 href="/learner/practice"
                 className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#f4b7b7] bg-[#fff3f2] px-4 py-3 text-sm font-bold text-[#f7444e] transition hover:bg-[#ffe9e7]"
@@ -365,7 +375,7 @@ export default function LearnerCourseDetailPage() {
             <div className="space-y-4">
               {course.chapters.map((chapter: any, index: number) => (
                 <div
-                  key={chapter.title}
+                  key={chapter.id ?? chapter.title}
                   className="overflow-hidden rounded-[16px] border border-slate-200 bg-[#fafafa]"
                 >
                   <div className="flex items-start justify-between gap-4 px-4 py-4">
@@ -383,7 +393,7 @@ export default function LearnerCourseDetailPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-1">
+                    <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
                       <span className="text-[14px] text-slate-400">
                         {chapter.lessons?.reduce(
                           (sum: number, lesson: any) =>
@@ -392,6 +402,14 @@ export default function LearnerCourseDetailPage() {
                         ) || 0}{' '}
                         min
                       </span>
+                      {chapter.id && (
+                        <Link
+                          href={`/learner/courses/${slug}/discussion/${chapter.id}`}
+                          className="rounded-lg border border-[#78bcc4]/50 bg-white px-2.5 py-1.5 text-xs font-bold text-[#145a68] transition hover:bg-[#eaf4f3]"
+                        >
+                          Thảo luận chương
+                        </Link>
+                      )}
                     </div>
                   </div>
 
