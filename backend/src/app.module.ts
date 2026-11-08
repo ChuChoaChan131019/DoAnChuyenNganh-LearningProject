@@ -11,6 +11,7 @@ import { PracticeModule } from './modules/practice/practice.module.js';
 import { QuizzesModule } from './modules/quizzes/quizzes.module.js';
 import { CodeExercisesModule } from './modules/code-exercises/code-exercises.module.js';
 import { DiscussionModule } from './modules/discussion/discussion.module.js';
+import { StatisticsModule } from './modules/statistics/statistics.module.js';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { DiscussionModule } from './modules/discussion/discussion.module.js';
     QuizzesModule,
     CodeExercisesModule,
     DiscussionModule,
+    StatisticsModule,
   ],
 
   controllers: [AppController],

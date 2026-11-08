@@ -685,3 +685,10 @@ export const codeExerciseApi = {
       },
     ),
 };
+
+export const contentManagerDashboardApi = {
+  get: () =>
+    request<
+      import('../types/content-dashboard').ContentDashboardData
+    >('/api/v1/content-manager/dashboard'),
+};
