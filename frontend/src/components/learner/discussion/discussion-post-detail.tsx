@@ -1,6 +1,6 @@
 'use client';
 
-import { ExternalLink, Loader2, MessageCircle, UserRound, X } from 'lucide-react';
+import { ExternalLink, Loader2, MessageCircle, UserRound, X, ThumbsUp } from 'lucide-react';
 
 import type { DiscussionComment, DiscussionPostDetail } from '@/types/discussion';
 
@@ -11,6 +11,7 @@ import {
   formatDiscussionTime,
   wasEdited,
 } from './discussion-format';
+import { useState } from 'react';
 
 type Props = {
   post: DiscussionPostDetail | null;
@@ -25,6 +26,15 @@ type Props = {
   onUpdateComment: (commentId: string, content: string) => Promise<void>;
   onRemoveComment: (commentId: string) => Promise<void>;
   onLoadMoreComments: () => void;
+  onTogglePostHelpful: (
+    postId: string,
+    isHelpful: boolean,
+  ) => Promise<void>;
+
+  onToggleCommentHelpful: (
+    commentId: string,
+    isHelpful: boolean,
+  ) => Promise<void>;
 };
 
 export function DiscussionPostDetail({
@@ -40,7 +50,34 @@ export function DiscussionPostDetail({
   onUpdateComment,
   onRemoveComment,
   onLoadMoreComments,
+  onTogglePostHelpful,
+  onToggleCommentHelpful,
 }: Props) {
+  const [helpfulLoading, setHelpfulLoading] = useState(false);
+  const [helpfulError, setHelpfulError] = useState<string | null>(null);
+
+  const handlePostHelpful = async () => {
+    if (!post || helpfulLoading) return;
+
+    setHelpfulLoading(true);
+    setHelpfulError(null);
+
+    try {
+      await onTogglePostHelpful(
+        post.id,
+        post.is_helpful,
+      );
+    } catch (error) {
+      setHelpfulError(
+        error instanceof Error
+          ? error.message
+          : 'Không thể cập nhật lượt hữu ích.',
+      );
+    } finally {
+      setHelpfulLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-64 items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-500" role="status">
@@ -97,6 +134,41 @@ export function DiscussionPostDetail({
         {post.content}
       </p>
 
+      <div className="mt-4">
+        <button
+          type="button"
+          disabled={helpfulLoading}
+          aria-pressed={post.is_helpful}
+          onClick={() => void handlePostHelpful()}
+          className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition disabled:opacity-60 ${
+            post.is_helpful
+              ? 'border-[#78bcc4] bg-[#e0f3f2] text-[#146775]'
+              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <ThumbsUp
+            className={`h-4 w-4 ${
+              post.is_helpful ? 'fill-current' : ''
+            }`}
+          />
+
+          {post.is_helpful
+            ? 'Đã đánh dấu hữu ích'
+            : 'Hữu ích'}
+
+          <span>{post.helpful_count}</span>
+        </button>
+
+        {helpfulError && (
+          <p
+            role="alert"
+            className="mt-2 text-xs text-rose-600"
+          >
+            {helpfulError}
+          </p>
+        )}
+      </div>
+
       {post.resource_url && (
         <a
           href={post.resource_url}
@@ -131,6 +203,7 @@ export function DiscussionPostDetail({
                 comment={comment}
                 onUpdate={onUpdateComment}
                 onRemove={onRemoveComment}
+                onToggleHelpful={onToggleCommentHelpful}
               />
             ))
           )}

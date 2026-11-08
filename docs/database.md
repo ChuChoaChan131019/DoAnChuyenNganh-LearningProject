@@ -373,10 +373,27 @@ Migration cũng thêm cột sinh `discussion_posts.search_vector` bằng `to_tsv
 
 Test D02 chạy cả migration D01/D02 trên PGlite, kiểm tra chạy lại migration không mất dữ liệu, tìm kiếm, số bình luận, thứ tự, quyền tác giả, xóa mềm, nội dung bị ẩn/thu hồi và quyền database. Chạy `npm test -w backend -- src/modules/discussion`.
 
+## 10. Đánh dấu hữu ích bài đăng và bình luận — D03
+
+Migration `database/migrations/20261108161402_discussion_helpful_votes.sql` lưu lại hai bảng và hai RPC đã có trên Supabase:
+
+| Bảng | Khóa chính | Liên kết |
+| --- | --- | --- |
+| `discussion_post_helpful_votes` | `(post_id, user_id)` | FK tới `discussion_posts` và `profiles`, `ON DELETE CASCADE`. |
+| `discussion_comment_helpful_votes` | `(comment_id, user_id)` | FK tới `discussion_comments` và `profiles`, `ON DELETE CASCADE`. |
+
+Mỗi dòng có `created_at`; khóa chính ghép chống tính trùng kể cả khi gửi đồng thời. Khóa chính hỗ trợ đếm theo nội dung và có thêm chỉ mục theo `user_id`. API đánh dấu dùng `ON CONFLICT DO NOTHING`, bỏ đánh dấu chỉ xóa cặp nội dung/tài khoản của người gọi. Xóa mềm/ẩn/gỡ nội dung giữ các lượt cũ trong database nhưng không trả chúng trong thống kê hiển thị.
+
+`discussion_post_helpful_stats(p_ids, p_user_id)` và `discussion_comment_helpful_stats(p_ids, p_user_id)` trả `target_id`, `helpful_count` và `is_helpful` cho nội dung còn hiển thị dưới cây khóa học đã xuất bản. Hàm bình luận còn kiểm tra bài đăng cha. Không có lượt nào vẫn trả count 0 và false; nội dung không khả dụng không có dòng trong kết quả. Cả hai hàm là `STABLE`, `SECURITY INVOKER`, có `search_path` rỗng.
+
+Hai bảng bật RLS; `PUBLIC`, `anon`, `authenticated` không được truy cập bảng hay gọi RPC trực tiếp. Backend `service_role` được cấp `SELECT/INSERT/DELETE` và `EXECUTE` RPC; danh tính được lấy từ token tại NestJS. Migration có thể chạy lại mà không xóa lượt đánh dấu đã có.
+
+Test D03 dùng chính các migration D01/D02/D03 trên PGlite và service thật để kiểm tra chống trùng, nhiều tài khoản, bỏ đánh dấu, nội dung ẩn/xóa/thu hồi, quyền database và giữ dữ liệu khi chạy lại migration. Test riêng còn kiểm tra dữ liệu ID, lỗi truy vấn và danh tính/role tại controller. Chạy `npm test -w backend -- src/modules/discussion/discussion-helpful`. Hợp đồng API nằm ở `docs/d03-huu-ich-api.md`.
+
 ## Những phần chưa có bảng riêng
 
 - C06 đã có bảng **tiến độ và mã gần nhất của bài viết code** ở mục 7. Chưa có bảng lịch sử **bài nộp code**; `practice_attempts` vẫn chỉ lưu luyện câu hỏi.
-- D01/D02 đã có bảng **bài đăng và bình luận thảo luận** ở mục 8–9; chưa có bảng đánh dấu hữu ích hoặc báo cáo nội dung.
+- D01/D02/D03 đã có bảng **bài đăng, bình luận và lượt hữu ích** ở mục 8–10; chưa có bảng báo cáo nội dung.
 - Chưa có bảng tiến độ đọc bài học riêng trong 17 bảng `public` đang tồn tại. Không suy ra học sinh đã học xong bài chỉ từ bảng `lessons`.
 
 Khi thêm tính năng hoặc migration, cần đọc lại schema Supabase và cập nhật tài liệu này cùng PR tương ứng.

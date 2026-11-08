@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Pencil, Trash2, UserRound } from 'lucide-react';
+import { Pencil, Trash2, UserRound, ThumbsUp } from 'lucide-react';
 
 import type { DiscussionComment } from '@/types/discussion';
 
@@ -12,12 +12,41 @@ type Props = {
   comment: DiscussionComment;
   onUpdate: (commentId: string, content: string) => Promise<void>;
   onRemove: (commentId: string) => Promise<void>;
+  onToggleHelpful: (
+    commentId: string,
+    isHelpful: boolean,
+  ) => Promise<void>;
 };
 
-export function CommentItem({ comment, onUpdate, onRemove }: Props) {
+export function CommentItem({ comment, onUpdate, onRemove, onToggleHelpful }: Props) {
   const [editing, setEditing] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+
+  const [helpfulLoading, setHelpfulLoading] = useState(false);
+  const [helpfulError, setHelpfulError] = useState<string | null>(null);
+
+  const handleHelpful = async () => {
+    if (helpfulLoading) return;
+
+    setHelpfulLoading(true);
+    setHelpfulError(null);
+
+    try {
+      await onToggleHelpful(
+        comment.id,
+        comment.is_helpful,
+      );
+    } catch (error) {
+      setHelpfulError(
+        error instanceof Error
+          ? error.message
+          : 'Không thể cập nhật lượt hữu ích.',
+      );
+    } finally {
+      setHelpfulLoading(false);
+    }
+  };
 
   const handleRemove = async () => {
     if (!window.confirm('Bạn có chắc muốn xóa bình luận này?')) return;
@@ -64,6 +93,38 @@ export function CommentItem({ comment, onUpdate, onRemove }: Props) {
       ) : (
         <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
           {comment.content}
+        </p>
+      )}
+
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          type="button"
+          disabled={helpfulLoading}
+          aria-pressed={comment.is_helpful}
+          onClick={() => void handleHelpful()}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-bold transition disabled:opacity-60 ${
+            comment.is_helpful
+              ? 'bg-[#e0f3f2] text-[#146775]'
+              : 'text-slate-500 hover:bg-white'
+          }`}
+        >
+          <ThumbsUp
+            className={`h-3.5 w-3.5 ${
+              comment.is_helpful ? 'fill-current' : ''
+            }`}
+          />
+
+          {comment.is_helpful
+            ? 'Đã đánh dấu'
+            : 'Hữu ích'}
+
+          <span>{comment.helpful_count}</span>
+        </button>
+      </div>
+
+      {helpfulError && (
+        <p role="alert" className="mt-2 text-xs text-rose-600">
+          {helpfulError}
         </p>
       )}
 
