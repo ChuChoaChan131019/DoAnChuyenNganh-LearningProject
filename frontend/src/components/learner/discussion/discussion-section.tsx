@@ -113,6 +113,42 @@ export function DiscussionSection({
     return chapterName;
   }, [locationNames]);
 
+  const addPostHelpful = useCallback(async (
+    items: DiscussionPostListItem[],
+  ): Promise<DiscussionPostListItem[]> => {
+    if (items.length === 0) return [];
+
+    const summary = await discussionApi.helpfulSummary({
+      post_ids: items.map((item) => item.id),
+    });
+
+    return items.map((item) => ({
+      ...item,
+      helpful_count:
+        summary.posts[item.id]?.helpful_count ?? 0,
+      is_helpful:
+        summary.posts[item.id]?.is_helpful ?? false,
+    }));
+  }, []);
+
+  const addCommentHelpful = async (
+    items: DiscussionComment[],
+  ): Promise<DiscussionComment[]> => {
+    if (items.length === 0) return [];
+
+    const summary = await discussionApi.helpfulSummary({
+      comment_ids: items.map((item) => item.id),
+    });
+
+    return items.map((item) => ({
+      ...item,
+      helpful_count:
+        summary.comments[item.id]?.helpful_count ?? 0,
+      is_helpful:
+        summary.comments[item.id]?.is_helpful ?? false,
+    }));
+  };
+
   const loadPosts = useCallback(async (append = false, cursor?: string) => {
     if (!allPosts && !lessonId && !chapterId && !courseId) {
       setPosts([]);
@@ -129,8 +165,9 @@ export function DiscussionSection({
       const page = await discussionApi.listPosts(
         filters(cursor),
       );
+      const items = await addPostHelpful(page.items);
       if (requestId !== listRequestId.current) return;
-      setPosts((current) => append ? [...current, ...page.items] : page.items);
+      setPosts((current) => append ? [...current, ...items] : items);
       setNextPostsCursor(page.next_cursor);
     } catch (requestError) {
       if (requestId !== listRequestId.current) return;
@@ -146,7 +183,7 @@ export function DiscussionSection({
         setLoadingMorePosts(false);
       }
     }
-  }, [allPosts, chapterId, courseId, lessonId, filters]);
+  }, [allPosts, chapterId, courseId, lessonId, filters, addPostHelpful]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadPosts(false), 0);
@@ -172,9 +209,34 @@ export function DiscussionSection({
         discussionApi.getPost(postId),
         discussionApi.listComments(postId),
       ]);
+
+      const summary = await discussionApi.helpfulSummary({
+        post_ids: [postId],
+        comment_ids: commentsPage.items.map(
+          (comment) => comment.id,
+        ),
+      });
+
+      const detailedPost = {
+        ...detail,
+        helpful_count:
+          summary.posts[postId]?.helpful_count ?? 0,
+        is_helpful:
+          summary.posts[postId]?.is_helpful ?? false,
+      };
+
+      const detailedComments = commentsPage.items.map(
+        (comment) => ({
+          ...comment,
+          helpful_count:
+            summary.comments[comment.id]?.helpful_count ?? 0,
+          is_helpful:
+            summary.comments[comment.id]?.is_helpful ?? false,
+        }),
+      );
       if (requestId !== detailRequestId.current) return;
-      setPostDetail(detail);
-      setComments(commentsPage.items);
+      setPostDetail(detailedPost);
+      setComments(detailedComments);
       setNextCommentsCursor(commentsPage.next_cursor);
     } catch (requestError) {
       if (requestId !== detailRequestId.current) return;
@@ -214,7 +276,15 @@ export function DiscussionSection({
     if (!selectedPostId) return;
     try {
       const comment = await discussionApi.createComment(selectedPostId, content);
-      setComments((current) => mergeComments(current, [comment]));
+      setComments((current) =>
+      mergeComments(current, [
+        {
+          ...comment,
+          helpful_count: 0,
+          is_helpful: false,
+        },
+      ]),
+    );
       setPosts((current) => current.map((post) =>
         post.id === selectedPostId
           ? { ...post, comment_count: post.comment_count + 1 }
@@ -233,9 +303,13 @@ export function DiscussionSection({
   const updateComment = async (commentId: string, content: string) => {
     try {
       const updated = await discussionApi.updateComment(commentId, content);
-      setComments((current) => current.map((comment) =>
-        comment.id === commentId ? updated : comment,
-      ));
+      setComments((current) =>
+        current.map((comment) =>
+          comment.id === commentId
+            ? { ...comment, ...updated }
+            : comment,
+        ),
+      );
     } catch (requestError) {
       handleUnavailable(requestError);
       throw requestError;
@@ -271,7 +345,11 @@ export function DiscussionSection({
         selectedPostId,
         nextCommentsCursor,
       );
-      setComments((current) => mergeComments(current, page.items));
+      const items = await addCommentHelpful(page.items);
+
+      setComments((current) =>
+        mergeComments(current, items),
+      );
       setNextCommentsCursor(page.next_cursor);
     } catch (requestError) {
       handleUnavailable(requestError);
@@ -282,6 +360,58 @@ export function DiscussionSection({
       );
     } finally {
       setLoadingMoreComments(false);
+    }
+  };
+
+  // Đánh dấu / bỏ đánh dấu bài đăng
+  const togglePostHelpful = async (
+    postId: string,
+    isHelpful: boolean,
+  ) => {
+    try {
+      const result = isHelpful
+        ? await discussionApi.unmarkPostHelpful(postId)
+        : await discussionApi.markPostHelpful(postId);
+
+      setPosts((current) =>
+        current.map((post) =>
+          post.id === postId
+            ? { ...post, ...result }
+            : post,
+        ),
+      );
+
+      setPostDetail((current) =>
+        current?.id === postId
+          ? { ...current, ...result }
+          : current,
+      );
+    } catch (requestError) {
+      handleUnavailable(requestError);
+      throw requestError;
+    }
+  };
+
+  // Đánh dấu / bỏ đánh dấu bình luận
+  const toggleCommentHelpful = async (
+    commentId: string,
+    isHelpful: boolean,
+  ) => {
+    try {
+      const result = isHelpful
+        ? await discussionApi.unmarkCommentHelpful(commentId)
+        : await discussionApi.markCommentHelpful(commentId);
+
+      setComments((current) =>
+        current.map((comment) =>
+          comment.id === commentId
+            ? { ...comment, ...result }
+            : comment,
+        ),
+      );
+    } catch (requestError) {
+      handleUnavailable(requestError);
+      throw requestError;
     }
   };
 
@@ -348,6 +478,8 @@ export function DiscussionSection({
           onUpdateComment={updateComment}
           onRemoveComment={removeComment}
           onLoadMoreComments={() => void loadMoreComments()}
+          onTogglePostHelpful={togglePostHelpful}
+          onToggleCommentHelpful={toggleCommentHelpful}
         />
       </div>
     </section>

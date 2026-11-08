@@ -25,6 +25,8 @@ import type {
   DiscussionPostDetail,
   DiscussionPostFilters,
   DiscussionPostListItem,
+  DiscussionHelpfulState,
+  DiscussionHelpfulSummary,
 } from '../types/discussion';
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
@@ -233,6 +235,42 @@ export const discussionApi = {
   removeComment: (commentId: string) =>
     request<{ id: string; deleted: true; deleted_at: string }>(
       `/api/v1/discussion/comments/${encodeURIComponent(commentId)}`,
+      { method: 'DELETE' },
+    ),
+
+  helpfulSummary: (payload: {
+    post_ids?: string[];
+    comment_ids?: string[];
+  }) =>
+    request<DiscussionHelpfulSummary>(
+      '/api/v1/discussion/helpful/summary',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    ),
+
+  markPostHelpful: (postId: string) =>
+    request<DiscussionHelpfulState>(
+      `/api/v1/discussion/posts/${encodeURIComponent(postId)}/helpful`,
+      { method: 'PUT' },
+    ),
+
+  unmarkPostHelpful: (postId: string) =>
+    request<DiscussionHelpfulState>(
+      `/api/v1/discussion/posts/${encodeURIComponent(postId)}/helpful`,
+      { method: 'DELETE' },
+    ),
+
+  markCommentHelpful: (commentId: string) =>
+    request<DiscussionHelpfulState>(
+      `/api/v1/discussion/comments/${encodeURIComponent(commentId)}/helpful`,
+      { method: 'PUT' },
+    ),
+
+  unmarkCommentHelpful: (commentId: string) =>
+    request<DiscussionHelpfulState>(
+      `/api/v1/discussion/comments/${encodeURIComponent(commentId)}/helpful`,
       { method: 'DELETE' },
     ),
 };

@@ -18,6 +18,8 @@ export type DiscussionPostListItem = {
   course_slug?: string;
   chapter_title?: string;
   lesson_title?: string | null;
+  helpful_count: number;
+  is_helpful: boolean;
 };
 
 export type DiscussionPostDetail = Omit<
@@ -39,6 +41,8 @@ export type DiscussionComment = {
   updated_at: string;
   deleted_at: null;
   is_mine: boolean;
+  helpful_count: number;
+  is_helpful: boolean;
 };
 
 export type CursorPage<T> = {
@@ -64,4 +68,14 @@ export type DiscussionChapterOption = {
     id: string;
     title: string;
   }>;
+};
+
+export type DiscussionHelpfulState = {
+  helpful_count: number;
+  is_helpful: boolean;
+};
+
+export type DiscussionHelpfulSummary = {
+  posts: Record<string, DiscussionHelpfulState>;
+  comments: Record<string, DiscussionHelpfulState>;
 };
