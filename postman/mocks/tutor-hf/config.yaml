@@ -1,0 +1,7 @@
+version: 1
+name: tutor-hf
+origin: router.huggingface.co
+interceptRequests: true
+scenarios:
+  - name: default
+    path: default.js
