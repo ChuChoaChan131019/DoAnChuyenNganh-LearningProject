@@ -1,0 +1,30 @@
+purpose:
+  stands_in_for: Hugging Face, Gemini and OpenAI chat generation APIs
+  unblocks: Local verification of tutor fallback, retry and quota cooldown without real credits
+assumptions:
+  - id: hf-credit-required
+    status: supported
+    claim: The configured Hugging Face token cannot generate chat responses without available credits in the environment checked on 2026-11-09.
+    reason: A real chat request returned HTTP 402; listing models had returned 200.
+    verification: A short Vietnamese C# question was sent through TutorAiProvider to the real HF router. No generated answer was returned. No credentials were recorded.
+    source: https://huggingface.co/docs/inference-providers/en/pricing
+    updated_at: '2026-11-09'
+  - id: temporary-gemini-recovery
+    status: unknown
+    claim: A real Gemini 503 response will recover on a later retry within the tutor time budget.
+    reason: The simulation models recovery on the second request; it cannot establish real provider recovery timing.
+    verification: The local mock returned 503 then 200. The real request earlier on 2026-11-09 returned 503 UNAVAILABLE with high-demand information.
+    source: https://ai.google.dev/gemini-api/docs/api-errors
+    updated_at: '2026-11-09'
+  - id: application-fallback-and-cooldown
+    status: supported
+    claim: Under the modeled quota and temporary-overload responses, the caller falls back, retries Gemini once and skips exhausted providers for the next chat in the same process.
+    reason: Two calls to the compiled TutorAiProvider returned the simulated recovery answer with the expected host call counts.
+    verification: Postman proxy run on 2026-11-09 intercepted all 5 requests, with 0 passed through. HF 402, Gemini 503, OpenAI quota 429, Gemini 200, Gemini 200. The ad hoc Node HTTP client harness exited 0. Unit regression cases are retained in tutor-ai-provider.spec.ts.
+    source: backend/src/modules/ai/tutor-ai-provider.spec.ts; postman/mocks/tutor-hf/default.js; postman/mocks/tutor-gemini/default.js; postman/mocks/tutor-openai/default.js
+    updated_at: '2026-11-09'
+fingerprints:
+  - id: local-provider-check
+    date: '2026-11-09'
+    commit: null
+    cli: '1.84.0'

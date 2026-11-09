@@ -1,0 +1,7 @@
+version: 1
+name: tutor-gemini
+origin: generativelanguage.googleapis.com
+interceptRequests: true
+scenarios:
+  - name: default
+    path: default.js

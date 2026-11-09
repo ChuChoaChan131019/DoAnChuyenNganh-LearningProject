@@ -1,0 +1,15 @@
+simulation: tutor-providers
+routing: path
+mocks:
+  - name: Hugging Face quota exhausted
+    routeKey: huggingface
+    origin: router.huggingface.co
+    path: postman/mocks/tutor-hf
+  - name: Gemini temporary overload then recovery
+    routeKey: gemini
+    origin: generativelanguage.googleapis.com
+    path: postman/mocks/tutor-gemini
+  - name: OpenAI credits exhausted
+    routeKey: openai
+    origin: api.openai.com
+    path: postman/mocks/tutor-openai

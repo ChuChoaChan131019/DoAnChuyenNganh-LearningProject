@@ -1,62 +1,102 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import { Clock3, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react';
-import { ApiClientError, quizApi } from '@/lib/api';
-import type { QuizAttempt, QuizAttemptQuestion, QuizAnswerSubmission } from '@/types/quiz';
-import type { DifficultyLevel, QuestionType } from '@/types/question';
-import { vietnameseDifficulty } from '@/lib/ui-labels';
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { Clock3, CheckCircle2, ArrowLeft, ArrowRight } from "lucide-react";
+import { ApiClientError, quizApi } from "@/lib/api";
+import type {
+  QuizAttempt,
+  QuizAttemptQuestion,
+  QuizAnswerSubmission,
+} from "@/types/quiz";
+import type { DifficultyLevel, QuestionType } from "@/types/question";
+import { vietnameseDifficulty } from "@/lib/ui-labels";
+import { useTutorContext } from "@/contexts/tutor-context";
 
 const TYPE_LABELS: Record<QuestionType, string> = {
-  single_choice: 'Một đáp án',
-  multiple_choice: 'Nhiều đáp án',
-  true_false: 'Đúng / Sai',
-  fill_in_blank: 'Điền vào chỗ trống',
+  single_choice: "Một đáp án",
+  multiple_choice: "Nhiều đáp án",
+  true_false: "Đúng / Sai",
+  fill_in_blank: "Điền vào chỗ trống",
 };
 
 const DIFFICULTY_STYLES: Record<DifficultyLevel, string> = {
-  easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
-  medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
-  hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
+  easy: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
+  medium: "bg-amber-50 text-amber-700 border-amber-200/60",
+  hard: "bg-rose-50 text-rose-700 border-rose-200/60",
 };
 
 function DifficultyBadge({ difficulty }: { difficulty?: DifficultyLevel }) {
-  const level = difficulty || 'medium';
+  const level = difficulty || "medium";
   return (
-    <span className={`rounded-md border px-2 py-0.5 text-xs font-semibold ${DIFFICULTY_STYLES[level]}`}>
+    <span
+      className={`rounded-md border px-2 py-0.5 text-xs font-semibold ${DIFFICULTY_STYLES[level]}`}
+    >
       {vietnameseDifficulty(level)}
     </span>
   );
 }
 
 function errorMessage(error: unknown) {
-  return error instanceof ApiClientError ? error.message : 'Không thể khởi tạo bài trắc nghiệm.';
+  return error instanceof ApiClientError
+    ? error.message
+    : "Không thể khởi tạo bài trắc nghiệm.";
 }
 
 const attemptPromises: Record<string, Promise<any>> = {};
 export default function CourseTestTakePage() {
   const params = useParams<{ slug: string; testId: string }>();
-  const slug = String(params?.slug ?? '');
-  const testId = String(params?.testId ?? '');
+  const slug = String(params?.slug ?? "");
+  const testId = String(params?.testId ?? "");
   const router = useRouter();
 
-  const [attempt, setAttempt] = useState<(QuizAttempt & { questions: QuizAttemptQuestion[] }) | null>(null);
+  const { setTutorContext } = useTutorContext();
+
+  const [attempt, setAttempt] = useState<
+    (QuizAttempt & { questions: QuizAttemptQuestion[] }) | null
+  >(null);
   const [quizDetails, setQuizDetails] = useState<any>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, QuizAnswerSubmission>>({});
+  const [answers, setAnswers] = useState<Record<string, QuizAnswerSubmission>>(
+    {},
+  );
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const submitted = useRef(false);
+  const tutorQuestion = attempt?.questions[currentIndex];
 
+  useEffect(() => {
+    if (!slug || !tutorQuestion) {
+      setTutorContext(null);
+      return;
+    }
+
+    setTutorContext({
+      mode: "quiz",
+      courseSlug: slug,
+      quizId: testId,
+      questionId: tutorQuestion.question_id,
+      questionText: [
+        tutorQuestion.content,
+        ...tutorQuestion.options.map((option) => option.option_text),
+      ].join("\n").slice(0, 8000),
+      ...(quizDetails?.chapter_id ? { chapterId: quizDetails.chapter_id } : {}),
+    });
+
+    return () => {
+      setTutorContext(null);
+    };
+  }, [slug, testId, tutorQuestion, quizDetails?.chapter_id, setTutorContext]);
+
+  // Giữ nguyên useEffect cũ bên dưới
   useEffect(() => {
     if (!testId) return;
 
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.setItem(`quiz_start_time_${testId}`, String(Date.now()));
     }
 
@@ -77,25 +117,33 @@ export default function CourseTestTakePage() {
         } catch (attemptErr: any) {
           // Xóa cache nếu lỗi để lần sau có thể thử lại
           delete attemptPromises[testId];
-          console.warn('Attempt start warning (falling back to direct questions):', attemptErr);
-          const fallbackQuestions = await quizApi.getQuestions(testId).catch(() => []);
+          console.warn(
+            "Attempt start warning (falling back to direct questions):",
+            attemptErr,
+          );
+          const fallbackQuestions = await quizApi
+            .getQuestions(testId)
+            .catch(() => []);
 
           startedAttempt = {
-            attempt_id: 'current-attempt',
+            attempt_id: "current-attempt",
             quiz_id: testId,
-            quiz_title: quizData?.title || 'Quiz Assessment',
+            quiz_title: quizData?.title || "Quiz Assessment",
             duration_minutes: quizData?.duration_minutes ?? 15,
             questions: (fallbackQuestions || []).map((item: any) => {
               const q = item.questions || item;
               return {
                 question_id: String(item.question_id || q.id),
-                content: q.content || 'Câu hỏi',
-                question_type: (q.question_type || 'single_choice') as QuestionType,
-                difficulty: (q.difficulty || 'medium') as DifficultyLevel,
-                options: (q.options || q.question_options || []).map((o: any, idx: number) => ({
-                  id: String(o.id || idx),
-                  option_text: o.option_text || o.content || '',
-                })),
+                content: q.content || "Câu hỏi",
+                question_type: (q.question_type ||
+                  "single_choice") as QuestionType,
+                difficulty: (q.difficulty || "medium") as DifficultyLevel,
+                options: (q.options || q.question_options || []).map(
+                  (o: any, idx: number) => ({
+                    id: String(o.id || idx),
+                    option_text: o.option_text || o.content || "",
+                  }),
+                ),
               };
             }),
           };
@@ -106,7 +154,10 @@ export default function CourseTestTakePage() {
         setAttempt(startedAttempt);
         setQuizDetails(quizData);
 
-        const duration = quizData?.duration_minutes ?? (startedAttempt as any)?.duration_minutes ?? 15;
+        const duration =
+          quizData?.duration_minutes ??
+          (startedAttempt as any)?.duration_minutes ??
+          15;
         setTimeLeft(duration !== null ? duration * 60 : null);
       } catch (err: any) {
         if (isMounted) {
@@ -149,7 +200,11 @@ export default function CourseTestTakePage() {
     }
   }, [timeLeft]);
 
-  const handleSelectOption = (questionId: string, optionId: string, isMultiple: boolean) => {
+  const handleSelectOption = (
+    questionId: string,
+    optionId: string,
+    isMultiple: boolean,
+  ) => {
     setAnswers((prev) => {
       const currentAnswer = prev[questionId];
       const selected = currentAnswer?.selected_option_ids ?? [];
@@ -182,18 +237,30 @@ export default function CourseTestTakePage() {
       const answersPayload = Object.values(answers);
 
       let timeSpentSeconds = 0;
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         const startTimeStr = localStorage.getItem(`quiz_start_time_${testId}`);
         if (startTimeStr) {
           const startTime = Number(startTimeStr);
-          timeSpentSeconds = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+          timeSpentSeconds = Math.max(
+            1,
+            Math.round((Date.now() - startTime) / 1000),
+          );
         } else {
-          const totalSeconds = ((quizDetails?.duration_minutes ?? (attempt as any)?.duration_minutes ?? 15) as number) * 60;
-          timeSpentSeconds = Math.max(0, totalSeconds - (timeLeft ?? totalSeconds));
+          const totalSeconds =
+            ((quizDetails?.duration_minutes ??
+              (attempt as any)?.duration_minutes ??
+              15) as number) * 60;
+          timeSpentSeconds = Math.max(
+            0,
+            totalSeconds - (timeLeft ?? totalSeconds),
+          );
         }
 
         localStorage.setItem(`quiz_answers_${testId}`, JSON.stringify(answers));
-        localStorage.setItem(`quiz_time_spent_${testId}`, String(timeSpentSeconds));
+        localStorage.setItem(
+          `quiz_time_spent_${testId}`,
+          String(timeSpentSeconds),
+        );
       }
 
       try {
@@ -202,10 +269,10 @@ export default function CourseTestTakePage() {
           answers: answersPayload,
         });
       } catch (submitApiError) {
-        console.warn('Backend submit error fallback:', submitApiError);
+        console.warn("Backend submit error fallback:", submitApiError);
       }
 
-      delete attemptPromises[testId]; 
+      delete attemptPromises[testId];
       router.push(`/learner/courses/${slug}/tests/${testId}/results`);
     } catch (err) {
       submitted.current = false;
@@ -217,7 +284,9 @@ export default function CourseTestTakePage() {
   if (isLoading || !attempt) {
     return (
       <div className="mx-auto max-w-2xl rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm">
-        <p className="text-sm font-medium text-slate-500">Đang chuẩn bị câu hỏi...</p>
+        <p className="text-sm font-medium text-slate-500">
+          Đang chuẩn bị câu hỏi...
+        </p>
       </div>
     );
   }
@@ -225,8 +294,12 @@ export default function CourseTestTakePage() {
   if (error || !attempt.questions || attempt.questions.length === 0) {
     return (
       <div className="mx-auto max-w-2xl rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center shadow-sm">
-        <h2 className="text-lg font-bold text-rose-700">Không có câu hỏi nào</h2>
-        <p className="mt-2 text-sm text-rose-600">{error || 'This quiz does not have any questions assigned yet.'}</p>
+        <h2 className="text-lg font-bold text-rose-700">
+          Không có câu hỏi nào
+        </h2>
+        <p className="mt-2 text-sm text-rose-600">
+          {error || "This quiz does not have any questions assigned yet."}
+        </p>
         <Link
           href={`/learner/courses/${slug}`}
           className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#c93f3a]"
@@ -238,15 +311,18 @@ export default function CourseTestTakePage() {
   }
 
   const formatTime = (seconds: number | null) => {
-    if (seconds === null) return 'Unlimited';
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-    const s = (seconds % 60).toString().padStart(2, '0');
+    if (seconds === null) return "Unlimited";
+    const m = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
     return `${m}:${s}`;
   };
 
   const currentQ = attempt.questions[currentIndex];
-  const currentSelected = answers[currentQ?.question_id]?.selected_option_ids || [];
-  const isMultiple = currentQ?.question_type === 'multiple_choice';
+  const currentSelected =
+    answers[currentQ?.question_id]?.selected_option_ids || [];
+  const isMultiple = currentQ?.question_type === "multiple_choice";
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-12 pt-4">
@@ -260,13 +336,14 @@ export default function CourseTestTakePage() {
             <ArrowLeft className="h-3.5 w-3.5" /> Thoát bài kiểm tra
           </Link>
           <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
-            {quizDetails?.title || attempt.quiz_title || 'Quiz Assessment'}
+            {quizDetails?.title || attempt.quiz_title || "Quiz Assessment"}
           </h1>
         </div>
 
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
           <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[#F7444E]" />
-          Answered: {Object.keys(answers).length} / {attempt.questions.length} questions
+          Answered: {Object.keys(answers).length} / {attempt.questions.length}{" "}
+          questions
         </div>
       </div>
 
@@ -281,7 +358,8 @@ export default function CourseTestTakePage() {
               </span>
               <DifficultyBadge difficulty={(currentQ as any)?.difficulty} />
               <span className="rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs text-slate-500">
-                {TYPE_LABELS[currentQ.question_type as QuestionType] || currentQ.question_type}
+                {TYPE_LABELS[currentQ.question_type as QuestionType] ||
+                  currentQ.question_type}
               </span>
             </div>
 
@@ -306,24 +384,34 @@ export default function CourseTestTakePage() {
                 <button
                   type="button"
                   key={option.id}
-                  onClick={() => handleSelectOption(currentQ.question_id, option.id, isMultiple)}
+                  onClick={() =>
+                    handleSelectOption(
+                      currentQ.question_id,
+                      option.id,
+                      isMultiple,
+                    )
+                  }
                   className={`flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left text-sm transition-all ${
                     isPicked
-                      ? 'border-[#F7444E] bg-rose-50/70 font-semibold text-[#0f3741] shadow-sm'
-                      : 'border-gray-200/80 bg-white text-slate-700 hover:border-gray-300 hover:bg-gray-50/60'
+                      ? "border-[#F7444E] bg-rose-50/70 font-semibold text-[#0f3741] shadow-sm"
+                      : "border-gray-200/80 bg-white text-slate-700 hover:border-gray-300 hover:bg-gray-50/60"
                   }`}
                 >
                   <span
                     className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-all ${
                       isPicked
-                        ? 'border-[#F7444E] bg-[#F7444E] text-white'
-                        : 'border-gray-300 bg-gray-100 text-slate-600'
+                        ? "border-[#F7444E] bg-[#F7444E] text-white"
+                        : "border-gray-300 bg-gray-100 text-slate-600"
                     }`}
                   >
                     {String.fromCharCode(65 + oIndex)}
                   </span>
-                  <span className="flex-1 break-words">{option.option_text}</span>
-                  {isPicked && <CheckCircle2 className="h-4 w-4 text-[#F7444E]" />}
+                  <span className="flex-1 break-words">
+                    {option.option_text}
+                  </span>
+                  {isPicked && (
+                    <CheckCircle2 className="h-4 w-4 text-[#F7444E]" />
+                  )}
                 </button>
               );
             })}
@@ -349,7 +437,7 @@ export default function CourseTestTakePage() {
                 onClick={() => void handleSubmitQuiz()}
                 className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#c93f3a] disabled:opacity-50"
               >
-                {isSubmitting ? 'Đang gửi...' : 'Submit Quiz'}
+                {isSubmitting ? "Đang gửi..." : "Submit Quiz"}
               </button>
             ) : (
               <button
@@ -368,7 +456,8 @@ export default function CourseTestTakePage() {
       <div className="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-center gap-2">
           {attempt.questions.map((q, idx) => {
-            const hasAnswered = (answers[q.question_id]?.selected_option_ids?.length ?? 0) > 0;
+            const hasAnswered =
+              (answers[q.question_id]?.selected_option_ids?.length ?? 0) > 0;
             const isCurrent = idx === currentIndex;
 
             return (
@@ -378,10 +467,10 @@ export default function CourseTestTakePage() {
                 onClick={() => setCurrentIndex(idx)}
                 className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold transition-all ${
                   isCurrent
-                    ? 'border-2 border-[#F7444E] bg-white text-[#F7444E]'
+                    ? "border-2 border-[#F7444E] bg-white text-[#F7444E]"
                     : hasAnswered
-                    ? 'bg-rose-100 text-[#F7444E]'
-                    : 'bg-gray-100 text-slate-500 hover:bg-gray-200'
+                      ? "bg-rose-100 text-[#F7444E]"
+                      : "bg-gray-100 text-slate-500 hover:bg-gray-200"
                 }`}
               >
                 {idx + 1}

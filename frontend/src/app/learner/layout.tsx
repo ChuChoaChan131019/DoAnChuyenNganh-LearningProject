@@ -1,6 +1,9 @@
-import React from 'react';
-import { LearnerFooter } from '@/components/learner/footer';
-import { LearnerTopbar } from '@/components/learner/topbar';
+import React from "react";
+
+import { LearnerFooter } from "@/components/learner/footer";
+import { LearnerTopbar } from "@/components/learner/topbar";
+import { AiTutorFloating } from "@/components/learner/ai-tutor-floating";
+import { TutorContextProvider } from "@/contexts/tutor-context";
 
 export default function LearnerLayout({
   children,
@@ -8,16 +11,20 @@ export default function LearnerLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#F7F8F3] font-[var(--font-plus-jakarta-sans)]">
-      {/* Thanh điều hướng ngang */}
-      <LearnerTopbar />
+    <TutorContextProvider>
+      <div className="min-h-screen bg-[#F7F8F3] font-[var(--font-plus-jakarta-sans)]">
+        {/* Thanh điều hướng */}
+        <LearnerTopbar />
 
-      {/* Vùng chứa nội dung các trang con */}
-      <main className="mx-auto max-w-7xl p-6 lg:p-8">
-        {children}
-      </main>
+        {/* Nội dung trang */}
+        <main className="mx-auto max-w-7xl p-6 lg:p-8">{children}</main>
 
-      <LearnerFooter />
-    </div>
+        {/* Widget trợ giảng nổi */}
+        <AiTutorFloating />
+
+        {/* Footer */}
+        <LearnerFooter />
+      </div>
+    </TutorContextProvider>
   );
 }

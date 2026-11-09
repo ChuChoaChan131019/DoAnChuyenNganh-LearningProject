@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { courseApi, practiceApi, quizApi } from '@/lib/api';
-import LearnerLessonMaterials from '@/components/learner/lesson-materials';
-import { DiscussionSection } from '@/components/learner/discussion/discussion-section';
-import { LessonCodeExercises } from '@/components/learner/code-exercises/lesson-code-exercises';
+import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { courseApi, practiceApi, quizApi } from "@/lib/api";
+import LearnerLessonMaterials from "@/components/learner/lesson-materials";
+import { DiscussionSection } from "@/components/learner/discussion/discussion-section";
+import { LessonCodeExercises } from "@/components/learner/code-exercises/lesson-code-exercises";
 import {
   ArrowLeft,
   ArrowRight,
@@ -25,104 +25,212 @@ import {
   ChevronDown,
   Sparkles,
   Loader2,
-} from 'lucide-react';
+} from "lucide-react";
+import { useTutorContext } from "@/contexts/tutor-context";
 
 // DỮ LIỆU ĐỒNG BỘ TRỰC TIẾP TỪ PAGE_7.TSX
 const COURSE_MAP: Record<string, any> = {
-  'csharp-fundamentals': {
-    title: 'C# cơ bản',
-    level: 'Cơ bản',
-    instructor: 'Dr. Lan Nguyen',
-    instructorRole: 'Người biên soạn · Giảng viên C#',
+  "csharp-fundamentals": {
+    title: "C# cơ bản",
+    level: "Cơ bản",
+    instructor: "Dr. Lan Nguyen",
+    instructorRole: "Người biên soạn · Giảng viên C#",
     resources: [
-      { name: 'Tài liệu tóm tắt ngôn ngữ C#', type: 'PDF · 1.2 MB', isVideo: false },
-      { name: 'Installing the .NET SDK (walkthrough)', type: 'Video · 84 MB', isVideo: true },
+      {
+        name: "Tài liệu tóm tắt ngôn ngữ C#",
+        type: "PDF · 1.2 MB",
+        isVideo: false,
+      },
+      {
+        name: "Installing the .NET SDK (walkthrough)",
+        type: "Video · 84 MB",
+        isVideo: true,
+      },
     ],
     tests: [
       {
-        id: 'variables-quiz',
-        title: 'Trắc nghiệm về biến và kiểu dữ liệu',
-        description: '15 questions in this attempt',
-        duration: '20 minutes, timed',
-        difficulty: 'Dễ',
+        id: "variables-quiz",
+        title: "Trắc nghiệm về biến và kiểu dữ liệu",
+        description: "15 questions in this attempt",
+        duration: "20 minutes, timed",
+        difficulty: "Dễ",
       },
       {
-        id: 'final-assessment',
-        title: 'C# cơ bản — Bài đánh giá cuối khóa',
-        description: '6 questions in this attempt',
-        duration: '60 minutes, timed',
-        difficulty: 'Trung bình',
+        id: "final-assessment",
+        title: "C# cơ bản — Bài đánh giá cuối khóa",
+        description: "6 questions in this attempt",
+        duration: "60 minutes, timed",
+        difficulty: "Trung bình",
       },
     ],
     chapters: [
       {
-        title: 'Giới thiệu về C#',
+        title: "Giới thiệu về C#",
         lessons: [
-          { id: 'what-is-csharp', title: 'C# là gì?', duration: '8 min', completed: true },
-          { id: 'installing-dotnet', title: 'Cài đặt .NET', duration: '10 min', completed: true },
-          { id: 'your-first-csharp-program', title: 'Chương trình C# đầu tiên của bạn', duration: '12 min', completed: true },
+          {
+            id: "what-is-csharp",
+            title: "C# là gì?",
+            duration: "8 min",
+            completed: true,
+          },
+          {
+            id: "installing-dotnet",
+            title: "Cài đặt .NET",
+            duration: "10 min",
+            completed: true,
+          },
+          {
+            id: "your-first-csharp-program",
+            title: "Chương trình C# đầu tiên của bạn",
+            duration: "12 min",
+            completed: true,
+          },
         ],
       },
       {
-        title: 'Biến và kiểu dữ liệu',
+        title: "Biến và kiểu dữ liệu",
         lessons: [
-          { id: 'variables-overview', title: 'Tổng quan về biến và cú pháp', duration: '11 min', completed: true },
-          { id: 'primitive-data-types', title: 'Các kiểu dữ liệu nguyên thủy', duration: '14 min', completed: true },
-          { id: 'type-conversion', title: 'Chuyển đổi và ép kiểu', duration: '9 min', completed: true },
-          { id: 'nullable-types', title: 'Kiểu giá trị nullable trong C#', duration: '12 min', completed: true },
+          {
+            id: "variables-overview",
+            title: "Tổng quan về biến và cú pháp",
+            duration: "11 min",
+            completed: true,
+          },
+          {
+            id: "primitive-data-types",
+            title: "Các kiểu dữ liệu nguyên thủy",
+            duration: "14 min",
+            completed: true,
+          },
+          {
+            id: "type-conversion",
+            title: "Chuyển đổi và ép kiểu",
+            duration: "9 min",
+            completed: true,
+          },
+          {
+            id: "nullable-types",
+            title: "Kiểu giá trị nullable trong C#",
+            duration: "12 min",
+            completed: true,
+          },
         ],
       },
       {
-        title: 'Luồng điều khiển',
+        title: "Luồng điều khiển",
         lessons: [
-          { id: 'if-else-switch', title: 'Câu lệnh if / else và switch', duration: '13 min', completed: true },
-          { id: 'loops', title: 'Vòng lặp for, while và foreach', duration: '15 min', completed: true },
-          { id: 'break-continue', title: 'Các câu lệnh break, continue và goto', duration: '7 min', completed: true },
+          {
+            id: "if-else-switch",
+            title: "Câu lệnh if / else và switch",
+            duration: "13 min",
+            completed: true,
+          },
+          {
+            id: "loops",
+            title: "Vòng lặp for, while và foreach",
+            duration: "15 min",
+            completed: true,
+          },
+          {
+            id: "break-continue",
+            title: "Các câu lệnh break, continue và goto",
+            duration: "7 min",
+            completed: true,
+          },
         ],
       },
       {
-        title: 'Phương thức',
+        title: "Phương thức",
         lessons: [
-          { id: 'what-are-methods', title: 'Phương thức là gì?', duration: '8 min', completed: false },
-          { id: 'parameters-and-returns', title: 'Tham số và giá trị trả về', duration: '12 min', completed: false },
-          { id: 'method-overloads', title: 'Nạp chồng phương thức', duration: '10 min', completed: false },
+          {
+            id: "what-are-methods",
+            title: "Phương thức là gì?",
+            duration: "8 min",
+            completed: false,
+          },
+          {
+            id: "parameters-and-returns",
+            title: "Tham số và giá trị trả về",
+            duration: "12 min",
+            completed: false,
+          },
+          {
+            id: "method-overloads",
+            title: "Nạp chồng phương thức",
+            duration: "10 min",
+            completed: false,
+          },
         ],
       },
     ],
   },
-  'object-oriented-programming-in-csharp': {
-    title: 'Lập trình hướng đối tượng với C#',
-    level: 'Trung cấp',
-    instructor: 'Dr. Lan Nguyen',
-    instructorRole: 'Người biên soạn · Giảng viên C#',
+  "object-oriented-programming-in-csharp": {
+    title: "Lập trình hướng đối tượng với C#",
+    level: "Trung cấp",
+    instructor: "Dr. Lan Nguyen",
+    instructorRole: "Người biên soạn · Giảng viên C#",
     resources: [
-      { name: 'OOP Practice Sheet', type: 'PDF · 2.1 MB', isVideo: false },
-      { name: 'Class Design Checklist', type: 'Document · 68 KB', isVideo: false },
+      { name: "OOP Practice Sheet", type: "PDF · 2.1 MB", isVideo: false },
+      {
+        name: "Class Design Checklist",
+        type: "Document · 68 KB",
+        isVideo: false,
+      },
     ],
     tests: [
       {
-        id: 'oop-quick-check',
-        title: 'Kiểm tra nhanh lập trình hướng đối tượng',
-        description: '5 questions in this attempt',
-        duration: '25 minutes, timed',
-        difficulty: 'Trung bình',
+        id: "oop-quick-check",
+        title: "Kiểm tra nhanh lập trình hướng đối tượng",
+        description: "5 questions in this attempt",
+        duration: "25 minutes, timed",
+        difficulty: "Trung bình",
       },
     ],
     chapters: [
       {
-        title: 'Lớp và đối tượng',
+        title: "Lớp và đối tượng",
         lessons: [
-          { id: 'classes-and-objects', title: 'Lớp và đối tượng', duration: '9 min', completed: true },
-          { id: 'constructors', title: 'Hàm khởi tạo', duration: '11 min', completed: true },
-          { id: 'properties', title: 'Thuộc tính', duration: '8 min', completed: false },
+          {
+            id: "classes-and-objects",
+            title: "Lớp và đối tượng",
+            duration: "9 min",
+            completed: true,
+          },
+          {
+            id: "constructors",
+            title: "Hàm khởi tạo",
+            duration: "11 min",
+            completed: true,
+          },
+          {
+            id: "properties",
+            title: "Thuộc tính",
+            duration: "8 min",
+            completed: false,
+          },
         ],
       },
       {
-        title: 'Tính đóng gói',
+        title: "Tính đóng gói",
         lessons: [
-          { id: 'access-modifiers', title: 'Phạm vi truy cập', duration: '12 min', completed: true },
-          { id: 'fields-and-methods', title: 'Fields and methods', duration: '10 min', completed: true },
-          { id: 'readonly-and-static', title: 'Readonly and static', duration: '9 min', completed: false },
+          {
+            id: "access-modifiers",
+            title: "Phạm vi truy cập",
+            duration: "12 min",
+            completed: true,
+          },
+          {
+            id: "fields-and-methods",
+            title: "Fields and methods",
+            duration: "10 min",
+            completed: true,
+          },
+          {
+            id: "readonly-and-static",
+            title: "Readonly and static",
+            duration: "9 min",
+            completed: false,
+          },
         ],
       },
     ],
@@ -166,27 +274,49 @@ interface LearnerLessonChapter {
 
 const LESSON_DATABASE: Record<string, LessonDetail> = {
   // === CHƯƠNG 1 ===
-  'what-is-csharp': {
-    id: 'what-is-csharp',
+  "what-is-csharp": {
+    id: "what-is-csharp",
     order: 1,
-    title: 'C# là gì?',
-    duration: '8 min',
-    chapter: 'Giới thiệu về C#',
+    title: "C# là gì?",
+    duration: "8 min",
+    chapter: "Giới thiệu về C#",
     objectives: [
-      'Hiểu rõ vị trí của ngôn ngữ C# và nền tảng .NET hiện đại.',
-      'Nắm được quá trình biên dịch từ C# sang mã IL (Intermediate Language) và chạy trên CLR.',
-      'Tìm hiểu các ứng dụng thực tế: Web API, Cloud, Desktop, Game (Unity) và Mobile.',
-      'Lợi ích của hệ thống quản lý bộ nhớ tự động với Garbage Collector (GC).',
+      "Hiểu rõ vị trí của ngôn ngữ C# và nền tảng .NET hiện đại.",
+      "Nắm được quá trình biên dịch từ C# sang mã IL (Intermediate Language) và chạy trên CLR.",
+      "Tìm hiểu các ứng dụng thực tế: Web API, Cloud, Desktop, Game (Unity) và Mobile.",
+      "Lợi ích của hệ thống quản lý bộ nhớ tự động với Garbage Collector (GC).",
     ],
-    mainHeading: 'Giới thiệu ngôn ngữ lập trình C# & Hệ sinh thái .NET',
-    subHeading: 'Ngôn ngữ hiện đại, đa nền tảng, kiểu tĩnh mạnh và hiệu năng cao',
+    mainHeading: "Giới thiệu ngôn ngữ lập trình C# & Hệ sinh thái .NET",
+    subHeading:
+      "Ngôn ngữ hiện đại, đa nền tảng, kiểu tĩnh mạnh và hiệu năng cao",
     description:
-      'C# (phát âm là C-Sharp) là một ngôn ngữ lập trình hướng đối tượng, đa nền tảng và an toàn kiểu (type-safe) được phát triển bởi Microsoft. Chạy trên môi trường Common Language Runtime (CLR), C# kết hợp hiệu năng cao với cú pháp hiện đại, rõ ràng.',
+      "C# (phát âm là C-Sharp) là một ngôn ngữ lập trình hướng đối tượng, đa nền tảng và an toàn kiểu (type-safe) được phát triển bởi Microsoft. Chạy trên môi trường Common Language Runtime (CLR), C# kết hợp hiệu năng cao với cú pháp hiện đại, rõ ràng.",
     tableData: [
-      { keyword: 'Roslyn Compiler', ctsType: 'C# Compiler', size: 'Native', description: 'Biên dịch mã nguồn .cs thành mã trung gian IL (.dll)' },
-      { keyword: 'CLR Runtime', ctsType: 'Execution Engine', size: 'CoreCLR', description: 'Nạp file IL, cấp phát bộ nhớ và quản lý Garbage Collection' },
-      { keyword: 'JIT Compiler', ctsType: 'Just-In-Time', size: 'Dynamic', description: 'Biên dịch mã IL thành mã máy trực tiếp khi thực thi' },
-      { keyword: 'Cross-Platform', ctsType: 'Multi-OS', size: '.NET 8+', description: 'Chạy nhất quán trên Windows, Linux và macOS' },
+      {
+        keyword: "Roslyn Compiler",
+        ctsType: "C# Compiler",
+        size: "Native",
+        description: "Biên dịch mã nguồn .cs thành mã trung gian IL (.dll)",
+      },
+      {
+        keyword: "CLR Runtime",
+        ctsType: "Execution Engine",
+        size: "CoreCLR",
+        description:
+          "Nạp file IL, cấp phát bộ nhớ và quản lý Garbage Collection",
+      },
+      {
+        keyword: "JIT Compiler",
+        ctsType: "Just-In-Time",
+        size: "Dynamic",
+        description: "Biên dịch mã IL thành mã máy trực tiếp khi thực thi",
+      },
+      {
+        keyword: "Cross-Platform",
+        ctsType: "Multi-OS",
+        size: ".NET 8+",
+        description: "Chạy nhất quán trên Windows, Linux và macOS",
+      },
     ],
     initialCode: `using System;
 
@@ -199,33 +329,54 @@ public class Program
         Console.WriteLine("Phiên bản .NET Runtime: " + Environment.Version);
     }
 }`,
-    defaultOutput: 'Chào mừng bạn đến với C# 12 & .NET!\nHệ điều hành: Microsoft Windows NT 10.0\nPhiên bản .NET Runtime: 8.0.0\n\nProcess finished with exit code 0.',
-    proTipTitle: 'Góc nhìn kiến trúc .NET',
+    defaultOutput:
+      "Chào mừng bạn đến với C# 12 & .NET!\nHệ điều hành: Microsoft Windows NT 10.0\nPhiên bản .NET Runtime: 8.0.0\n\nProcess finished with exit code 0.",
+    proTipTitle: "Góc nhìn kiến trúc .NET",
     proTipContent:
-      'C# không biên dịch trực tiếp ra mã máy như C/C++, mà đi qua mã trung gian IL. Nhờ cơ chế JIT (Just-In-Time) của CLR, chương trình tối ưu hoá trực tiếp theo phần cứng máy đích khi đang chạy.',
+      "C# không biên dịch trực tiếp ra mã máy như C/C++, mà đi qua mã trung gian IL. Nhờ cơ chế JIT (Just-In-Time) của CLR, chương trình tối ưu hoá trực tiếp theo phần cứng máy đích khi đang chạy.",
   },
 
-  'installing-dotnet': {
-    id: 'installing-dotnet',
+  "installing-dotnet": {
+    id: "installing-dotnet",
     order: 2,
-    title: 'Cài đặt .NET',
-    duration: '10 min',
-    chapter: 'Giới thiệu về C#',
+    title: "Cài đặt .NET",
+    duration: "10 min",
+    chapter: "Giới thiệu về C#",
     objectives: [
-      'Phân biệt .NET SDK (dùng để code và build) và .NET Runtime (chỉ dùng để chạy).',
-      'Cài đặt .NET SDK trên máy tính cá nhân.',
-      'Sử dụng .NET CLI để kiểm tra môi trường bằng lệnh dotnet --info.',
-      'Cấu hình VS Code hoặc Visual Studio để lập trình C#.',
+      "Phân biệt .NET SDK (dùng để code và build) và .NET Runtime (chỉ dùng để chạy).",
+      "Cài đặt .NET SDK trên máy tính cá nhân.",
+      "Sử dụng .NET CLI để kiểm tra môi trường bằng lệnh dotnet --info.",
+      "Cấu hình VS Code hoặc Visual Studio để lập trình C#.",
     ],
-    mainHeading: 'Cài đặt .NET SDK & Thiết lập môi trường phát triển',
-    subHeading: 'Sẵn sàng công cụ dòng lệnh .NET CLI và IDE',
+    mainHeading: "Cài đặt .NET SDK & Thiết lập môi trường phát triển",
+    subHeading: "Sẵn sàng công cụ dòng lệnh .NET CLI và IDE",
     description:
-      '.NET SDK cung cấp mọi công cụ cần thiết để tạo, biên dịch, kiểm thử và chạy ứng dụng. Bạn có thể sử dụng giao diện dòng lệnh .NET CLI từ bất kỳ terminal nào.',
+      ".NET SDK cung cấp mọi công cụ cần thiết để tạo, biên dịch, kiểm thử và chạy ứng dụng. Bạn có thể sử dụng giao diện dòng lệnh .NET CLI từ bất kỳ terminal nào.",
     tableData: [
-      { keyword: 'dotnet new', ctsType: 'CLI Command', size: 'Built-in', description: 'Tạo mới project (console, webapi, blazor...)' },
-      { keyword: 'dotnet build', ctsType: 'CLI Command', size: 'Built-in', description: 'Biên dịch mã nguồn và kiểm tra lỗi cú pháp' },
-      { keyword: 'dotnet run', ctsType: 'CLI Command', size: 'Built-in', description: 'Biên dịch và chạy ứng dụng ngay lập tức' },
-      { keyword: 'dotnet test', ctsType: 'CLI Command', size: 'Built-in', description: 'Chạy toàn bộ unit tests trong project' },
+      {
+        keyword: "dotnet new",
+        ctsType: "CLI Command",
+        size: "Built-in",
+        description: "Tạo mới project (console, webapi, blazor...)",
+      },
+      {
+        keyword: "dotnet build",
+        ctsType: "CLI Command",
+        size: "Built-in",
+        description: "Biên dịch mã nguồn và kiểm tra lỗi cú pháp",
+      },
+      {
+        keyword: "dotnet run",
+        ctsType: "CLI Command",
+        size: "Built-in",
+        description: "Biên dịch và chạy ứng dụng ngay lập tức",
+      },
+      {
+        keyword: "dotnet test",
+        ctsType: "CLI Command",
+        size: "Built-in",
+        description: "Chạy toàn bộ unit tests trong project",
+      },
     ],
     initialCode: `using System;
 
@@ -237,67 +388,109 @@ public class Program
         Console.WriteLine("Thư mục thực thi: " + AppDomain.CurrentDomain.BaseDirectory);
     }
 }`,
-    defaultOutput: '.NET SDK đã sẵn sàng hoạt động!\nThư mục thực thi: C:\\CSharpHub\\bin\\Debug\\net8.0\\\n\nProcess finished with exit code 0.',
-    proTipTitle: 'Phân biệt SDK vs Runtime',
+    defaultOutput:
+      ".NET SDK đã sẵn sàng hoạt động!\nThư mục thực thi: C:\\CSharpHub\\bin\\Debug\\net8.0\\\n\nProcess finished with exit code 0.",
+    proTipTitle: "Phân biệt SDK vs Runtime",
     proTipContent:
-      'Máy lập trình viên luôn cần cài .NET SDK. Máy chủ Production chỉ cần cài .NET Runtime tương ứng để nhẹ hơn và giảm bề mặt bảo mật.',
+      "Máy lập trình viên luôn cần cài .NET SDK. Máy chủ Production chỉ cần cài .NET Runtime tương ứng để nhẹ hơn và giảm bề mặt bảo mật.",
   },
 
-  'your-first-csharp-program': {
-    id: 'your-first-csharp-program',
+  "your-first-csharp-program": {
+    id: "your-first-csharp-program",
     order: 3,
-    title: 'Chương trình C# đầu tiên của bạn',
-    duration: '12 min',
-    chapter: 'Giới thiệu về C#',
+    title: "Chương trình C# đầu tiên của bạn",
+    duration: "12 min",
+    chapter: "Giới thiệu về C#",
     objectives: [
-      'Hiểu cấu trúc của một tập tin C# chuẩn: namespace, class và hàm Main.',
-      'Khái niệm Top-Level Statements được giới thiệu từ C# 9 đến nay.',
-      'Sử dụng Console.WriteLine và Console.ReadLine để nhập xuất.',
-      'Cơ chế comment giải thích code (// và /* */).',
+      "Hiểu cấu trúc của một tập tin C# chuẩn: namespace, class và hàm Main.",
+      "Khái niệm Top-Level Statements được giới thiệu từ C# 9 đến nay.",
+      "Sử dụng Console.WriteLine và Console.ReadLine để nhập xuất.",
+      "Cơ chế comment giải thích code (// và /* */).",
     ],
-    mainHeading: 'Chương trình C# đầu tiên & Cấu trúc Top-Level Statements',
-    subHeading: 'Tìm hiểu điểm khởi đầu (Entry Point) của mọi ứng dụng',
+    mainHeading: "Chương trình C# đầu tiên & Cấu trúc Top-Level Statements",
+    subHeading: "Tìm hiểu điểm khởi đầu (Entry Point) của mọi ứng dụng",
     description:
-      'Mỗi ứng dụng C# console đều bắt đầu từ hàm Main. Từ C# 9 trở đi, cú pháp Top-Level Statements cho phép viết mã lệnh trực tiếp mà không cần bọc class hay namespace cồng kềnh.',
+      "Mỗi ứng dụng C# console đều bắt đầu từ hàm Main. Từ C# 9 trở đi, cú pháp Top-Level Statements cho phép viết mã lệnh trực tiếp mà không cần bọc class hay namespace cồng kềnh.",
     tableData: [
-      { keyword: 'Console.WriteLine()', ctsType: 'I/O Method', size: 'System', description: 'In dữ liệu ra terminal và tự động xuống dòng' },
-      { keyword: 'Console.ReadLine()', ctsType: 'I/O Method', size: 'System', description: 'Đọc dữ liệu người dùng nhập từ bàn phím' },
-      { keyword: 'static void Main()', ctsType: 'Entry Point', size: 'Classic', description: 'Hàm khởi chạy truyền thống của ứng dụng' },
-      { keyword: 'Top-Level Statements', ctsType: 'C# 9+ Feature', size: 'Modern', description: 'Viết lệnh thực thi trực tiếp không cần boilerplates' },
+      {
+        keyword: "Console.WriteLine()",
+        ctsType: "I/O Method",
+        size: "System",
+        description: "In dữ liệu ra terminal và tự động xuống dòng",
+      },
+      {
+        keyword: "Console.ReadLine()",
+        ctsType: "I/O Method",
+        size: "System",
+        description: "Đọc dữ liệu người dùng nhập từ bàn phím",
+      },
+      {
+        keyword: "static void Main()",
+        ctsType: "Entry Point",
+        size: "Classic",
+        description: "Hàm khởi chạy truyền thống của ứng dụng",
+      },
+      {
+        keyword: "Top-Level Statements",
+        ctsType: "C# 9+ Feature",
+        size: "Modern",
+        description: "Viết lệnh thực thi trực tiếp không cần boilerplates",
+      },
     ],
     initialCode: `using System;
 
 Console.Write("Nhập tên của bạn: ");
 string name = "Alex"; // Giá trị demo
 Console.WriteLine($"Xin chào, {name}! Chúc bạn học tốt C#.");`,
-    defaultOutput: 'Nhập tên của bạn: Alex\nXin chào, Alex! Chúc bạn học tốt C#.\n\nProcess finished with exit code 0.',
+    defaultOutput:
+      "Nhập tên của bạn: Alex\nXin chào, Alex! Chúc bạn học tốt C#.\n\nProcess finished with exit code 0.",
     proTipTitle: 'String Interpolation ($"...")',
     proTipContent:
       'Hãy luôn dùng cú pháp $"Xin chào {name}" thay vì dùng dấu cộng để ghép chuỗi. Code vừa dễ nhìn vừa có hiệu năng tốt hơn.',
   },
 
   // === CHƯƠNG 2 ===
-  'variables-overview': {
-    id: 'variables-overview',
+  "variables-overview": {
+    id: "variables-overview",
     order: 1,
-    title: 'Tổng quan về biến và cú pháp',
-    duration: '11 min',
-    chapter: 'Biến và kiểu dữ liệu',
+    title: "Tổng quan về biến và cú pháp",
+    duration: "11 min",
+    chapter: "Biến và kiểu dữ liệu",
     objectives: [
-      'Hiểu khái niệm biến và vùng nhớ lưu trữ trong C#.',
-      'Nắm vững cú pháp khai báo và khởi tạo giá trị biến.',
-      'Sử dụng từ khóa var (implicit typing) đúng cách.',
-      'Quy ước đặt tên biến (camelCase) chuẩn .NET.',
+      "Hiểu khái niệm biến và vùng nhớ lưu trữ trong C#.",
+      "Nắm vững cú pháp khai báo và khởi tạo giá trị biến.",
+      "Sử dụng từ khóa var (implicit typing) đúng cách.",
+      "Quy ước đặt tên biến (camelCase) chuẩn .NET.",
     ],
-    mainHeading: 'Cú pháp khai báo biến & Implicit Typing trong C#',
-    subHeading: 'Khởi tạo và quản lý biến với từ khóa var và kiểu tường minh',
+    mainHeading: "Cú pháp khai báo biến & Implicit Typing trong C#",
+    subHeading: "Khởi tạo và quản lý biến với từ khóa var và kiểu tường minh",
     description:
-      'Biến là tên gọi đại diện cho một vùng ô nhớ lưu trữ dữ liệu. Trong C#, bạn có thể khai báo biến với kiểu dữ liệu tường minh (explicit) hoặc dùng từ khóa var để trình biên dịch tự suy luận kiểu.',
+      "Biến là tên gọi đại diện cho một vùng ô nhớ lưu trữ dữ liệu. Trong C#, bạn có thể khai báo biến với kiểu dữ liệu tường minh (explicit) hoặc dùng từ khóa var để trình biên dịch tự suy luận kiểu.",
     tableData: [
-      { keyword: 'int x = 10;', ctsType: 'Explicit', size: '4 bytes', description: 'Khai báo tường minh kiểu số nguyên' },
-      { keyword: 'var name = "Alex";', ctsType: 'Implicit (string)', size: 'Dynamic', description: 'Trình biên dịch suy luận thành System.String' },
-      { keyword: 'const double PI = 3.14;', ctsType: 'Constant', size: '8 bytes', description: 'Hằng số không thể thay đổi giá trị' },
-      { keyword: 'readonly int MaxId;', ctsType: 'Readonly', size: '4 bytes', description: 'Chỉ gán giá trị tại constructor hoặc khai báo' },
+      {
+        keyword: "int x = 10;",
+        ctsType: "Explicit",
+        size: "4 bytes",
+        description: "Khai báo tường minh kiểu số nguyên",
+      },
+      {
+        keyword: 'var name = "Alex";',
+        ctsType: "Implicit (string)",
+        size: "Dynamic",
+        description: "Trình biên dịch suy luận thành System.String",
+      },
+      {
+        keyword: "const double PI = 3.14;",
+        ctsType: "Constant",
+        size: "8 bytes",
+        description: "Hằng số không thể thay đổi giá trị",
+      },
+      {
+        keyword: "readonly int MaxId;",
+        ctsType: "Readonly",
+        size: "4 bytes",
+        description: "Chỉ gán giá trị tại constructor hoặc khai báo",
+      },
     ],
     initialCode: `using System;
 
@@ -313,34 +506,60 @@ public class Program
         Console.WriteLine($"Bài số: {lessonNumber} - Đã đăng: {isPublished}");
     }
 }`,
-    defaultOutput: 'Khóa học: C# cơ bản\nBài số: 1 - Đã đăng: True\n\nProcess finished with exit code 0.',
+    defaultOutput:
+      "Khóa học: C# cơ bản\nBài số: 1 - Đã đăng: True\n\nProcess finished with exit code 0.",
     proTipTitle: 'Khi nào nên dùng "var"?',
     proTipContent:
       'Chỉ nên dùng "var" khi vế phải đã thể hiện rõ kiểu dữ liệu (ví dụ: var list = new List<string>();) để tránh làm code khó đọc.',
   },
 
-  'primitive-data-types': {
-    id: 'primitive-data-types',
+  "primitive-data-types": {
+    id: "primitive-data-types",
     order: 2,
-    title: 'Các kiểu dữ liệu nguyên thủy',
-    duration: '14 min',
-    chapter: 'Biến và kiểu dữ liệu',
+    title: "Các kiểu dữ liệu nguyên thủy",
+    duration: "14 min",
+    chapter: "Biến và kiểu dữ liệu",
     objectives: [
-      'Phân biệt nhóm kiểu số nguyên, số thực dấu phẩy động và boolean.',
-      'Nắm rõ kích thước bộ nhớ (bytes) và phạm vi lưu trữ trên CLR 64-bit.',
-      'Hiểu vì sao phải dùng decimal trong tính toán tài chính.',
-      'Cơ chế cấp phát trực tiếp của Value Type trên Thread Stack.',
+      "Phân biệt nhóm kiểu số nguyên, số thực dấu phẩy động và boolean.",
+      "Nắm rõ kích thước bộ nhớ (bytes) và phạm vi lưu trữ trên CLR 64-bit.",
+      "Hiểu vì sao phải dùng decimal trong tính toán tài chính.",
+      "Cơ chế cấp phát trực tiếp của Value Type trên Thread Stack.",
     ],
-    mainHeading: 'C# Value Types & Hệ thống kiểu (.NET CTS)',
-    subHeading: 'Hiểu sâu cách CLR lưu trữ và xử lý dữ liệu nguyên thủy',
+    mainHeading: "C# Value Types & Hệ thống kiểu (.NET CTS)",
+    subHeading: "Hiểu sâu cách CLR lưu trữ và xử lý dữ liệu nguyên thủy",
     description:
-      'Trong C#, tất cả các kiểu dữ liệu số cơ bản và boolean đều là Value Types, kế thừa từ System.ValueType. Khi khai báo cục bộ trong hàm, biến sẽ được lưu trên Stack để truy cập với tốc độ tức thì.',
+      "Trong C#, tất cả các kiểu dữ liệu số cơ bản và boolean đều là Value Types, kế thừa từ System.ValueType. Khi khai báo cục bộ trong hàm, biến sẽ được lưu trên Stack để truy cập với tốc độ tức thì.",
     tableData: [
-      { keyword: 'int', ctsType: 'System.Int32', size: '4 bytes (32-bit)', description: '-2,147,483,648 đến 2,147,483,647' },
-      { keyword: 'long', ctsType: 'System.Int64', size: '8 bytes (64-bit)', description: '-9.22 × 10¹⁸ đến 9.22 × 10¹⁸' },
-      { keyword: 'double', ctsType: 'System.Double', size: '8 bytes (64-bit)', description: '~15–17 chữ số chính xác (Khoa học)' },
-      { keyword: 'decimal', ctsType: 'System.Decimal', size: '16 bytes (128-bit)', description: '28–29 chữ số chính xác (Tài chính)' },
-      { keyword: 'bool', ctsType: 'System.Boolean', size: '1 byte', description: 'true hoặc false' },
+      {
+        keyword: "int",
+        ctsType: "System.Int32",
+        size: "4 bytes (32-bit)",
+        description: "-2,147,483,648 đến 2,147,483,647",
+      },
+      {
+        keyword: "long",
+        ctsType: "System.Int64",
+        size: "8 bytes (64-bit)",
+        description: "-9.22 × 10¹⁸ đến 9.22 × 10¹⁸",
+      },
+      {
+        keyword: "double",
+        ctsType: "System.Double",
+        size: "8 bytes (64-bit)",
+        description: "~15–17 chữ số chính xác (Khoa học)",
+      },
+      {
+        keyword: "decimal",
+        ctsType: "System.Decimal",
+        size: "16 bytes (128-bit)",
+        description: "28–29 chữ số chính xác (Tài chính)",
+      },
+      {
+        keyword: "bool",
+        ctsType: "System.Boolean",
+        size: "1 byte",
+        description: "true hoặc false",
+      },
     ],
     initialCode: `using System;
 
@@ -360,33 +579,53 @@ public class Program
     }
 }`,
     defaultOutput:
-      'User Age: 28 (Size: 4 bytes)\nBalance: $14,250.75 (Size: 16 bytes)\nActive Status: True\nTier: A (Size: 2 bytes)\n\nProcess finished with exit code 0.',
-    proTipTitle: 'Double vs Decimal trong phỏng vấn',
+      "User Age: 28 (Size: 4 bytes)\nBalance: $14,250.75 (Size: 16 bytes)\nActive Status: True\nTier: A (Size: 2 bytes)\n\nProcess finished with exit code 0.",
+    proTipTitle: "Double vs Decimal trong phỏng vấn",
     proTipContent:
-      'Double dùng biểu diễn nhị phân (IEEE 754) nên dễ sinh sai số làm tròn thập phân. Hãy dùng Decimal cho các bài toán tài chính, tiền tệ.',
+      "Double dùng biểu diễn nhị phân (IEEE 754) nên dễ sinh sai số làm tròn thập phân. Hãy dùng Decimal cho các bài toán tài chính, tiền tệ.",
   },
 
-  'type-conversion': {
-    id: 'type-conversion',
+  "type-conversion": {
+    id: "type-conversion",
     order: 3,
-    title: 'Chuyển đổi và ép kiểu',
-    duration: '9 min',
-    chapter: 'Biến và kiểu dữ liệu',
+    title: "Chuyển đổi và ép kiểu",
+    duration: "9 min",
+    chapter: "Biến và kiểu dữ liệu",
     objectives: [
-      'Nắm vững chuyển đổi ngầm định (Implicit Conversion).',
-      'Thực hiện ép kiểu tường minh (Explicit Casting).',
-      'Sử dụng lớp Convert và phương thức int.Parse / int.TryParse.',
-      'Kiểm soát hiện tượng tràn số với từ khóa checked và unchecked.',
+      "Nắm vững chuyển đổi ngầm định (Implicit Conversion).",
+      "Thực hiện ép kiểu tường minh (Explicit Casting).",
+      "Sử dụng lớp Convert và phương thức int.Parse / int.TryParse.",
+      "Kiểm soát hiện tượng tràn số với từ khóa checked và unchecked.",
     ],
-    mainHeading: 'Chuyển đổi kiểu dữ liệu & Ép kiểu an toàn',
-    subHeading: 'Tránh lỗi runtime và mất mát dữ liệu khi chuyển đổi',
+    mainHeading: "Chuyển đổi kiểu dữ liệu & Ép kiểu an toàn",
+    subHeading: "Tránh lỗi runtime và mất mát dữ liệu khi chuyển đổi",
     description:
-      'Chuyển đổi kiểu diễn ra khi gán giá trị của kiểu này sang kiểu khác. Ép kiểu ngầm định diễn ra an toàn tự động, trong khi ép kiểu tường minh có thể gây mất mát số thập phân hoặc tràn dữ liệu.',
+      "Chuyển đổi kiểu diễn ra khi gán giá trị của kiểu này sang kiểu khác. Ép kiểu ngầm định diễn ra an toàn tự động, trong khi ép kiểu tường minh có thể gây mất mát số thập phân hoặc tràn dữ liệu.",
     tableData: [
-      { keyword: 'long x = intVal;', ctsType: 'Implicit Cast', size: 'Tự động', description: 'An toàn, không bị mất dữ liệu' },
-      { keyword: '(int)doubleVal', ctsType: 'Explicit Cast', size: 'Toán tử (type)', description: 'Cắt bỏ phần thập phân' },
-      { keyword: 'int.TryParse(...)', ctsType: 'Safe Parse', size: 'Hàm hỗ trợ', description: 'Chuyển đổi chuỗi không ném Exception' },
-      { keyword: 'Convert.ToInt32(...)', ctsType: 'Convert Class', size: 'System.Convert', description: 'Tự động làm tròn số và xử lý null' },
+      {
+        keyword: "long x = intVal;",
+        ctsType: "Implicit Cast",
+        size: "Tự động",
+        description: "An toàn, không bị mất dữ liệu",
+      },
+      {
+        keyword: "(int)doubleVal",
+        ctsType: "Explicit Cast",
+        size: "Toán tử (type)",
+        description: "Cắt bỏ phần thập phân",
+      },
+      {
+        keyword: "int.TryParse(...)",
+        ctsType: "Safe Parse",
+        size: "Hàm hỗ trợ",
+        description: "Chuyển đổi chuỗi không ném Exception",
+      },
+      {
+        keyword: "Convert.ToInt32(...)",
+        ctsType: "Convert Class",
+        size: "System.Convert",
+        description: "Tự động làm tròn số và xử lý null",
+      },
     ],
     initialCode: `using System;
 
@@ -407,33 +646,53 @@ public class Program
     }
 }`,
     defaultOutput:
-      'Chuyển đổi thành công năm: 2026\nGiá trị ban đầu: 3.14159, Sau khi ép về int: 3\n\nProcess finished with exit code 0.',
-    proTipTitle: 'Luôn ưu tiên int.TryParse hơn int.Parse',
+      "Chuyển đổi thành công năm: 2026\nGiá trị ban đầu: 3.14159, Sau khi ép về int: 3\n\nProcess finished with exit code 0.",
+    proTipTitle: "Luôn ưu tiên int.TryParse hơn int.Parse",
     proTipContent:
-      'TryParse trả về bool thay vì ném lỗi Exception ra màn hình khi người dùng nhập sai, giúp chương trình chạy mượt mà hơn.',
+      "TryParse trả về bool thay vì ném lỗi Exception ra màn hình khi người dùng nhập sai, giúp chương trình chạy mượt mà hơn.",
   },
 
-  'nullable-types': {
-    id: 'nullable-types',
+  "nullable-types": {
+    id: "nullable-types",
     order: 4,
-    title: 'Kiểu giá trị nullable trong C#',
-    duration: '12 min',
-    chapter: 'Biến và kiểu dữ liệu',
+    title: "Kiểu giá trị nullable trong C#",
+    duration: "12 min",
+    chapter: "Biến và kiểu dữ liệu",
     objectives: [
-      'Hiểu vì sao Value Type thông thường không thể nhận giá trị null.',
-      'Khai báo Nullable Type với cú pháp T? hoặc Nullable<T>.',
-      'Sử dụng toán tử Null-coalescing (??) và (??=).',
-      'Truy xuất giá trị an toàn với HasValue và Value.',
+      "Hiểu vì sao Value Type thông thường không thể nhận giá trị null.",
+      "Khai báo Nullable Type với cú pháp T? hoặc Nullable<T>.",
+      "Sử dụng toán tử Null-coalescing (??) và (??=).",
+      "Truy xuất giá trị an toàn với HasValue và Value.",
     ],
-    mainHeading: 'Kiểu giá trị có thể mang giá trị Null (Nullable Types)',
-    subHeading: 'Làm việc an toàn với cơ sở dữ liệu và dữ liệu tùy chọn',
+    mainHeading: "Kiểu giá trị có thể mang giá trị Null (Nullable Types)",
+    subHeading: "Làm việc an toàn với cơ sở dữ liệu và dữ liệu tùy chọn",
     description:
-      'Mặc định, Value Types không thể mang giá trị null. Khi làm việc với cơ sở dữ liệu nơi các cột có thể để trống (NULL), C# hỗ trợ Nullable Value Types để biểu thị trạng thái không có dữ liệu.',
+      "Mặc định, Value Types không thể mang giá trị null. Khi làm việc với cơ sở dữ liệu nơi các cột có thể để trống (NULL), C# hỗ trợ Nullable Value Types để biểu thị trạng thái không có dữ liệu.",
     tableData: [
-      { keyword: 'int? age = null;', ctsType: 'Nullable<Int32>', size: '5 bytes (4 + 1 flag)', description: 'Chấp nhận cả số nguyên lẫn null' },
-      { keyword: 'x ?? defaultValue', ctsType: 'Null-Coalescing', size: 'Toán tử', description: 'Lấy defaultValue nếu x là null' },
-      { keyword: 'x ??= defaultValue', ctsType: 'Null-Assignment', size: 'Toán tử C# 8+', description: 'Gán defaultValue nếu x đang là null' },
-      { keyword: 'x.HasValue', ctsType: 'Property bool', size: '1 byte', description: 'Kiểm tra xem biến có giá trị thực hay không' },
+      {
+        keyword: "int? age = null;",
+        ctsType: "Nullable<Int32>",
+        size: "5 bytes (4 + 1 flag)",
+        description: "Chấp nhận cả số nguyên lẫn null",
+      },
+      {
+        keyword: "x ?? defaultValue",
+        ctsType: "Null-Coalescing",
+        size: "Toán tử",
+        description: "Lấy defaultValue nếu x là null",
+      },
+      {
+        keyword: "x ??= defaultValue",
+        ctsType: "Null-Assignment",
+        size: "Toán tử C# 8+",
+        description: "Gán defaultValue nếu x đang là null",
+      },
+      {
+        keyword: "x.HasValue",
+        ctsType: "Property bool",
+        size: "1 byte",
+        description: "Kiểm tra xem biến có giá trị thực hay không",
+      },
     ],
     initialCode: `using System;
 
@@ -450,21 +709,31 @@ public class Program
     }
 }`,
     defaultOutput:
-      'Điểm chính thức: 100 (Ban đầu: null)\nSau khi cập nhật: 85\n\nProcess finished with exit code 0.',
-    proTipTitle: 'Tránh lỗi InvalidOperationException',
+      "Điểm chính thức: 100 (Ban đầu: null)\nSau khi cập nhật: 85\n\nProcess finished with exit code 0.",
+    proTipTitle: "Tránh lỗi InvalidOperationException",
     proTipContent:
-      'Tuyệt đối không gọi thẳng .Value trên biến Nullable khi chưa kiểm tra .HasValue, nếu không chương trình sẽ bị văng lỗi runtime.',
+      "Tuyệt đối không gọi thẳng .Value trên biến Nullable khi chưa kiểm tra .HasValue, nếu không chương trình sẽ bị văng lỗi runtime.",
   },
 };
 
 export default function LearnerLessonPage() {
   const params = useParams();
   const router = useRouter();
-  const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug || 'csharp-fundamentals';
-  const lessonIdParam = Array.isArray(params?.lessonId) ? params.lessonId[0] : params?.lessonId;
 
-  const [databaseCourseTitle, setDatabaseCourseTitle] = useState<string | null>(null);
-  const [databaseChapters, setDatabaseChapters] = useState<LearnerLessonChapter[] | null>(null);
+  const { setTutorContext } = useTutorContext();
+  const slug = Array.isArray(params?.slug)
+    ? params.slug[0]
+    : params?.slug || "csharp-fundamentals";
+  const lessonIdParam = Array.isArray(params?.lessonId)
+    ? params.lessonId[0]
+    : params?.lessonId;
+
+  const [databaseCourseTitle, setDatabaseCourseTitle] = useState<string | null>(
+    null,
+  );
+  const [databaseChapters, setDatabaseChapters] = useState<
+    LearnerLessonChapter[] | null
+  >(null);
   const [quizState, setQuizState] = useState<{
     slug: string;
     quizzes: Awaited<ReturnType<typeof quizApi.list>>;
@@ -479,23 +748,29 @@ export default function LearnerLessonPage() {
   useEffect(() => {
     let isActive = true;
 
-    courseApi.learnerLessons(slug)
+    courseApi
+      .learnerLessons(slug)
       .then((response) => {
         if (isActive) {
           setDatabaseCourseTitle(response.course.title);
           setDatabaseChapters(response.chapters);
           setLoadError(null);
           setLoadedSlug(slug);
-          void quizApi.list({ course_id: response.course.id, status: 'published' })
-            .then((quizzes) => { if (isActive) setQuizState({ slug, quizzes, error: false }); })
-            .catch(() => { if (isActive) setQuizState({ slug, quizzes: [], error: true }); });
+          void quizApi
+            .list({ course_id: response.course.id, status: "published" })
+            .then((quizzes) => {
+              if (isActive) setQuizState({ slug, quizzes, error: false });
+            })
+            .catch(() => {
+              if (isActive) setQuizState({ slug, quizzes: [], error: true });
+            });
         }
       })
       .catch(() => {
         if (isActive) {
           setDatabaseCourseTitle(null);
           setDatabaseChapters(null);
-          setLoadError('Không thể tải bài học. Vui lòng thử lại sau.');
+          setLoadError("Không thể tải bài học. Vui lòng thử lại sau.");
           setLoadedSlug(slug);
         }
       });
@@ -505,11 +780,11 @@ export default function LearnerLessonPage() {
     };
   }, [slug]);
 
-  const fallbackCourse = COURSE_MAP[slug] || COURSE_MAP['csharp-fundamentals'];
+  const fallbackCourse = COURSE_MAP[slug] || COURSE_MAP["csharp-fundamentals"];
   const currentCourse = databaseChapters
     ? {
-        title: databaseCourseTitle ?? '',
-        level: '',
+        title: databaseCourseTitle ?? "",
+        level: "",
         tests: [],
         chapters: databaseChapters.map((chapter) => ({
           title: chapter.title,
@@ -525,7 +800,13 @@ export default function LearnerLessonPage() {
   const courseHref = `/learner/courses/${slug}`;
 
   // Thu thập danh sách phẳng tất cả bài học trong khóa
-  const allCourseLessons: Array<{ id: string; title: string; duration: string; completed: boolean; chapterTitle: string }> = [];
+  const allCourseLessons: Array<{
+    id: string;
+    title: string;
+    duration: string;
+    completed: boolean;
+    chapterTitle: string;
+  }> = [];
   currentCourse.chapters.forEach((chapter: any) => {
     chapter.lessons.forEach((lesson: any) => {
       allCourseLessons.push({ ...lesson, chapterTitle: chapter.title });
@@ -533,21 +814,47 @@ export default function LearnerLessonPage() {
   });
 
   // Tìm bài học hiện tại (nếu chưa có trong LESSON_DATABASE thì lấy fallback)
-  const activeLessonId = lessonIdParam || 'what-is-csharp';
-  const currentLessonMeta = allCourseLessons.find((l) => l.id === activeLessonId) || allCourseLessons[0] || {
-    id: activeLessonId, title: '', duration: '', completed: false, chapterTitle: '',
-  };
+  const activeLessonId = lessonIdParam || "what-is-csharp";
+  const currentLessonMeta = allCourseLessons.find(
+    (l) => l.id === activeLessonId,
+  ) ||
+    allCourseLessons[0] || {
+      id: activeLessonId,
+      title: "",
+      duration: "",
+      completed: false,
+      chapterTitle: "",
+    };
   const databaseLesson = databaseChapters
     ?.flatMap((chapter) => chapter.lessons)
     .find((lesson) => lesson.id === activeLessonId);
+  const tutorLessonId = databaseLesson?.id;
+
+  useEffect(() => {
+    if (!tutorLessonId) {
+      setTutorContext(null);
+      return;
+    }
+
+    setTutorContext({
+      mode: "lesson",
+      lessonId: tutorLessonId,
+    });
+
+    return () => {
+      setTutorContext(null);
+    };
+  }, [tutorLessonId, setTutorContext]);
   const currentChapterId = databaseChapters?.find((chapter) =>
-    chapter.lessons.some((lesson) => lesson.id === activeLessonId))?.id;
+    chapter.lessons.some((lesson) => lesson.id === activeLessonId),
+  )?.id;
   const courseQuizzes = quizState?.slug === slug ? quizState.quizzes : [];
   const quizzesLoading = quizState?.slug !== slug;
   const quizzesError = quizState?.slug === slug && quizState.error;
-  const visibleQuizzes = courseQuizzes.filter((quiz) =>
-    !quiz.chapter_id || quiz.chapter_id === currentChapterId);
-  
+  const visibleQuizzes = courseQuizzes.filter(
+    (quiz) => !quiz.chapter_id || quiz.chapter_id === currentChapterId,
+  );
+
   const currentLesson: LessonDetail = LESSON_DATABASE[activeLessonId] || {
     id: currentLessonMeta.id,
     order: 1,
@@ -556,46 +863,67 @@ export default function LearnerLessonPage() {
     chapter: currentLessonMeta.chapterTitle,
     objectives: [
       `Nắm vững khái niệm nền tảng của ${currentLessonMeta.title}.`,
-      'Thực hành ví dụ trực quan trong môi trường C# 12.',
-      'Phân tích quy trình xử lý của .NET Runtime.',
-      'Tránh các bẫy lỗi thường gặp khi đi làm dự án.',
+      "Thực hành ví dụ trực quan trong môi trường C# 12.",
+      "Phân tích quy trình xử lý của .NET Runtime.",
+      "Tránh các bẫy lỗi thường gặp khi đi làm dự án.",
     ],
     mainHeading: currentLessonMeta.title,
     subHeading: `Nội dung hướng dẫn chi tiết thuộc chương ${currentLessonMeta.chapterTitle}`,
     description: `Bài học ${currentLessonMeta.title} giúp bạn xây dựng nền tảng vững chắc khi làm việc với hệ sinh thái .NET. Hãy thực hành từng dòng code trên môi trường IDE bên dưới.`,
     tableData: [
-      { keyword: 'Cú pháp', ctsType: 'Chuẩn C# 12', size: 'Tiêu chuẩn', description: 'Cú pháp rõ ràng, dễ bảo trì' },
-      { keyword: 'Quản lý bộ nhớ', ctsType: 'CLR Core', size: 'Tự động', description: 'Tối ưu hoá hiệu năng xử lý' },
+      {
+        keyword: "Cú pháp",
+        ctsType: "Chuẩn C# 12",
+        size: "Tiêu chuẩn",
+        description: "Cú pháp rõ ràng, dễ bảo trì",
+      },
+      {
+        keyword: "Quản lý bộ nhớ",
+        ctsType: "CLR Core",
+        size: "Tự động",
+        description: "Tối ưu hoá hiệu năng xử lý",
+      },
     ],
     initialCode: `using System;\n\npublic class Program\n{\n    public static void Main()\n    {\n        Console.WriteLine("Bài học: ${currentLessonMeta.title}");\n    }\n}`,
     defaultOutput: `Bài học: ${currentLessonMeta.title}\n\nProcess finished with exit code 0.`,
-    proTipTitle: 'Gợi ý học tập',
-    proTipContent: 'Hãy tự gõ lại từng dòng mã thay vì sao chép để ghi nhớ cú pháp nhanh hơn.',
+    proTipTitle: "Gợi ý học tập",
+    proTipContent:
+      "Hãy tự gõ lại từng dòng mã thay vì sao chép để ghi nhớ cú pháp nhanh hơn.",
   };
 
   // Bài học thuộc cùng chương hiện tại
-  const currentChapterLessons = allCourseLessons.filter((l) => l.chapterTitle === currentLesson.chapter);
+  const currentChapterLessons = allCourseLessons.filter(
+    (l) => l.chapterTitle === currentLesson.chapter,
+  );
 
   // Điều hướng Bài trước / Bài tiếp theo
-  const globalIndex = allCourseLessons.findIndex((item) => item.id === currentLessonMeta.id);
+  const globalIndex = allCourseLessons.findIndex(
+    (item) => item.id === currentLessonMeta.id,
+  );
   const prevLesson = globalIndex > 0 ? allCourseLessons[globalIndex - 1] : null;
-  const nextLesson = globalIndex < allCourseLessons.length - 1 ? allCourseLessons[globalIndex + 1] : null;
+  const nextLesson =
+    globalIndex < allCourseLessons.length - 1
+      ? allCourseLessons[globalIndex + 1]
+      : null;
 
   // Trạng thái tương tác
   const [copiedCode, setCopiedCode] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [hasRun, setHasRun] = useState(false);
-  const [consoleOutput, setConsoleOutput] = useState<string>('');
+  const [consoleOutput, setConsoleOutput] = useState<string>("");
 
   const [showOutline, setShowOutline] = useState(true);
   const outlineDialog = useRef<HTMLDialogElement>(null);
   const desktopOutline = useRef<HTMLElement>(null);
 
   const revealActiveLesson = (root: HTMLElement | null) => {
-    const list = root?.querySelector<HTMLElement>('[data-lesson-list]');
+    const list = root?.querySelector<HTMLElement>("[data-lesson-list]");
     const active = list?.querySelector<HTMLElement>('[aria-current="page"]');
     if (list && active) {
-      list.scrollTop += active.getBoundingClientRect().top - list.getBoundingClientRect().top - 8;
+      list.scrollTop +=
+        active.getBoundingClientRect().top -
+        list.getBoundingClientRect().top -
+        8;
     }
   };
 
@@ -604,22 +932,24 @@ export default function LearnerLessonPage() {
   }, [showOutline, activeLessonId, databaseChapters]);
 
   useEffect(() => {
-    const desktop = window.matchMedia('(min-width: 1024px)');
-    const closeOnDesktop = () => { if (desktop.matches) outlineDialog.current?.close(); };
-    desktop.addEventListener('change', closeOnDesktop);
-    return () => desktop.removeEventListener('change', closeOnDesktop);
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = () => {
+      if (desktop.matches) outlineDialog.current?.close();
+    };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
   }, []);
 
   // Cập nhật khi đổi bài học
   useEffect(() => {
     setHasRun(false);
     setIsRunning(false);
-    setConsoleOutput('');
+    setConsoleOutput("");
   }, [activeLessonId]);
 
   const activeLessonCode = databaseLesson
-    ? databaseLesson.codeExample?.trim() || ''
-    : LESSON_DATABASE[activeLessonId]?.initialCode?.trim() || '';
+    ? databaseLesson.codeExample?.trim() || ""
+    : LESSON_DATABASE[activeLessonId]?.initialCode?.trim() || "";
 
   const handleCreateAiPracticeSet = async () => {
     if (!databaseLesson || isCreatingAiSet) return;
@@ -629,13 +959,17 @@ export default function LearnerLessonPage() {
       const practiceSet = await practiceApi.createAiSet({
         lessonId: databaseLesson.id,
         count: aiQuestionCount,
-        difficulty: 'mixed',
+        difficulty: "mixed",
       });
-      router.push(`/learner/practice/ai/chapters/${encodeURIComponent(practiceSet.chapter_id)}?created=${encodeURIComponent(practiceSet.id)}`);
+      router.push(
+        `/learner/practice/ai/chapters/${encodeURIComponent(practiceSet.chapter_id)}?created=${encodeURIComponent(practiceSet.id)}`,
+      );
     } catch (requestError) {
-      setAiSetError(requestError instanceof Error
-        ? requestError.message
-        : 'Không thể tạo bộ câu hỏi AI.');
+      setAiSetError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Không thể tạo bộ câu hỏi AI.",
+      );
       setIsCreatingAiSet(false);
     }
   };
@@ -649,7 +983,7 @@ export default function LearnerLessonPage() {
   const handleRunCode = () => {
     setHasRun(true);
     setIsRunning(true);
-    setConsoleOutput('Đang biên dịch bằng .NET SDK (Roslyn)...');
+    setConsoleOutput("Đang biên dịch bằng .NET SDK (Roslyn)...");
     setTimeout(() => {
       setIsRunning(false);
       setConsoleOutput(currentLesson.defaultOutput);
@@ -658,92 +992,138 @@ export default function LearnerLessonPage() {
 
   // Lấy bài test liên quan
   if (loadedSlug !== slug) {
-    return <div className="mx-auto max-w-[1240px] p-6 text-sm text-slate-600" role="status">Đang tải bài học…</div>;
+    return (
+      <div
+        className="mx-auto max-w-[1240px] p-6 text-sm text-slate-600"
+        role="status"
+      >
+        Đang tải bài học…
+      </div>
+    );
   }
   if (loadError) {
-    return <div className="mx-auto max-w-[1240px] p-6 text-sm text-red-700" role="alert">{loadError}</div>;
+    return (
+      <div
+        className="mx-auto max-w-[1240px] p-6 text-sm text-red-700"
+        role="alert"
+      >
+        {loadError}
+      </div>
+    );
   }
   if (!databaseLesson) {
-    return <div className="mx-auto max-w-[1240px] p-6 text-sm text-slate-600">Không tìm thấy bài học này.</div>;
+    return (
+      <div className="mx-auto max-w-[1240px] p-6 text-sm text-slate-600">
+        Không tìm thấy bài học này.
+      </div>
+    );
   }
 
-  const outlineContent = (<>
-            {/* Card mục lục chương */}
-            <div className="overflow-hidden rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_4px_16px_rgba(0,44,62,0.04)]">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nội dung chương</span>
-                <span className="text-xs font-semibold text-slate-400">
-                  {currentChapterLessons.findIndex((l) => l.id === currentLessonMeta.id) + 1} / {currentChapterLessons.length} bài
+  const outlineContent = (
+    <>
+      {/* Card mục lục chương */}
+      <div className="overflow-hidden rounded-[18px] border border-[#dfe6df] bg-white p-4 shadow-[0_4px_16px_rgba(0,44,62,0.04)]">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            Nội dung chương
+          </span>
+          <span className="text-xs font-semibold text-slate-400">
+            {currentChapterLessons.findIndex(
+              (l) => l.id === currentLessonMeta.id,
+            ) + 1}{" "}
+            / {currentChapterLessons.length} bài
+          </span>
+        </div>
+
+        <div
+          data-lesson-list
+          className="mt-3 max-h-[min(45vh,360px)] space-y-1.5 overflow-y-auto overscroll-contain"
+        >
+          {currentChapterLessons.map((item, index) => {
+            const isCurrent = item.id === currentLessonMeta.id;
+            return (
+              <Link
+                key={item.id}
+                aria-current={isCurrent ? "page" : undefined}
+                onClick={() => outlineDialog.current?.close()}
+                href={`/learner/courses/${slug}/lessons/${item.id}`}
+                className={`flex items-start gap-3 rounded-xl p-2.5 text-xs transition-all ${
+                  isCurrent
+                    ? "border border-[#f4b7b7] bg-[#fff3f2] font-semibold text-[#f7444e] shadow-sm"
+                    : "text-slate-600 hover:bg-slate-50 cursor-pointer"
+                }`}
+              >
+                <span className="mt-0.5 shrink-0">
+                  {isCurrent ? (
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#F7444E] text-[10px] font-bold text-white">
+                      {index + 1}
+                    </span>
+                  ) : (
+                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                    </span>
+                  )}
                 </span>
-              </div>
+                <div className="min-w-0 flex-1 break-words leading-snug">
+                  <p className={isCurrent ? "text-[#0f3741]" : ""}>
+                    {item.title}
+                  </p>
+                  <span className="text-[11px] text-slate-400">
+                    {item.duration}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
 
-              <div data-lesson-list className="mt-3 max-h-[min(45vh,360px)] space-y-1.5 overflow-y-auto overscroll-contain">
-                {currentChapterLessons.map((item, index) => {
-                  const isCurrent = item.id === currentLessonMeta.id;
-                  return (
-                    <Link
-                      key={item.id}
-                      aria-current={isCurrent ? "page" : undefined}
-                      onClick={() => outlineDialog.current?.close()}
-                      href={`/learner/courses/${slug}/lessons/${item.id}`}
-                      className={`flex items-start gap-3 rounded-xl p-2.5 text-xs transition-all ${
-                        isCurrent
-                          ? 'border border-[#f4b7b7] bg-[#fff3f2] font-semibold text-[#f7444e] shadow-sm'
-                          : 'text-slate-600 hover:bg-slate-50 cursor-pointer'
-                      }`}
-                    >
-                      <span className="mt-0.5 shrink-0">
-                        {isCurrent ? (
-                          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#F7444E] text-[10px] font-bold text-white">
-                            {index + 1}
-                          </span>
-                        ) : (
-                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                          </span>
-                        )}
-                      </span>
-                      <div className="min-w-0 flex-1 break-words leading-snug">
-                        <p className={isCurrent ? 'text-[#0f3741]' : ''}>{item.title}</p>
-                        <span className="text-[11px] text-slate-400">{item.duration}</span>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
+      <LearnerLessonMaterials key={activeLessonId} lessonId={activeLessonId} />
 
-            <LearnerLessonMaterials key={activeLessonId} lessonId={activeLessonId} />
-
-            <details className="group rounded-[18px] border border-[#dfe6df] bg-white p-4">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-bold text-slate-600 [&::-webkit-details-marker]:hidden">
-                <span>Bài kiểm tra ({visibleQuizzes.length})</span>
-                <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
-              </summary>
-              {quizzesLoading ? (
-                <p className="mt-3 text-xs text-slate-500">Đang tải bài kiểm tra…</p>
-              ) : quizzesError ? (
-                <p className="mt-3 text-xs text-red-600">Không thể tải bài kiểm tra.</p>
-              ) : visibleQuizzes.length === 0 ? (
-                <p className="mt-3 text-xs text-slate-500">Chưa có bài kiểm tra cho khóa học hoặc chương này.</p>
-              ) : (
-                <ul className="mt-3 divide-y divide-slate-100">
-                  {visibleQuizzes.map((quiz) => (
-                    <li key={quiz.id} className="space-y-2 py-3 first:pt-0">
-                      <p className="break-words text-xs font-semibold leading-5 text-[#0f3741]">{quiz.title}</p>
-                      <p className="text-[11px] text-slate-500">{quiz.duration_minutes === null ? 'Không giới hạn thời gian' : `${quiz.duration_minutes} phút`}</p>
-                      <Link href={`/learner/courses/${slug}/tests/${quiz.id}`} className="block rounded-lg border border-[#f4b7b7] px-2 py-1.5 text-center text-xs font-semibold text-[#F7444E] hover:bg-rose-50">Vào làm bài</Link>
-                      </li>
-                    ))}
-                </ul>
-              )}
-            </details>
-  </>);
+      <details className="group rounded-[18px] border border-[#dfe6df] bg-white p-4">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-bold text-slate-600 [&::-webkit-details-marker]:hidden">
+          <span>Bài kiểm tra ({visibleQuizzes.length})</span>
+          <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+        </summary>
+        {quizzesLoading ? (
+          <p className="mt-3 text-xs text-slate-500">Đang tải bài kiểm tra…</p>
+        ) : quizzesError ? (
+          <p className="mt-3 text-xs text-red-600">
+            Không thể tải bài kiểm tra.
+          </p>
+        ) : visibleQuizzes.length === 0 ? (
+          <p className="mt-3 text-xs text-slate-500">
+            Chưa có bài kiểm tra cho khóa học hoặc chương này.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-slate-100">
+            {visibleQuizzes.map((quiz) => (
+              <li key={quiz.id} className="space-y-2 py-3 first:pt-0">
+                <p className="break-words text-xs font-semibold leading-5 text-[#0f3741]">
+                  {quiz.title}
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  {quiz.duration_minutes === null
+                    ? "Không giới hạn thời gian"
+                    : `${quiz.duration_minutes} phút`}
+                </p>
+                <Link
+                  href={`/learner/courses/${slug}/tests/${quiz.id}`}
+                  className="block rounded-lg border border-[#f4b7b7] px-2 py-1.5 text-center text-xs font-semibold text-[#F7444E] hover:bg-rose-50"
+                >
+                  Vào làm bài
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
+    </>
+  );
 
   return (
     <div className="min-h-screen bg-[#F7F8F3] text-slate-700 flex flex-col font-sans">
       <div className="mx-auto w-full min-w-0 max-w-[1240px] space-y-5 pb-6">
-        
         {/* Nút quay về độc lập (Đồng bộ với page_7.tsx) */}
         <Link
           href={courseHref}
@@ -752,7 +1132,9 @@ export default function LearnerLessonPage() {
           <ArrowLeft className="h-4 w-4" />
           <span>{currentCourse.title}</span>
           <span className="text-slate-300">/</span>
-          <span className="text-slate-500 font-normal">{currentLesson.chapter}</span>
+          <span className="text-slate-500 font-normal">
+            {currentLesson.chapter}
+          </span>
         </Link>
 
         {/* Header Card tiêu đề bài học */}
@@ -763,63 +1145,115 @@ export default function LearnerLessonPage() {
                 {currentLesson.title}
               </h1>
               <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-                {currentCourse.level && <span className="rounded-full border border-[#f7d0d0] bg-[#fbe7e9] px-2.5 py-0.5 text-[11px] font-bold text-[#f7444e]">
-                  {currentCourse.level}
-                </span>}
+                {currentCourse.level && (
+                  <span className="rounded-full border border-[#f7d0d0] bg-[#fbe7e9] px-2.5 py-0.5 text-[11px] font-bold text-[#f7444e]">
+                    {currentCourse.level}
+                  </span>
+                )}
                 <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-600">
                   <Clock3 className="h-3 w-3 text-slate-400" />
                   {currentLesson.duration}
                 </span>
               </div>
             </div>
-
           </div>
         </div>
 
         <div className="flex items-center">
-          <button type="button" aria-expanded={showOutline} aria-controls="lesson-outline" onClick={() => setShowOutline(!showOutline)} className="hidden min-w-[148px] items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[#145a68] transition-[background-color,transform] duration-200 hover:bg-[#eaf4f3] active:scale-[0.97] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 lg:inline-flex">
-            <PanelLeft className={`h-4 w-4 shrink-0 transition-transform duration-300 motion-reduce:transition-none ${showOutline ? "" : "-scale-x-100"}`} />{showOutline ? 'Ẩn mục lục' : 'Hiện mục lục'}
+          <button
+            type="button"
+            aria-expanded={showOutline}
+            aria-controls="lesson-outline"
+            onClick={() => setShowOutline(!showOutline)}
+            className="hidden min-w-[148px] items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[#145a68] transition-[background-color,transform] duration-200 hover:bg-[#eaf4f3] active:scale-[0.97] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 lg:inline-flex"
+          >
+            <PanelLeft
+              className={`h-4 w-4 shrink-0 transition-transform duration-300 motion-reduce:transition-none ${showOutline ? "" : "-scale-x-100"}`}
+            />
+            {showOutline ? "Ẩn mục lục" : "Hiện mục lục"}
           </button>
-          <button type="button" aria-haspopup="dialog" onClick={() => { outlineDialog.current?.showModal(); revealActiveLesson(outlineDialog.current); }} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[#145a68] hover:bg-[#eaf4f3] focus-visible:outline-2 focus-visible:outline-offset-2 lg:hidden">
-            <PanelLeft className="h-4 w-4" />Mục lục & tài nguyên
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            onClick={() => {
+              outlineDialog.current?.showModal();
+              revealActiveLesson(outlineDialog.current);
+            }}
+            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[#145a68] hover:bg-[#eaf4f3] focus-visible:outline-2 focus-visible:outline-offset-2 lg:hidden"
+          >
+            <PanelLeft className="h-4 w-4" />
+            Mục lục & tài nguyên
           </button>
         </div>
-        <dialog ref={outlineDialog} aria-labelledby="outline-title" onClick={(event) => { if (event.target === event.currentTarget) outlineDialog.current?.close(); }} className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/35">
+        <dialog
+          ref={outlineDialog}
+          aria-labelledby="outline-title"
+          onClick={(event) => {
+            if (event.target === event.currentTarget)
+              outlineDialog.current?.close();
+          }}
+          className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/35"
+        >
           <div className="flex h-full w-[min(340px,90vw)] flex-col bg-[#F7F8F3] shadow-xl">
             <div className="flex shrink-0 items-center justify-between gap-3 border-b p-4">
-              <h2 id="outline-title" className="text-sm font-bold text-[#0f3741]">Mục lục & tài nguyên</h2>
-              <button type="button" autoFocus aria-label="Đóng mục lục" onClick={() => outlineDialog.current?.close()} className="rounded-lg p-2 hover:bg-slate-200 focus-visible:outline-2"><X className="h-5 w-5" /></button>
+              <h2
+                id="outline-title"
+                className="text-sm font-bold text-[#0f3741]"
+              >
+                Mục lục & tài nguyên
+              </h2>
+              <button
+                type="button"
+                autoFocus
+                aria-label="Đóng mục lục"
+                onClick={() => outlineDialog.current?.close()}
+                className="rounded-lg p-2 hover:bg-slate-200 focus-visible:outline-2"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4">{outlineContent}</div>
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4">
+              {outlineContent}
+            </div>
           </div>
         </dialog>
 
         {/* Hai cột: mục lục và tài nguyên bên trái, bài học bên phải */}
-        <div className={`grid min-w-0 grid-cols-1 items-start gap-y-6 transition-[grid-template-columns,column-gap] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${showOutline ? "lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-x-6" : "lg:grid-cols-[0px_minmax(0,1fr)] lg:gap-x-0"}`}>
+        <div
+          className={`grid min-w-0 grid-cols-1 items-start gap-y-6 transition-[grid-template-columns,column-gap] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${showOutline ? "lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-x-6" : "lg:grid-cols-[0px_minmax(0,1fr)] lg:gap-x-0"}`}
+        >
           {/* CỘT TRÁI: Nội dung chương, Resources và bài kiểm tra */}
-          <aside ref={desktopOutline} id="lesson-outline" inert={!showOutline} aria-hidden={!showOutline} className={`hidden min-w-0 overflow-hidden transition-[opacity,transform] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none lg:block ${showOutline ? "translate-x-0 opacity-100" : "pointer-events-none -translate-x-3 opacity-0"}`}>
+          <aside
+            ref={desktopOutline}
+            id="lesson-outline"
+            inert={!showOutline}
+            aria-hidden={!showOutline}
+            className={`hidden min-w-0 overflow-hidden transition-[opacity,transform] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none lg:block ${showOutline ? "translate-x-0 opacity-100" : "pointer-events-none -translate-x-3 opacity-0"}`}
+          >
             <div className="w-[230px] space-y-3">{outlineContent}</div>
           </aside>
 
           {/* NỘI DUNG BÀI HỌC & Code Runner */}
           <section className="min-w-0 space-y-6">
             {/* Mục tiêu bài học */}
-            {!databaseLesson && <div className="rounded-[18px] border border-[#d6e3e7] bg-[#f2f8fa] p-5 shadow-[0_4px_16px_rgba(0,44,62,0.02)]">
-              <div className="flex items-center gap-2.5 text-sm font-bold text-[#0f3741]">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-[#78bcc4] shadow-sm">
-                  <Layers className="h-4 w-4" />
-                </span>
-                <span>Mục tiêu bài học (Lesson Objectives)</span>
+            {!databaseLesson && (
+              <div className="rounded-[18px] border border-[#d6e3e7] bg-[#f2f8fa] p-5 shadow-[0_4px_16px_rgba(0,44,62,0.02)]">
+                <div className="flex items-center gap-2.5 text-sm font-bold text-[#0f3741]">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-[#78bcc4] shadow-sm">
+                    <Layers className="h-4 w-4" />
+                  </span>
+                  <span>Mục tiêu bài học (Lesson Objectives)</span>
+                </div>
+                <ul className="mt-3.5 grid gap-2.5 sm:grid-cols-2 text-xs text-slate-600">
+                  {currentLesson.objectives.map((obj, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="h-1.5 w-1.5 mt-1.5 rounded-full bg-[#F7444E] shrink-0" />
+                      <span>{obj}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="mt-3.5 grid gap-2.5 sm:grid-cols-2 text-xs text-slate-600">
-                {currentLesson.objectives.map((obj, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="h-1.5 w-1.5 mt-1.5 rounded-full bg-[#F7444E] shrink-0" />
-                    <span>{obj}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>}
+            )}
 
             {/* Bài viết chi tiết */}
             <div className="rounded-[18px] border border-[#dfe6df] bg-white p-6 sm:p-8 shadow-[0_4px_16px_rgba(0,44,62,0.04)] space-y-5">
@@ -831,145 +1265,170 @@ export default function LearnerLessonPage() {
                   <h2 className="text-xl sm:text-2xl font-black tracking-tight text-[#0f3741]">
                     {databaseLesson?.title ?? currentLesson.mainHeading}
                   </h2>
-                  {!databaseLesson && <p className="text-xs text-slate-500 mt-0.5">{currentLesson.subHeading}</p>}
+                  {!databaseLesson && (
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {currentLesson.subHeading}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="whitespace-pre-wrap break-words text-[15px] leading-7 text-slate-600">
-                {databaseLesson ? databaseLesson.content?.trim() || 'Bài học chưa có nội dung.' : currentLesson.description}
+                {databaseLesson
+                  ? databaseLesson.content?.trim() ||
+                    "Bài học chưa có nội dung."
+                  : currentLesson.description}
               </div>
 
               {/* Bảng dữ liệu */}
-              {!databaseLesson && <div className="overflow-hidden rounded-xl border border-slate-200 bg-[#fafafa]">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-200 bg-[#f2f5f4] text-slate-700 font-bold">
-                        <th className="p-3">Thành phần / Cú pháp</th>
-                        <th className="p-3">Kiểu / Cơ chế .NET</th>
-                        <th className="p-3">Kích thước</th>
-                        <th className="p-3">Mô tả chi tiết</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200/80 font-mono text-[12px] text-slate-600 bg-white">
-                      {currentLesson.tableData.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/80">
-                          <td className="p-3 text-[#F7444E] font-bold">{row.keyword}</td>
-                          <td className="p-3 text-slate-500">{row.ctsType}</td>
-                          <td className="p-3">{row.size}</td>
-                          <td className="p-3 font-sans">{row.description}</td>
+              {!databaseLesson && (
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-[#fafafa]">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-[#f2f5f4] text-slate-700 font-bold">
+                          <th className="p-3">Thành phần / Cú pháp</th>
+                          <th className="p-3">Kiểu / Cơ chế .NET</th>
+                          <th className="p-3">Kích thước</th>
+                          <th className="p-3">Mô tả chi tiết</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200/80 font-mono text-[12px] text-slate-600 bg-white">
+                        {currentLesson.tableData.map((row, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/80">
+                            <td className="p-3 text-[#F7444E] font-bold">
+                              {row.keyword}
+                            </td>
+                            <td className="p-3 text-slate-500">
+                              {row.ctsType}
+                            </td>
+                            <td className="p-3">{row.size}</td>
+                            <td className="p-3 font-sans">{row.description}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>}
+              )}
 
               {/* Code Runner IDE */}
-              {activeLessonCode && <div className="overflow-hidden rounded-xl border border-slate-800 bg-[#0d131a] shadow-lg">
-                <div className="flex flex-wrap items-center justify-between border-b border-slate-800 bg-[#161f28] px-4 py-2.5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="h-3 w-3 rounded-full bg-[#ff5f56]" />
-                      <span className="h-3 w-3 rounded-full bg-[#ffbd2e]" />
-                      <span className="h-3 w-3 rounded-full bg-[#27c93f]" />
-                    </div>
-                    <div className="flex items-center gap-2 rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-slate-300 border border-slate-750">
-                      <Code2 className="h-3.5 w-3.5 text-[#F7444E]" />
-                      <span>Program.cs</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleCopyCode}
-                      className="inline-flex items-center gap-1 rounded-lg bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700 transition"
-                    >
-                      {copiedCode ? (
-                        <>
-                          <Check className="h-3 w-3 text-emerald-400" /> Đã chép
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-3 w-3" /> Sao chép
-                        </>
-                      )}
-                    </button>
-                    {!databaseLesson && <button
-                      type="button"
-                      onClick={handleRunCode}
-                      disabled={isRunning}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-[#F7444E] px-3.5 py-1 text-xs font-bold text-white hover:bg-[#e33b3b] transition disabled:opacity-50"
-                    >
-                      <Play className="h-3 w-3 fill-white" />
-                      {isRunning ? 'Đang chạy...' : 'Chạy mã'}
-                    </button>}
-                  </div>
-                </div>
-
-                <div className="p-4 font-mono text-xs leading-relaxed text-slate-200 overflow-x-auto bg-[#0a0f14]">
-                  <pre>
-                    <code>{activeLessonCode}</code>
-                  </pre>
-                </div>
-
-                {(hasRun || isRunning) && (
-                  <div className="border-t border-slate-800 bg-[#060a0e] p-3 font-mono text-xs animate-in fade-in duration-200">
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5 font-sans font-semibold">
-                      <div className="flex items-center gap-2">
-                        <Terminal className="h-3.5 w-3.5 text-emerald-400" />
-                        <span>Kết quả chạy chương trình:</span>
+              {activeLessonCode && (
+                <div className="overflow-hidden rounded-xl border border-slate-800 bg-[#0d131a] shadow-lg">
+                  <div className="flex flex-wrap items-center justify-between border-b border-slate-800 bg-[#161f28] px-4 py-2.5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-3 w-3 rounded-full bg-[#ff5f56]" />
+                        <span className="h-3 w-3 rounded-full bg-[#ffbd2e]" />
+                        <span className="h-3 w-3 rounded-full bg-[#27c93f]" />
                       </div>
-                      <div className="flex items-center gap-2">
-                        {isRunning ? (
-                          <span className="flex items-center gap-1.5 text-[10px] text-amber-400">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
-                            Đang thực thi...
-                          </span>
+                      <div className="flex items-center gap-2 rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-slate-300 border border-slate-750">
+                        <Code2 className="h-3.5 w-3.5 text-[#F7444E]" />
+                        <span>Program.cs</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCopyCode}
+                        className="inline-flex items-center gap-1 rounded-lg bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700 transition"
+                      >
+                        {copiedCode ? (
+                          <>
+                            <Check className="h-3 w-3 text-emerald-400" /> Đã
+                            chép
+                          </>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setHasRun(false);
-                              setConsoleOutput('');
-                            }}
-                            className="text-[10px] text-slate-500 hover:text-slate-300 transition"
-                            title="Đóng terminal"
-                          >
-                            Đóng terminal
-                          </button>
+                          <>
+                            <Copy className="h-3 w-3" /> Sao chép
+                          </>
                         )}
-                      </div>
+                      </button>
+                      {!databaseLesson && (
+                        <button
+                          type="button"
+                          onClick={handleRunCode}
+                          disabled={isRunning}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-[#F7444E] px-3.5 py-1 text-xs font-bold text-white hover:bg-[#e33b3b] transition disabled:opacity-50"
+                        >
+                          <Play className="h-3 w-3 fill-white" />
+                          {isRunning ? "Đang chạy..." : "Chạy mã"}
+                        </button>
+                      )}
                     </div>
-                    <pre className={`whitespace-pre-wrap text-[11px] leading-relaxed ${isRunning ? 'text-amber-400/90 italic' : 'text-emerald-400/90'}`}>
-                      {consoleOutput}
+                  </div>
+
+                  <div className="p-4 font-mono text-xs leading-relaxed text-slate-200 overflow-x-auto bg-[#0a0f14]">
+                    <pre>
+                      <code>{activeLessonCode}</code>
                     </pre>
                   </div>
-                )}
-              </div>}
+
+                  {(hasRun || isRunning) && (
+                    <div className="border-t border-slate-800 bg-[#060a0e] p-3 font-mono text-xs animate-in fade-in duration-200">
+                      <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5 font-sans font-semibold">
+                        <div className="flex items-center gap-2">
+                          <Terminal className="h-3.5 w-3.5 text-emerald-400" />
+                          <span>Kết quả chạy chương trình:</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isRunning ? (
+                            <span className="flex items-center gap-1.5 text-[10px] text-amber-400">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+                              Đang thực thi...
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setHasRun(false);
+                                setConsoleOutput("");
+                              }}
+                              className="text-[10px] text-slate-500 hover:text-slate-300 transition"
+                              title="Đóng terminal"
+                            >
+                              Đóng terminal
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <pre
+                        className={`whitespace-pre-wrap text-[11px] leading-relaxed ${isRunning ? "text-amber-400/90 italic" : "text-emerald-400/90"}`}
+                      >
+                        {consoleOutput}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Mẹo phỏng vấn */}
-              {!databaseLesson && <div className="rounded-xl border border-amber-200 bg-[#fffbeb] p-4 text-xs text-amber-900 shadow-sm">
-                <div className="flex items-center gap-2 font-bold text-amber-800">
-                  <Zap className="h-4 w-4 text-amber-600" />
-                  <span>{currentLesson.proTipTitle}</span>
+              {!databaseLesson && (
+                <div className="rounded-xl border border-amber-200 bg-[#fffbeb] p-4 text-xs text-amber-900 shadow-sm">
+                  <div className="flex items-center gap-2 font-bold text-amber-800">
+                    <Zap className="h-4 w-4 text-amber-600" />
+                    <span>{currentLesson.proTipTitle}</span>
+                  </div>
+                  <p className="mt-1.5 leading-relaxed text-amber-800/90">
+                    {currentLesson.proTipContent}
+                  </p>
                 </div>
-                <p className="mt-1.5 leading-relaxed text-amber-800/90">{currentLesson.proTipContent}</p>
-              </div>}
+              )}
             </div>
-
           </section>
-
         </div>
 
         {databaseLesson && !loadError && (
-          <LessonCodeExercises key={databaseLesson.id} lessonId={databaseLesson.id} />
+          <LessonCodeExercises
+            key={`code-${databaseLesson.id}`}
+            lessonId={databaseLesson.id}
+          />
         )}
 
         {databaseLesson && currentChapterId && (
           <DiscussionSection
-            key={databaseLesson.id}
+            key={`discussion-${databaseLesson.id}`}
             chapterId={currentChapterId}
             lessonId={databaseLesson.id}
             title="Thảo luận bài học"
@@ -985,20 +1444,27 @@ export default function LearnerLessonPage() {
                 Luyện tập ngay sau bài học
               </h2>
               <p className="mt-1 text-sm text-violet-800/80">
-                AI sẽ tạo riêng {aiQuestionCount} câu hỏi dựa trên nội dung của bài học này.
+                AI sẽ tạo riêng {aiQuestionCount} câu hỏi dựa trên nội dung của
+                bài học này.
               </p>
               <label className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-violet-900">
                 Số câu hỏi
                 <select
                   value={aiQuestionCount}
-                  onChange={(event) => setAiQuestionCount(Number(event.target.value))}
+                  onChange={(event) =>
+                    setAiQuestionCount(Number(event.target.value))
+                  }
                   disabled={isCreatingAiSet}
                   className="h-10 rounded-lg border border-violet-300 bg-white px-3 text-sm font-bold text-violet-800 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-200 disabled:cursor-not-allowed disabled:opacity-60"
                   aria-label="Số câu hỏi AI cần tạo"
                 >
-                  {Array.from({ length: 8 }, (_, index) => index + 3).map((count) => (
-                    <option key={count} value={count}>{count} câu</option>
-                  ))}
+                  {Array.from({ length: 8 }, (_, index) => index + 3).map(
+                    (count) => (
+                      <option key={count} value={count}>
+                        {count} câu
+                      </option>
+                    ),
+                  )}
                 </select>
               </label>
             </div>
@@ -1010,10 +1476,12 @@ export default function LearnerLessonPage() {
                   disabled={isCreatingAiSet}
                   className="inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-violet-600 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isCreatingAiSet
-                    ? <Loader2 className="h-4 w-4 animate-spin" />
-                    : <Sparkles className="h-4 w-4" />}
-                  {isCreatingAiSet ? 'Đang tạo bộ luyện tập...' : 'Tạo câu hỏi'}
+                  {isCreatingAiSet ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {isCreatingAiSet ? "Đang tạo bộ luyện tập..." : "Tạo câu hỏi"}
                 </button>
                 {currentChapterId && (
                   <Link
@@ -1025,7 +1493,11 @@ export default function LearnerLessonPage() {
                   </Link>
                 )}
               </div>
-              {aiSetError && <p className="max-w-xs text-xs font-medium text-rose-700">{aiSetError}</p>}
+              {aiSetError && (
+                <p className="max-w-xs text-xs font-medium text-rose-700">
+                  {aiSetError}
+                </p>
+              )}
             </div>
           </section>
         )}
@@ -1039,7 +1511,9 @@ export default function LearnerLessonPage() {
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-sm"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Bài trước: {prevLesson.title}</span>
+                <span className="hidden sm:inline">
+                  Bài trước: {prevLesson.title}
+                </span>
                 <span className="sm:hidden">Bài trước</span>
               </Link>
             ) : (
@@ -1059,7 +1533,9 @@ export default function LearnerLessonPage() {
                   href={`/learner/courses/${slug}/lessons/${nextLesson.id}`}
                   className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#e33b3b] transition shadow-sm"
                 >
-                  <span className="hidden sm:inline">Bài tiếp theo: {nextLesson.title}</span>
+                  <span className="hidden sm:inline">
+                    Bài tiếp theo: {nextLesson.title}
+                  </span>
                   <span className="sm:hidden">Bài tiếp theo</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
@@ -1076,7 +1552,6 @@ export default function LearnerLessonPage() {
           </div>
         </footer>
       </div>
-
     </div>
   );
 }
