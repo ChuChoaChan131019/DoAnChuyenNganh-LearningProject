@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { SupabaseService } from '../../config/supabase.service.js';
+import { GenerateLessonDto } from './dto/generate-lesson.dto.js';
 
 const PracticeOptionSchema = z.object({
   option_text: z.string().trim().min(1).max(1000),
@@ -260,7 +261,11 @@ export class AiService {
         .eq('user_id', userId)
         .single();
       if (!conversation) throw new BadRequestException('Conversation is not available');
-    } else {
+    }
+
+    const reply = await this.generateTutorReply(message, context);
+
+    if (!conversationId) {
       const { data: conversation, error } = await supabase
         .from('ai_tutor_conversations')
         .insert({ user_id: userId, course_id: context.courses[0].id, title: 'AI Tutor - Tất cả bài học' })
@@ -277,7 +282,6 @@ export class AiService {
     });
     if (userMessageError) throw new InternalServerErrorException('Unable to save tutor message');
 
-    const reply = await this.generateTutorReply(message, context);
     const { data: assistantMessage, error: assistantMessageError } = await supabase
       .from('ai_tutor_messages')
       .insert({
@@ -301,8 +305,6 @@ export class AiService {
     const courseLessons = context.chapters
       .map((chapter) => `${chapter.course?.title} / ${chapter.title}: ${(chapter.lessons ?? []).map((lesson: any) => `\n- ${lesson.title}\n  ${(lesson.content || '').slice(0, 3500)}\n  Code: ${(lesson.code_example || '').slice(0, 1200)}`).join('')}`)
       .join('\n');
-    const lessonTitles = context.chapters
-      .flatMap((chapter) => (chapter.lessons ?? []).map((lesson: any) => lesson.title));
     const systemPrompt = `You are a focused AI tutor for the published lessons in this learning platform.
 Available courses: ${context.courses.map((course) => course.title).join(', ')}
 Published lessons and content:
@@ -313,27 +315,29 @@ For unrelated questions, reply exactly: "Câu hỏi này không liên quan đế
 Be concise, answer directly, and use short C# examples only when useful. Maximum 400 words. Format with short paragraphs and Markdown when helpful.`;
 
     if (this.isGeminiConfigured()) {
-      try {
-        const response = await fetch(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': this.geminiApiKey },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: `${systemPrompt}\n\nQuestion: ${message}` }] }],
-              generationConfig: { temperature: 0.2, maxOutputTokens: 1200 },
-            }),
-          },
-        );
-        if (response.ok) {
-          const data = (await response.json()) as any;
-          const answer = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (answer) return answer;
-        } else {
-          this.logger.warn(`Gemini tutor unavailable (${response.status}), trying next provider`);
+      for (const model of ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite']) {
+        try {
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-goog-api-key': this.geminiApiKey },
+              signal: AbortSignal.timeout(12000),
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: `${systemPrompt}\n\nQuestion: ${message}` }] }],
+                generationConfig: { temperature: 0.2, maxOutputTokens: 1200 },
+              }),
+            },
+          );
+          if (response.ok) {
+            const data = (await response.json()) as any;
+            const answer = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            if (answer) return answer;
+          }
+          this.logger.warn(`Gemini tutor ${model} unavailable (${response.status}), trying next model`);
+        } catch (error) {
+          this.logger.warn(`Gemini tutor ${model} request failed: ${String(error)}`);
         }
-      } catch (error) {
-        this.logger.warn(`Gemini tutor request failed: ${String(error)}`);
       }
     }
 
@@ -367,27 +371,71 @@ Be concise, answer directly, and use short C# examples only when useful. Maximum
       }
     }
 
-    const normalizedQuestion = message.toLowerCase();
-    const isLessonRelated = [
-      'c#', 'csharp', '.net', 'lập trình', 'program', 'class', 'method',
-      'hàm', 'biến', 'cú pháp', 'code', 'mã', 'console', 'delegate',
-      'event', 'async', 'await', 'oop', ...lessonTitles,
-    ].some((keyword) => normalizedQuestion.includes(keyword.toLowerCase()));
-    if (!isLessonRelated) {
-      return 'Câu hỏi này không liên quan đến nội dung các bài học hiện có. Hãy hỏi về kiến thức trong các bài học nhé.';
-    }
+    throw new ServiceUnavailableException('AI tutor is temporarily unavailable');
+  }
 
-    const firstLesson = lessonTitles[0] || 'các bài học hiện có';
-    if (normalizedQuestion.includes('.net runtime')) {
-      return '**.NET Runtime** là môi trường thực thi chương trình .NET. Nó biên dịch hoặc thực thi mã C#, quản lý bộ nhớ, xử lý kiểu dữ liệu và cung cấp các dịch vụ cần thiết để ứng dụng chạy được.';
+  private async getAuthoringContext(courseId: string, chapterId: string) {
+    const supabase = this.supabaseService.getAdminClient();
+    const { data: course, error: courseError } = await supabase
+      .from('courses')
+      .select('id, title, description')
+      .eq('id', courseId)
+      .maybeSingle();
+    if (courseError) throw new InternalServerErrorException('Unable to load course');
+    if (!course) throw new NotFoundException('Course not found');
+
+    const { data: chapter, error: chapterError } = await supabase
+      .from('chapters')
+      .select('id, title, description')
+      .eq('id', chapterId)
+      .eq('course_id', courseId)
+      .maybeSingle();
+    if (chapterError) throw new InternalServerErrorException('Unable to load chapter');
+    if (!chapter) throw new NotFoundException('Chapter not found in course');
+
+    return { course, chapter };
+  }
+
+  async generateLessonDraft(body: GenerateLessonDto) {
+    const { course, chapter } = await this.getAuthoringContext(body.course_id, body.chapter_id);
+    const prompt = `Create a Vietnamese ${body.content_type} for a C#/.NET learning platform. Return only a JSON object with string fields "title", "content", and "code_example". "content" must be useful Markdown prose with headings, explanation, learning objectives, and a practical example. "code_example" must contain a valid C# example without Markdown fences. Keep the content around ${body.word_count} Vietnamese words. Do not invent facts about the course.\nCourse: ${course.title}. ${course.description ?? ''}\nChapter: ${chapter.title}. ${chapter.description ?? ''}\nLesson title: ${body.title}\nTopic: ${body.topic}\nLevel: ${body.level}\nAdditional instructions: ${body.instructions ?? 'None'}`;
+
+    if (!this.isGeminiConfigured()) throw new ServiceUnavailableException('AI content generation is not configured');
+    for (const model of ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite']) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': this.geminiApiKey },
+            signal: AbortSignal.timeout(20000),
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.4, maxOutputTokens: 3500, responseMimeType: 'application/json' },
+            }),
+          },
+        );
+        if (!response.ok) {
+          this.logger.warn(`Gemini content ${model} unavailable (${response.status})`);
+          continue;
+        }
+        const data = (await response.json()) as any;
+        const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (!raw) continue;
+        const parsed = JSON.parse(raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')) as Record<string, unknown>;
+        if (typeof parsed.content !== 'string' || parsed.content.trim().length < 100) continue;
+        return {
+          title: typeof parsed.title === 'string' && parsed.title.trim() ? parsed.title.trim().slice(0, 160) : body.title.trim(),
+          content: parsed.content.trim(),
+          code_example: typeof parsed.code_example === 'string' ? parsed.code_example.trim() : '',
+          estimated_duration_minutes: Math.max(2, Math.ceil(body.word_count / 180)),
+          model,
+        };
+      } catch (error) {
+        this.logger.warn(`Gemini content ${model} failed: ${String(error)}`);
+      }
     }
-    if (normalizedQuestion.includes('class')) {
-      return 'Trong C#, **class** là bản thiết kế để tạo đối tượng. Class có thể chứa dữ liệu dưới dạng field/property và hành vi dưới dạng method. Ví dụ: `class Student { public string Name { get; set; } }`.';
-    }
-    if (normalizedQuestion.includes('console')) {
-      return '**Console.WriteLine()** dùng để ghi nội dung ra màn hình console. Đây thường là lệnh đầu tiên trong chương trình C# để quan sát kết quả khi chạy code.';
-    }
-    return `Dựa trên các bài học hiện có, đặc biệt là **${firstLesson}**, mình có thể giải thích câu hỏi này.\n\nC# là ngôn ngữ lập trình hướng đối tượng của Microsoft, thường được dùng cùng nền tảng .NET để xây dựng ứng dụng web, desktop, game và dịch vụ. Trong bài học, bạn có thể tiếp tục hỏi về cú pháp, class, phương thức hoặc cách chạy chương trình C#.`;
+    throw new ServiceUnavailableException('AI content generation is temporarily unavailable');
   }
 
   /**

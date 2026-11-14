@@ -132,6 +132,7 @@ export class CoursesService {
         updated_by: actorId,
         content: createLessonDto.content?.trim() || null,
         code_example: createLessonDto.code_example?.trim() || null,
+        is_ai_generated: createLessonDto.is_ai_generated === true,
       })
       .select('id, title, estimated_duration_minutes, order_index, status, is_ai_generated')
       .single();

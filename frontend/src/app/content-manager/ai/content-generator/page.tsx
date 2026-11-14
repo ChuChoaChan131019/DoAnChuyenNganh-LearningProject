@@ -1,325 +1,105 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import {
-  ArrowRight,
-  BookOpen,
-  Check,
-  ChevronDown,
-  Clock3,
-  Code2,
-  FileText,
-  PencilLine,
-  RotateCw,
-  Save,
-  Sparkles,
-  Wand2,
-} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { aiManagerApi, courseApi, questionApi } from '@/lib/api';
+import { LessonMarkdown } from '@/components/lesson-markdown';
+import type { ChapterOption, CourseOption } from '@/types/question';
 
-const inputClass =
-  'h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-800 outline-none transition focus:border-[#14919B] focus:ring-2 focus:ring-[#14919B]/10';
+type Draft = Awaited<ReturnType<typeof aiManagerApi.generateLesson>>;
 
-const selectClass =
-  'h-12 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3.5 pr-10 text-sm text-slate-800 outline-none transition focus:border-[#14919B] focus:ring-2 focus:ring-[#14919B]/10';
+export default function ContentGeneratorPage() {
+  const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [chapters, setChapters] = useState<ChapterOption[]>([]);
+  const [courseId, setCourseId] = useState('');
+  const [chapterId, setChapterId] = useState('');
+  const [title, setTitle] = useState('');
+  const [topic, setTopic] = useState('');
+  const [level, setLevel] = useState<'basic' | 'intermediate' | 'advanced'>('basic');
+  const [wordCount, setWordCount] = useState(600);
+  const [instructions, setInstructions] = useState('');
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [savedId, setSavedId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [loadingChapters, setLoadingChapters] = useState(false);
+  const [error, setError] = useState('');
 
-const actionButtonClass =
-  'inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 active:scale-[0.99]';
+  useEffect(() => {
+    let active = true;
+    questionApi.listCourses()
+      .then((items) => {
+        if (!active) return;
+        setCourses(items);
+        if (items.length) setLoadingChapters(true);
+        setCourseId((current) => current || items[0]?.id || '');
+        if (!items.length) setError('Chưa có khóa học. Hãy tạo khóa học trước khi tạo bài học bằng AI.');
+      })
+      .catch((e) => { if (active) setError(e instanceof Error ? e.message : 'Không tải được khóa học.'); })
+      .finally(() => { if (active) setLoadingCourses(false); });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    if (!courseId) return;
+    let active = true;
+    questionApi.listChapters(courseId)
+      .then((items) => {
+        if (!active) return;
+        setChapters(items);
+        setChapterId(items[0]?.id || '');
+        if (!items.length) setError('Khóa học này chưa có chương. Hãy tạo chương trước khi tạo bài học bằng AI.');
+        else setError('');
+      })
+      .catch((e) => { if (active) setError(e instanceof Error ? e.message : 'Không tải được chương.'); })
+      .finally(() => { if (active) setLoadingChapters(false); });
+    return () => { active = false; };
+  }, [courseId]);
 
-const primaryActionClass =
-  'inline-flex items-center justify-center gap-2 rounded-2xl bg-[#F7444E] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#e53e45] active:scale-[0.99]';
-
-export default function AIContentGeneratorPage() {
-  const [topic, setTopic] = useState('Tính đóng gói trong C#');
-  const [course, setCourse] = useState('Lập trình hướng đối tượng với C#');
-  const [chapter, setChapter] = useState('Tính đóng gói');
-  const [lesson, setLesson] = useState('Vận dụng tính đóng gói');
-  const [targetLevel, setTargetLevel] = useState('Intermediate');
-  const [contentType, setContentType] = useState('Bài học');
-  const [desiredLength, setDesiredLength] = useState(900);
-  const [instructions, setInstructions] = useState(
-    'Dùng ví dụ tài khoản ngân hàng. Nêu một lỗi thường gặp và cách khắc phục.'
-  );
-
-  const generationMeta = useMemo(
-    () => ({
-      topic,
-      difficulty: 'Trung cấp',
-      readingTime: '6 phút',
-      aiModel: 'GPT-5, tinh chỉnh cho giáo dục',
-      generated: '11/08/2026, 08:02',
-      tokens: '2.418',
-    }),
-    [topic]
-  );
-
-  const objectiveItems = [
-    'Giải thích vì sao công khai trường dữ liệu có thể phá vỡ các điều kiện bất biến',
-    'Chuyển trường dữ liệu công khai thành thuộc tính có kiểm tra hợp lệ',
-    'Chọn phạm vi truy cập phù hợp cho thành viên lớp',
-  ];
-
-  return (
-    <div className="mx-auto w-full max-w-[1520px] space-y-6">
-      <div className="flex items-center gap-3">
-        <span className="inline-flex items-center gap-1.5 rounded-md border border-[#B6ECF0] bg-[#E6F7F8] px-2.5 py-1 text-xs font-semibold text-[#14919B]">
-          <Sparkles className="h-3.5 w-3.5" />
-          Có hỗ trợ trí tuệ nhân tạo
-        </span>
-      </div>
-
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-          Công cụ tạo nội dung học tập bằng AI
-        </h1>
-        <p className="max-w-3xl text-base leading-7 text-slate-600">
-          Tạo bản nháp bài học, phần giải thích, ví dụ C# và bài tập. Tất cả nội dung cần được con người kiểm duyệt.
-        </p>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-[#f3efe8] px-5 py-4 text-base font-medium text-slate-700 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f7dbb5] text-[#9a5d11]">
-            <Wand2 className="h-4 w-4" />
-          </div>
-          Nội dung do AI tạo cần được kiểm duyệt. Học viên chưa thể xem bản nháp cho đến khi nội dung được duyệt.
-        </div>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1.35fr_1.2fr_0.85fr]">
-        <section className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-5 flex items-center gap-3">
-              <h2 className="text-[22px] font-bold tracking-tight text-slate-800">
-                Thiết lập nội dung tạo
-              </h2>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Chủ đề</label>
-                <input
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Khóa học</label>
-                <div className="relative">
-                  <select value={course} onChange={(e) => setCourse(e.target.value)} className={selectClass}>
-                    <option value="Lập trình hướng đối tượng với C#">Lập trình hướng đối tượng với C#</option>
-                    <option value="Cấu trúc dữ liệu và giải thuật">Cấu trúc dữ liệu và giải thuật</option>
-                    <option value="Lập trình web với ASP.NET">Lập trình web với ASP.NET</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Chương</label>
-                <div className="relative">
-                  <select value={chapter} onChange={(e) => setChapter(e.target.value)} className={selectClass}>
-                    <option value="Tính đóng gói">Tính đóng gói</option>
-                    <option value="Tính kế thừa">Tính kế thừa</option>
-                    <option value="Tính đa hình">Tính đa hình</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Bài học</label>
-                <input
-                  value={lesson}
-                  onChange={(e) => setLesson(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Trình độ mục tiêu</label>
-                  <div className="relative">
-                    <select value={targetLevel} onChange={(e) => setTargetLevel(e.target.value)} className={selectClass}>
-                      <option value="Cơ bản">Cơ bản</option>
-                      <option value="Trung cấp">Trung cấp</option>
-                      <option value="Nâng cao">Nâng cao</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Loại nội dung</label>
-                  <div className="relative">
-                    <select value={contentType} onChange={(e) => setContentType(e.target.value)} className={selectClass}>
-                      <option value="Bài học">Bài học</option>
-                      <option value="Bài tập">Bài tập</option>
-                      <option value="Danh sách kiểm tra">Danh sách kiểm tra</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label className="text-sm font-medium text-slate-700">Độ dài mong muốn</label>
-                  <span className="text-xs font-medium text-slate-500">~{desiredLength} words</span>
-                </div>
-                <input
-                  type="range"
-                  min={300}
-                  max={1500}
-                  step={50}
-                  value={desiredLength}
-                  onChange={(e) => setDesiredLength(Number(e.target.value))}
-                  className="h-2 w-full cursor-pointer accent-[#F7444E]"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Hướng dẫn bổ sung</label>
-                <textarea
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
-                  rows={4}
-                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-800 outline-none transition focus:border-[#14919B] focus:ring-2 focus:ring-[#14919B]/10"
-                />
-              </div>
-
-              <button className={`${primaryActionClass} w-full`}>
-                <Sparkles className="h-4 w-4" />
-                Tạo nội dung tự động
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section className="space-y-5">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-[28px] font-bold tracking-[-0.04em] text-slate-800">Vận dụng tính đóng gói</h3>
-            </div>
-
-            <div className="space-y-5">
-              <p className="text-base leading-7 text-slate-700">
-                Tính đóng gói là nguyên tắc lập trình hướng đối tượng giúp ẩn trạng thái bên trong và chỉ cung cấp các thao tác truy cập có kiểm soát. Trong C#, có thể áp dụng nguyên tắc này bằng phạm vi truy cập, thuộc tính và bước kiểm tra dữ liệu trong phương thức.
-              </p>
-
-              <div>
-                <h4 className="mb-3 text-base font-bold text-slate-800">Mục tiêu học tập</h4>
-                <ul className="space-y-3 pl-5 text-base text-slate-700">
-                  {objectiveItems.map((item) => (
-                    <li key={item} className="list-disc leading-7">
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-[#021926] shadow-inner">
-              <div className="flex items-center gap-2 border-b border-slate-700 bg-[#021a2a] px-4 py-2 text-[11px] text-slate-300">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-                <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
-                <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-                <span className="ml-3 font-mono text-slate-400">Student.cs</span>
-              </div>
-
-              <pre className="overflow-x-auto p-4 font-mono text-sm leading-7 text-slate-100">
-                <code>{`public class Student
-{
-    public string Name { get; set; }
-    public int Credits { get; private set; }
-
-    public Student(string name) => Name = name;
-
-    public void Enroll(int credits)
-    {
-        if (credits <= 0)
-            throw new ArgumentOutOfRangeException(nameof(credits));
-
-        Credits += credits;
+  const generate = async () => {
+    const missing = [!courseId && 'khóa học', !chapterId && 'chương', !title.trim() && 'tiêu đề', !topic.trim() && 'chủ đề'].filter(Boolean);
+    if (missing.length) {
+      setError(`Còn thiếu: ${missing.join(', ')}.`);
+      return;
     }
+    setBusy(true); setError(''); setSavedId(''); setDraft(null);
+    try {
+      setDraft(await aiManagerApi.generateLesson({ course_id: courseId, chapter_id: chapterId, title: title.trim(), topic: topic.trim(), level, content_type: 'lesson', word_count: wordCount, instructions: instructions.trim() || undefined }));
+    } catch (e) { setError(e instanceof Error ? e.message : 'AI chưa tạo được nội dung.'); }
+    finally { setBusy(false); }
+  };
 
-    public void Introduce()
-    {
-        Console.WriteLine($"Hello, {Name}");
-    }
-}`}</code>
-              </pre>
-            </div>
-          </article>
+  const save = async () => {
+    if (!draft || !draft.title.trim() || !draft.content.trim()) { setError('Bản nháp cần có tiêu đề và nội dung.'); return; }
+    setBusy(true); setError('');
+    try {
+      const lesson = await courseApi.createLesson(courseId, chapterId, { title: draft.title.trim(), content: draft.content.trim(), code_example: draft.code_example.trim(), estimated_duration_minutes: draft.estimated_duration_minutes, is_ai_generated: true });
+      if (!lesson.id) throw new Error('Đã tạo bài học nhưng API không trả về mã bài học.');
+      setSavedId(lesson.id);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Không lưu được bản nháp.'); }
+    finally { setBusy(false); }
+  };
 
-          <div className="rounded-2xl border border-[#f2d4d7] bg-[#fbe7e9] p-4 text-base leading-7 text-[#7a3340] shadow-sm">
-            <span className="inline-flex items-center gap-2 font-semibold">
-              <span className="text-[#d14b5d]">Nguyên tắc chung:</span>
-            </span>
-            <span className="block mt-1">
-              Một lớp không nên để mã bên ngoài đưa đối tượng vào trạng thái không hợp lệ. Nếu giá trị có quy tắc, hãy kiểm tra nó trong thuộc tính hoặc phương thức.
-            </span>
-          </div>
-        </section>
-
-        <aside className="space-y-5">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-xl font-bold text-slate-800">Thông tin lần tạo</h3>
-
-            <dl className="mt-5 space-y-4 text-sm">
-              <div className="grid grid-cols-[auto_1fr] items-start gap-x-4 gap-y-1">
-                <dt className="text-slate-500">Chủ đề</dt>
-                <dd className="text-right font-semibold text-slate-800">{generationMeta.topic}</dd>
-              </div>
-              <div className="grid grid-cols-[auto_1fr] items-start gap-x-4 gap-y-1">
-                <dt className="text-slate-500">Độ khó</dt>
-                <dd className="text-right font-semibold text-slate-800">{generationMeta.difficulty}</dd>
-              </div>
-              <div className="grid grid-cols-[auto_1fr] items-start gap-x-4 gap-y-1">
-                <dt className="text-slate-500">Thời gian đọc</dt>
-                <dd className="text-right font-semibold text-slate-800">{generationMeta.readingTime}</dd>
-              </div>
-              <div className="grid grid-cols-[auto_1fr] items-start gap-x-4 gap-y-1">
-                <dt className="text-slate-500">Mô hình tạo nội dung</dt>
-                <dd className="text-right font-semibold text-slate-800">{generationMeta.aiModel}</dd>
-              </div>
-              <div className="grid grid-cols-[auto_1fr] items-start gap-x-4 gap-y-1">
-                <dt className="text-slate-500">Thời điểm tạo</dt>
-                <dd className="text-right font-semibold text-slate-800">{generationMeta.generated}</dd>
-              </div>
-              <div className="grid grid-cols-[auto_1fr] items-start gap-x-4 gap-y-1">
-                <dt className="text-slate-500">Lượng mã thông báo</dt>
-                <dd className="text-right font-semibold text-slate-800">{generationMeta.tokens}</dd>
-              </div>
-            </dl>
-
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-              <div className="flex items-center gap-2 text-slate-700">
-                <Check className="h-4 w-4 text-[#1c8a62]" />
-                Dựa trên đề cương khóa học và mục tiêu bài học hiện tại.
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="space-y-3">
-              <button className={actionButtonClass + ' w-full'}>
-                <RotateCw className="h-4 w-4" />
-                Tạo lại
-              </button>
-              <button className={actionButtonClass + ' w-full'}>
-                <PencilLine className="h-4 w-4" />
-                Chỉnh sửa nội dung
-              </button>
-              <button className={actionButtonClass + ' w-full'}>
-                <Save className="h-4 w-4" />
-                Lưu bản nháp
-              </button>
-            </div>
-          </div>
-        </aside>
-      </div>
-    </div>
-  );
+  const input = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#f7444e]';
+  return <main className="mx-auto max-w-5xl space-y-6 p-6 text-[#0f3741]">
+    <div><h1 className="text-2xl font-bold">Tạo nội dung bằng AI</h1><p className="mt-1 text-sm text-slate-600">Tạo bản nháp bài học, chỉnh sửa và lưu để duyệt.</p></div>
+    <section className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 md:grid-cols-2">
+      <label className="text-sm font-medium">Khóa học<select className={`${input} mt-1`} value={courseId} disabled={loadingCourses} onChange={(e) => { setCourseId(e.target.value); setChapterId(''); setChapters([]); setLoadingChapters(Boolean(e.target.value)); setDraft(null); }}><option value="">{loadingCourses ? 'Đang tải khóa học...' : 'Chọn khóa học'}</option>{courses.map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}</select></label>
+      <label className="text-sm font-medium">Chương<select className={`${input} mt-1`} value={chapterId} disabled={!courseId || loadingChapters} onChange={(e) => { setChapterId(e.target.value); setDraft(null); }}><option value="">{loadingChapters ? 'Đang tải chương...' : 'Chọn chương'}</option>{chapters.map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}</select></label>
+      <label className="text-sm font-medium">Tiêu đề mong muốn<input className={`${input} mt-1`} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} placeholder="Ví dụ: Vòng lặp trong C#" /></label>
+      <label className="text-sm font-medium">Chủ đề cần viết<input className={`${input} mt-1`} value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={300} placeholder="Khái niệm, cú pháp, ví dụ thực tế" /></label>
+      <label className="text-sm font-medium">Trình độ<select className={`${input} mt-1`} value={level} onChange={(e) => setLevel(e.target.value as typeof level)}><option value="basic">Cơ bản</option><option value="intermediate">Trung cấp</option><option value="advanced">Nâng cao</option></select></label>
+      <label className="text-sm font-medium">Số từ dự kiến<input className={`${input} mt-1`} type="number" min={300} max={1500} value={wordCount} onChange={(e) => setWordCount(Number(e.target.value))} /></label>
+      <label className="text-sm font-medium md:col-span-2">Hướng dẫn thêm<textarea className={`${input} mt-1 min-h-20`} value={instructions} onChange={(e) => setInstructions(e.target.value)} maxLength={1000} placeholder="Điểm cần nhấn mạnh, ví dụ muốn dùng..." /></label>
+      <button className="rounded-xl bg-[#f7444e] px-5 py-2 font-semibold text-white disabled:opacity-50 md:col-span-2" disabled={busy || loadingCourses || loadingChapters} onClick={generate}>{busy ? 'Đang xử lý...' : loadingCourses || loadingChapters ? 'Đang tải dữ liệu...' : 'Tạo nội dung'}</button>
+    </section>
+    {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+    {draft && <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+      <h2 className="text-lg font-bold">Bản nháp AI · {draft.model}</h2>
+      <label className="block text-sm font-medium">Tiêu đề<input className={`${input} mt-1`} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></label>
+      <label className="block text-sm font-medium">Nội dung<textarea className={`${input} mt-1 min-h-80 font-mono`} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} /></label>
+      <div className="rounded-xl border border-slate-200 bg-[#fbfcfa] p-5"><h3 className="mb-4 border-b border-slate-200 pb-2 font-semibold">Xem trước nội dung đã định dạng</h3><LessonMarkdown content={draft.content} /></div>
+      <label className="block text-sm font-medium">Ví dụ mã nguồn<textarea className={`${input} mt-1 min-h-32 font-mono`} value={draft.code_example} onChange={(e) => setDraft({ ...draft, code_example: e.target.value })} /></label>
+      {savedId ? <p className="text-sm text-emerald-700">Đã lưu bản nháp. <Link className="underline" href={`/content-manager/learning-content/lessons/${savedId}`}>Mở bài học</Link></p> : <button className="rounded-xl bg-[#0f3741] px-5 py-2 font-semibold text-white disabled:opacity-50" onClick={save} disabled={busy}>Lưu bản nháp</button>}
+    </section>}
+  </main>;
 }

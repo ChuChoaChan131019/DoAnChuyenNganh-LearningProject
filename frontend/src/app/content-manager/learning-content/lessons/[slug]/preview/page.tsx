@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ExternalLink, FileCode2, FileImage, FileText } from "lucide-react";
 import { courseApi, materialApi, type Material } from "@/lib/api";
+import { LessonMarkdown } from "@/components/lesson-markdown";
 
 type Lesson = Awaited<ReturnType<typeof courseApi.lesson>>;
 type Event = Awaited<ReturnType<typeof courseApi.reviewHistory>>[number];
@@ -57,7 +58,7 @@ export default function LessonPreviewPage() {
           </header>
           <section className="rounded-2xl border border-[#dfe6df] bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-bold text-[#002C3E]">Nội dung bài học</h2>
-            <div className="whitespace-pre-wrap break-words text-[16px] leading-8 text-[#16485a]">{lesson.content || "No lesson content yet."}</div>
+            <LessonMarkdown content={lesson.content || "Chưa có nội dung bài học."} />
           </section>
           {lesson.code_example && <section className="rounded-2xl border border-[#dfe6df] bg-white p-6 shadow-sm"><h2 className="mb-4 text-lg font-bold text-[#002C3E]">Ví dụ C#</h2><pre className="overflow-x-auto rounded-xl bg-[#061d26] p-5 text-sm leading-7 text-[#d8e9e8]"><code>{lesson.code_example}</code></pre></section>}
           <section className="rounded-2xl border border-[#dfe6df] bg-white p-6 shadow-sm"><h2 className="mb-4 text-lg font-bold text-[#002C3E]">Bài tập</h2>{lesson.exercises.length ? <ol className="space-y-3">{lesson.exercises.map((item) => <li key={item.id} className="rounded-xl bg-[#f4f5f0] p-3 text-sm text-[#16485a]">{item.content}</li>)}</ol> : <p className="text-sm text-[#637981]">Chưa có bài tập.</p>}</section>
