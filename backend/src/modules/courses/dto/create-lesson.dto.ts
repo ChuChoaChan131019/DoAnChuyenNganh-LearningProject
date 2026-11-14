@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreateLessonDto {
   @IsString()
@@ -20,5 +20,9 @@ export class CreateLessonDto {
   @IsOptional()
   @IsString()
   code_example?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  is_ai_generated?: boolean;
 
 }

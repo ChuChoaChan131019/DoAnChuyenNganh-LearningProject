@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { courseApi } from "@/lib/api";
 import LessonMaterials from "@/components/content-manager/lesson-materials";
+import { LessonMarkdown } from "@/components/lesson-markdown";
 import { vietnameseDifficulty, vietnameseStatus } from "@/lib/ui-labels";
 
 type EditorLesson = {
@@ -270,6 +271,7 @@ export default function LessonEditorPage() {
               onChange={(event) => setContent(event.target.value)}
               className="min-h-[265px] w-full resize-y border-0 p-5 text-[16px] leading-relaxed text-[#16485a] outline-none focus:ring-2 focus:ring-[#78BCC4]/20"
             />
+            {content.trim() && <div className="border-t border-[#dfe6df] bg-[#fbfcfa] p-5"><h3 className="mb-4 text-sm font-semibold text-[#0f3741]">Xem trước nội dung đã định dạng</h3><LessonMarkdown content={content} /></div>}
           </section>
           <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">
             <div className="border-b border-[#dfe6df] px-5 py-4">

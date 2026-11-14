@@ -7,6 +7,7 @@ import { courseApi, practiceApi, quizApi } from "@/lib/api";
 import LearnerLessonMaterials from "@/components/learner/lesson-materials";
 import { DiscussionSection } from "@/components/learner/discussion/discussion-section";
 import { LessonCodeExercises } from "@/components/learner/code-exercises/lesson-code-exercises";
+import { LessonMarkdown } from "@/components/lesson-markdown";
 import {
   ArrowLeft,
   ArrowRight,
@@ -1273,12 +1274,9 @@ export default function LearnerLessonPage() {
                 </div>
               </div>
 
-              <div className="whitespace-pre-wrap break-words text-[15px] leading-7 text-slate-600">
-                {databaseLesson
-                  ? databaseLesson.content?.trim() ||
-                    "Bài học chưa có nội dung."
-                  : currentLesson.description}
-              </div>
+              {databaseLesson
+                ? <LessonMarkdown content={databaseLesson.content?.trim() || 'Bài học chưa có nội dung.'} />
+                : <div className="whitespace-pre-wrap break-words text-[15px] leading-7 text-slate-600">{currentLesson.description}</div>}
 
               {/* Bảng dữ liệu */}
               {!databaseLesson && (

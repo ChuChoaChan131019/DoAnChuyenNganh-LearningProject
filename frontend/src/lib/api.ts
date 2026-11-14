@@ -350,6 +350,18 @@ export const discussionApi = {
     ),
 };
 
+export const aiManagerApi = {
+  generateLesson: (payload: {
+    course_id: string; chapter_id: string; title: string; topic: string;
+    level: 'basic' | 'intermediate' | 'advanced';
+    content_type: 'lesson' | 'exercise' | 'checklist';
+    word_count: number; instructions?: string;
+  }) => request<{
+    title: string; content: string; code_example: string;
+    estimated_duration_minutes: number; model: string;
+  }>('/api/v1/ai/content/generate', { method: 'POST', body: JSON.stringify(payload) }),
+};
+
 export const courseApi = {
   list: (): Promise<import("../types/learning-content").Course[]> => {
     return request("/api/v1/courses");
@@ -537,6 +549,7 @@ export const courseApi = {
       estimated_duration_minutes?: number;
       content?: string;
       code_example?: string;
+      is_ai_generated?: boolean;
     },
   ) => {
     return request<import("../types/learning-content").Lesson>(
