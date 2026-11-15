@@ -1,5 +1,16 @@
 export type DiscussionPostType = 'question' | 'note' | 'resource';
 
+export type CreateDiscussionPostInput = {
+  chapter_id?: string;
+  lesson_id?: string;
+  post_type: DiscussionPostType;
+  title: string;
+  content: string;
+  resource_url?: string;
+};
+
+export type UpdateDiscussionPostInput = Pick<CreateDiscussionPostInput, 'title' | 'content' | 'resource_url'>;
+
 export type DiscussionPostListItem = {
   id: string;
   chapter_id: string;

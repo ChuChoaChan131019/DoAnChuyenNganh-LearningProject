@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 
 import { DiscussionSection } from '@/components/learner/discussion/discussion-section';
 import { courseApi } from '@/lib/api';
+import type { DiscussionChapterOption } from '@/types/discussion';
 
 export default function LearnerChapterDiscussionPage() {
   const params = useParams();
@@ -16,6 +17,7 @@ export default function LearnerChapterDiscussionPage() {
     : params?.chapterId;
   const hasValidParams = Boolean(slug && chapterId);
   const [chapterTitle, setChapterTitle] = useState('Thảo luận chương');
+  const [chapters, setChapters] = useState<DiscussionChapterOption[]>([]);
   const [loading, setLoading] = useState(hasValidParams);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +33,11 @@ export default function LearnerChapterDiscussionPage() {
           setError('Không tìm thấy chương đã xuất bản.');
         } else {
           setChapterTitle(chapter.title);
+          setChapters([{
+            id: chapter.id,
+            title: chapter.title,
+            lessons: chapter.lessons.map((lesson) => ({ id: lesson.id, title: lesson.title })),
+          }]);
           setError(null);
         }
       })
@@ -92,6 +99,7 @@ export default function LearnerChapterDiscussionPage() {
       <DiscussionSection
         key={chapterId}
         chapterId={chapterId}
+        chapters={chapters}
         title={`Thảo luận chương: ${chapterTitle}`}
         description="Tìm trong các bài đăng gắn trực tiếp với chương và các bài học thuộc chương này."
       />

@@ -37,6 +37,8 @@ import type {
   DiscussionPostListItem,
   DiscussionHelpfulState,
   DiscussionHelpfulSummary,
+  CreateDiscussionPostInput,
+  UpdateDiscussionPostInput,
 } from "../types/discussion";
 import type {
   TutorContextRequest,
@@ -278,6 +280,21 @@ export const aiTutorApi = {
 };
 
 export const discussionApi = {
+  createPost: (payload: CreateDiscussionPostInput) =>
+    request<{ id: string }>("/api/v1/discussion/posts", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updatePost: (postId: string, payload: UpdateDiscussionPostInput) =>
+    request<Pick<DiscussionPostDetail, 'title' | 'content' | 'resource_url' | 'updated_at'>>(
+      `/api/v1/discussion/posts/${encodeURIComponent(postId)}`,
+      { method: "PATCH", body: JSON.stringify(payload) },
+    ),
+  removePost: (postId: string) =>
+    request<{ id: string; deleted: true; deleted_at: string }>(
+      `/api/v1/discussion/posts/${encodeURIComponent(postId)}`,
+      { method: "DELETE" },
+    ),
   listPosts: (filters: DiscussionPostFilters) => {
     const params = new URLSearchParams();
     if (filters.scope) params.set("scope", filters.scope);

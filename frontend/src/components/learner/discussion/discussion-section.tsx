@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { MessagesSquare, RefreshCw } from 'lucide-react';
+import { MessagesSquare, Plus, RefreshCw } from 'lucide-react';
 
 import { ApiClientError, discussionApi } from '@/lib/api';
 import type {
@@ -10,11 +10,14 @@ import type {
   DiscussionPostDetail,
   DiscussionPostListItem,
   DiscussionPostType,
+  CreateDiscussionPostInput,
+  UpdateDiscussionPostInput,
 } from '@/types/discussion';
 
 import { DiscussionFilters } from './discussion-filters';
 import { DiscussionPostDetail as DiscussionPostDetailPanel } from './discussion-post-detail';
 import { DiscussionPostList } from './discussion-post-list';
+import { DiscussionPostForm } from './discussion-post-form';
 
 type Props = {
   allPosts?: boolean;
@@ -51,6 +54,8 @@ export function DiscussionSection({
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [postType, setPostType] = useState<DiscussionPostType | ''>('');
   const [selectedChapterId, setSelectedChapterId] = useState('');
+  const [creatingPost, setCreatingPost] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [posts, setPosts] = useState<DiscussionPostListItem[]>([]);
   const [nextPostsCursor, setNextPostsCursor] = useState<string | null>(null);
   const [loadingPosts, setLoadingPosts] = useState(true);
@@ -188,7 +193,7 @@ export function DiscussionSection({
   useEffect(() => {
     const timer = window.setTimeout(() => void loadPosts(false), 0);
     return () => window.clearTimeout(timer);
-  }, [loadPosts]);
+  }, [loadPosts, refreshKey]);
 
   const resetDetail = () => {
     detailRequestId.current += 1;
@@ -259,6 +264,47 @@ export function DiscussionSection({
 
   const closeDetail = () => {
     resetDetail();
+  };
+
+  const createPost = async (payload: CreateDiscussionPostInput) => {
+    const created = await discussionApi.createPost(payload);
+    setCreatingPost(false);
+    setSearch('');
+    setDebouncedSearch('');
+    setPostType('');
+    setSelectedChapterId('');
+    setRefreshKey((current) => current + 1);
+    await openPost(created.id);
+  };
+
+  const updatePost = async (postId: string, payload: UpdateDiscussionPostInput) => {
+    try {
+      const updated = await discussionApi.updatePost(postId, payload);
+      setPostDetail((current) => current?.id === postId ? { ...current, ...updated } : current);
+      setPosts((current) => current.map((post) => post.id === postId ? {
+        ...post,
+        title: updated.title,
+        content_preview: updated.content.length > 240
+          ? `${updated.content.slice(0, 237)}...`
+          : updated.content,
+        resource_url: updated.resource_url,
+        updated_at: updated.updated_at,
+      } : post));
+    } catch (error) {
+      handleUnavailable(error);
+      throw error;
+    }
+  };
+
+  const removePost = async (postId: string) => {
+    try {
+      await discussionApi.removePost(postId);
+      setPosts((current) => current.filter((post) => post.id !== postId));
+      closeDetail();
+    } catch (error) {
+      handleUnavailable(error);
+      throw error;
+    }
   };
 
   const handleUnavailable = (requestError: unknown) => {
@@ -425,11 +471,17 @@ export function DiscussionSection({
           </h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">{description}</p>
         </div>
-        <button type="button" onClick={() => void loadPosts(false)} disabled={loadingPosts} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold text-slate-600 hover:bg-white disabled:opacity-60">
-          <RefreshCw className={`h-3.5 w-3.5 ${loadingPosts ? 'animate-spin' : ''}`} />
-          Làm mới
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setCreatingPost(true)} disabled={creatingPost} aria-expanded={creatingPost} className="inline-flex items-center gap-2 rounded-xl bg-[#0f3741] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#175365] disabled:opacity-60">
+            <Plus className="h-4 w-4" /> Đăng bài
+          </button>
+          <button type="button" onClick={() => void loadPosts(false)} disabled={loadingPosts} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold text-slate-600 hover:bg-white disabled:opacity-60">
+            <RefreshCw className={`h-3.5 w-3.5 ${loadingPosts ? 'animate-spin' : ''}`} /> Làm mới
+          </button>
+        </div>
       </div>
+
+      {creatingPost && <DiscussionPostForm allPosts={allPosts} chapterId={chapterId} lessonId={lessonId} chapters={chapters} onCancel={() => setCreatingPost(false)} onSubmit={createPost} />}
 
       <div className="mt-5">
         <DiscussionFilters
@@ -466,6 +518,7 @@ export function DiscussionSection({
           onLoadMore={() => void loadPosts(true, nextPostsCursor ?? undefined)}
         />
         <DiscussionPostDetailPanel
+          key={selectedPostId ?? 'empty'}
           post={postDetail}
           comments={comments}
           loading={loadingDetail}
@@ -480,6 +533,8 @@ export function DiscussionSection({
           onLoadMoreComments={() => void loadMoreComments()}
           onTogglePostHelpful={togglePostHelpful}
           onToggleCommentHelpful={toggleCommentHelpful}
+          onUpdatePost={updatePost}
+          onRemovePost={removePost}
         />
       </div>
     </section>
