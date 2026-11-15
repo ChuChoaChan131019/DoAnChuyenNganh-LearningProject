@@ -10,23 +10,9 @@ export class AuthService {
   async register(
     email: string,
     password: string,
-    role: string,
     fullName?: string,
   ): Promise<{ user: { id: string; email: string; role: string; fullName?: string } }> {
-    // Chặn đăng ký admin qua API
-    if (role === 'admin') {
-      throw new HttpException(
-        { error: { code: 'FORBIDDEN', message: 'Cannot register as admin' } },
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    if (!['learner', 'content_manager'].includes(role)) {
-      throw new HttpException(
-        { error: { code: 'INVALID_ROLE', message: 'Invalid role' } },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const role = 'learner';
 
     const supabase = this.supabaseService.getClient();
 
@@ -45,9 +31,20 @@ export class AuthService {
       const errorMessage = authError?.message || 'Registration failed';
       this.logger.error(`Registration failed: ${errorMessage}`);
 
-      const isDuplicate =
-        errorMessage.toLowerCase().includes('already') ||
-        (authError as any)?.status === 422;
+      const authCode = authError?.code;
+      const isDuplicate = authCode === 'email_exists' || authCode === 'user_already_exists';
+
+      if (authCode === 'weak_password' || errorMessage.toLowerCase().startsWith('password should contain')) {
+        throw new HttpException(
+          {
+            error: {
+              code: 'WEAK_PASSWORD',
+              message: 'Mật khẩu cần có ít nhất 8 ký tự, gồm chữ thường, chữ hoa, số và ký tự đặc biệt.',
+            },
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
 
       if (isDuplicate) {
         throw new HttpException(

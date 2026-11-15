@@ -207,8 +207,8 @@ function LoginFormContent() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden font-[var(--font-plus-jakarta-sans),ui-sans-serif,system-ui,sans-serif]">
-      {/* ── LEFT: Login form ─────────────────────────────────── */}
+    <div className="flex h-screen w-screen overflow-hidden font-[var(--font-plus-jakarta-sans),ui-sans-serif,system-ui,sans-serif] lg:flex-row-reverse">
+      {/* ── RIGHT: Login form ────────────────────────────────── */}
       <section className="relative flex w-full flex-col justify-center overflow-y-auto bg-white px-8 py-12 sm:px-14 lg:w-[46%] xl:w-[42%]">
         {/* Subtle left-panel blob */}
         <div className="pointer-events-none absolute -left-16 top-1/3 h-72 w-72 rounded-full bg-rose-400/8 blur-3xl" />
@@ -353,7 +353,7 @@ function LoginFormContent() {
         </p>
       </section>
 
-      {/* ── RIGHT: Hero panel ────────────────────────────────── */}
+      {/* ── LEFT: Hero panel ─────────────────────────────────── */}
       <section className="relative hidden lg:flex lg:flex-1 flex-col justify-between overflow-hidden px-12 py-8 transition-colors duration-300 bg-gradient-to-br from-[#f7444e]/45 to-[#78bcc4]/45">
         {/* Background decorative blobs */}
         <div className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full bg-rose-600/15 blur-3xl" />
