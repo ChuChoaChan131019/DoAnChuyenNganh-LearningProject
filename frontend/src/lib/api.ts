@@ -280,6 +280,11 @@ export const aiTutorApi = {
 };
 
 export const discussionApi = {
+  createReport: (payload: { target_type: 'post' | 'comment'; target_id: string; reason: string }) =>
+    request<{ id: string; status: 'pending'; created_at: string }>('/api/v1/discussion/reports', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   createPost: (payload: CreateDiscussionPostInput) =>
     request<{ id: string }>("/api/v1/discussion/posts", {
       method: "POST",

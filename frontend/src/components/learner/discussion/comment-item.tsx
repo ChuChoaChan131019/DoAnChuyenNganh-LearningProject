@@ -6,6 +6,7 @@ import { Pencil, Trash2, UserRound, ThumbsUp } from 'lucide-react';
 import type { DiscussionComment } from '@/types/discussion';
 
 import { CommentForm } from './comment-form';
+import { DiscussionReport } from './discussion-report';
 import { formatDiscussionTime, wasEdited } from './discussion-format';
 
 type Props = {
@@ -127,6 +128,8 @@ export function CommentItem({ comment, onUpdate, onRemove, onToggleHelpful }: Pr
           {helpfulError}
         </p>
       )}
+
+      {!comment.is_mine && <DiscussionReport key={comment.id} targetType="comment" targetId={comment.id} />}
 
       {comment.is_mine && !editing && (
         <div className="mt-3 flex items-center gap-2 border-t border-slate-200 pt-2">

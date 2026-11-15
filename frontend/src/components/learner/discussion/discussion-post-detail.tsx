@@ -6,6 +6,7 @@ import type { DiscussionComment, DiscussionPostDetail, UpdateDiscussionPostInput
 
 import { CommentForm } from './comment-form';
 import { CommentItem } from './comment-item';
+import { DiscussionReport } from './discussion-report';
 import {
   DISCUSSION_TYPE_LABELS,
   formatDiscussionTime,
@@ -249,6 +250,8 @@ export function DiscussionPostDetail({
           </p>
         )}
       </div>
+
+      {!post.is_mine && <DiscussionReport key={post.id} targetType="post" targetId={post.id} />}
 
       {post.resource_url && (
         <a

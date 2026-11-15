@@ -12,6 +12,8 @@ import { DiscussionCommentsService } from './discussion-comments.service.js';
 
 import { DiscussionHelpfulController } from './discussion-helpful.controller.js';
 import { DiscussionHelpfulService } from './discussion-helpful.service.js';
+import { AdminDiscussionReportsController, LearnerDiscussionReportsController } from './discussion-reports.controller.js';
+import { DiscussionReportsService } from './discussion-reports.service.js';
 
 @Module({
   imports: [SupabaseModule],
@@ -20,12 +22,15 @@ import { DiscussionHelpfulService } from './discussion-helpful.service.js';
     DiscussionPostsController,
     DiscussionCommentsController,
     DiscussionHelpfulController,
+    LearnerDiscussionReportsController,
+    AdminDiscussionReportsController,
   ],
 
   providers: [
     DiscussionPostsService,
     DiscussionCommentsService,
     DiscussionHelpfulService,
+    DiscussionReportsService,
     JwtAuthGuard,
     RolesGuard,
   ],
