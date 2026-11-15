@@ -23,7 +23,6 @@ export interface LoginResponse {
 export interface RegisterRequest {
   email: string;
   password: string;
-  role: 'learner' | 'content_manager';
   fullName?: string;
 }
 

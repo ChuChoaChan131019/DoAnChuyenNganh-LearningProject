@@ -13,8 +13,6 @@ import {
   EyeOff,
   User,
   ArrowRight,
-  Monitor,
-  GraduationCap,
   CheckCircle2,
 } from 'lucide-react';
 
@@ -60,18 +58,28 @@ const TESTIMONIALS = [
   },
 ];
 
+const PASSWORD_SYMBOLS = "!@#$%^&*()_+-=[]{};'\\:\"|<>?,./`~";
+const PASSWORD_REQUIREMENT_TEXT = 'Mật khẩu cần ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.';
+
 export default function RegisterPage() {
   const router = useRouter();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<'learner' | 'content_manager'>('learner');
   const [agreed, setAgreed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [isTestimonialPaused, setIsTestimonialPaused] = useState(false);
+
+  const passwordRequirements = [
+    password.length >= 8,
+    /[a-z]/.test(password),
+    /[A-Z]/.test(password),
+    /[0-9]/.test(password),
+    [...password].some((character) => PASSWORD_SYMBOLS.includes(character)),
+  ];
 
   useEffect(() => {
     if (isTestimonialPaused) return;
@@ -85,7 +93,9 @@ export default function RegisterPage() {
     const newErrors: Record<string, string> = {};
     if (!fullName.trim()) newErrors.fullName = 'Vui lòng nhập họ và tên.';
     if (!email.includes('@')) newErrors.email = 'Vui lòng nhập địa chỉ email hợp lệ.';
-    if (password.length < 8) newErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự.';
+    if (passwordRequirements.some((met) => !met)) {
+      newErrors.password = `Mật khẩu chưa hợp lệ. ${PASSWORD_REQUIREMENT_TEXT}`;
+    }
     if (!agreed) newErrors.agreed = 'Bạn cần đồng ý với các điều khoản.';
     return newErrors;
   };
@@ -105,7 +115,6 @@ export default function RegisterPage() {
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
         password,
-        role,
       });
 
       toast.success('Đăng ký tài khoản thành công! Đang chuyển hướng...');
@@ -122,6 +131,10 @@ export default function RegisterPage() {
           toast.error('Email này đã được sử dụng. Vui lòng thử email khác.');
           return;
         }
+        if (err.code === 'WEAK_PASSWORD' || /password should|mật khẩu/i.test(err.message)) {
+          setErrors({ password: `Mật khẩu chưa hợp lệ. ${PASSWORD_REQUIREMENT_TEXT}` });
+          return;
+        }
         toast.error(err.message || 'Đăng ký thất bại. Vui lòng thử lại.');
       } else {
         toast.error('Có lỗi xảy ra trong quá trình đăng ký. Vui lòng thử lại.');
@@ -130,9 +143,9 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden font-[var(--font-plus-jakarta-sans),ui-sans-serif,system-ui,sans-serif]">
+    <div className="flex h-screen w-screen overflow-hidden font-[var(--font-plus-jakarta-sans),ui-sans-serif,system-ui,sans-serif] lg:flex-row-reverse">
 
-      {/* ── LEFT: Registration form ──────────────────────────── */}
+      {/* ── RIGHT: Registration form ─────────────────────────── */}
       <section className="relative flex w-full flex-col justify-center overflow-y-auto px-8 py-10 sm:px-14 lg:w-[46%] xl:w-[42%] bg-white">
         {/* Subtle left-panel blob */}
         <div className="pointer-events-none absolute -left-16 top-1/3 h-72 w-72 rounded-full blur-3xl bg-rose-400/8" />
@@ -160,40 +173,8 @@ export default function RegisterPage() {
           Tham gia nền tảng và bắt đầu học C# ngay hôm nay.
         </p>
 
-        {/* Role selector */}
-        <div className="relative mt-6 flex rounded-xl border border-slate-200 bg-slate-100/80 p-1 gap-1">
-          <button
-            type="button"
-            id="register-role-learner"
-            disabled={isLoading}
-            onClick={() => setRole('learner')}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all ${
-              role === 'learner'
-                ? 'bg-rose-500 text-white shadow-md shadow-rose-900/20'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            <GraduationCap className="h-4 w-4" />
-            Học viên
-          </button>
-          <button
-            type="button"
-            id="register-role-manager"
-            disabled={isLoading}
-            onClick={() => setRole('content_manager')}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all ${
-              role === 'content_manager'
-                ? 'bg-rose-500 text-white shadow-md shadow-rose-900/20'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            <Monitor className="h-4 w-4" />
-            Quản lý nội dung
-          </button>
-        </div>
-
         {/* Form */}
-        <form onSubmit={handleSubmit} className="relative mt-6 space-y-4">
+        <form onSubmit={handleSubmit} autoComplete="off" className="relative mt-6 space-y-4">
 
           {/* Full name */}
           <div className="space-y-1.5">
@@ -208,6 +189,7 @@ export default function RegisterPage() {
               <input
                 id="register-fullname"
                 type="text"
+                autoComplete="off"
                 disabled={isLoading}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
@@ -235,6 +217,7 @@ export default function RegisterPage() {
               <input
                 id="register-email"
                 type="email"
+                autoComplete="off"
                 disabled={isLoading}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -262,10 +245,16 @@ export default function RegisterPage() {
               <input
                 id="register-password"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
                 disabled={isLoading}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Ít nhất 8 ký tự"
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setErrors((current) => ({ ...current, password: '' }));
+                }}
+                placeholder="Nhập mật khẩu"
+                aria-describedby="register-password-requirements"
+                aria-invalid={Boolean(errors.password)}
                 className={`w-full rounded-xl border py-2.5 pl-10 pr-10 text-sm backdrop-blur-sm transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50 ${
                   errors.password
                     ? 'border-rose-500/60 bg-rose-50/30 text-slate-800 placeholder-slate-400 focus:border-rose-500 focus:ring-rose-500/20'
@@ -281,22 +270,9 @@ export default function RegisterPage() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {/* Strength indicator */}
-            <div className="flex gap-1 pt-0.5">
-              {[1, 2, 3, 4].map((level) => (
-                <div
-                  key={level}
-                  className={`h-1 flex-1 rounded-full transition-colors ${
-                    password.length >= level * 2
-                      ? password.length >= 8
-                        ? 'bg-emerald-500'
-                        : 'bg-amber-400'
-                      : 'bg-slate-200'
-                  }`}
-                />
-              ))}
-            </div>
-            {errors.password && <p className="text-xs text-rose-500">{errors.password}</p>}
+            <p id="register-password-requirements" className={`pt-1 text-xs leading-5 ${errors.password ? 'font-semibold text-rose-600' : 'text-slate-600'}`} aria-live="polite">
+              {PASSWORD_REQUIREMENT_TEXT}
+            </p>
           </div>
 
           {/* Terms */}
@@ -354,7 +330,7 @@ export default function RegisterPage() {
         </p>
       </section>
 
-      {/* ── RIGHT: Benefits panel ─────────────────────────────── */}
+      {/* ── LEFT: Benefits panel ──────────────────────────────── */}
       <section className="relative hidden lg:flex lg:flex-1 flex-col justify-center overflow-hidden px-12 xl:px-16 py-8 transition-colors duration-300 bg-gradient-to-br from-[#f7444e]/45 to-[#78bcc4]/45">
 
         {/* Background decorative blobs */}
