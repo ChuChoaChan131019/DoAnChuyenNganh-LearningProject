@@ -1,5 +1,7 @@
 # Từ điển dữ liệu hiện tại — Phân hệ Nội dung
 
+> **D04 ngày 16/11/2026:** Migration `database/migrations/20261116090000_discussion_reports.sql` tạo `discussion_reports` cho báo cáo bài viết/bình luận, chống báo cáo trùng khi còn chờ và lưu quyết định, lý do, người xử lý, thời gian. RPC `resolve_discussion_report` cập nhật nội dung và báo cáo liên quan trong một giao dịch. Chỉ `service_role` được truy cập bảng và thực thi RPC. Xem `docs/d04-bao-cao-thao-luan-api.md`. Migration đã áp dụng lên Supabase dùng chung và được kiểm tra bằng truy vấn REST cùng thao tác thêm báo cáo trong giao dịch rollback.
+
 > **Cập nhật D01 ngày 03/11/2026:** Bảng `discussion_posts`, các ràng buộc, chỉ mục và trigger đã được đối chiếu với Supabase. Migration tái tạo cấu trúc nằm ở `database/migrations/20261103143449_discussion_posts.sql`; xem mục 8 và hợp đồng API tại `docs/d01-thao-luan-api.md`.
 
 > **Cập nhật D02 ngày 06/11/2026:** Migration `database/migrations/20261106140000_discussion_comments.sql` bổ sung bình luận, tìm kiếm toàn văn và chỉ mục cho danh sách thảo luận. Hợp đồng API nằm tại `docs/d02-thao-luan-api.md`.
