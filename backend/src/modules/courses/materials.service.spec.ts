@@ -63,4 +63,39 @@ describe('MaterialsService', () => {
     })).rejects.toThrow('File content does not match its type');
     expect(upload).not.toHaveBeenCalled();
   });
+
+  it('stores a validated file under a random path and saves only its metadata', async () => {
+    const upload = vi.fn().mockResolvedValue({ error: null });
+    const from = vi.fn((table: string) => {
+      if (table === 'lessons') return query({ data: { id: 'lesson-1', status: 'draft' }, error: null });
+      if (table === 'materials') return query({
+        data: { id: 'material-1', lesson_id: 'lesson-1', title: 'intro.pdf', file_type: 'PDF', file_size: 8, created_at: '2026-11-16T00:00:00Z' },
+        error: null,
+      });
+      throw new Error(`Unexpected table: ${table}`);
+    });
+    const service = new MaterialsService({ getClient: () => ({ from, storage: { from: () => ({ upload }) } }) } as never);
+    const buffer = Buffer.from('%PDF-1.7');
+
+    await expect(service.upload('lesson-1', {
+      originalname: 'intro.pdf', mimetype: 'application/pdf', size: buffer.length, buffer,
+    })).resolves.toMatchObject({ id: 'material-1', file_type: 'PDF' });
+    expect(upload).toHaveBeenCalledWith(
+      expect.stringMatching(/^lesson-1\/[0-9a-f-]+\.pdf$/),
+      buffer,
+      { contentType: 'application/pdf', upsert: false },
+    );
+  });
+
+  it('rejects an empty file name before writing to Storage', async () => {
+    const upload = vi.fn();
+    const from = vi.fn(() => query({ data: { id: 'lesson-1', status: 'draft' }, error: null }));
+    const service = new MaterialsService({ getClient: () => ({ from, storage: { from: () => ({ upload }) } }) } as never);
+    const buffer = Buffer.from('%PDF-1.7');
+
+    await expect(service.upload('lesson-1', {
+      originalname: '   ', mimetype: 'application/pdf', size: buffer.length, buffer,
+    })).rejects.toThrow('File name is required');
+    expect(upload).not.toHaveBeenCalled();
+  });
 });

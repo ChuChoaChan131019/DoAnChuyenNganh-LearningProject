@@ -1,5 +1,6 @@
 import { Injectable, HttpException, HttpStatus, Logger, UnauthorizedException } from '@nestjs/common';
 import { SupabaseService } from '../../config/supabase.service.js';
+import { assertAccountActive, assertTokenCurrent } from '../../common/guards/account-access.js';
 
 @Injectable()
 export class AuthService {
@@ -16,15 +17,12 @@ export class AuthService {
 
     const supabase = this.supabaseService.getClient();
 
-    // Tạo user trên Supabase Auth (truyền role vào user_metadata để trigger handle_new_user nhận diện đúng)
+    // The Auth trigger creates a learner profile atomically; metadata cannot choose a role.
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: {
-        role,
-        ...(fullName ? { full_name: fullName } : {}),
-      },
+      user_metadata: fullName ? { full_name: fullName } : {},
     });
 
     if (authError || !authData?.user) {
@@ -59,32 +57,6 @@ export class AuthService {
       );
     }
 
-    // Đồng bộ profile trong bảng profiles (dùng upsert để tương thích an toàn cả khi có trigger tự động insert)
-    const { error: profileError } = await supabase.from('profiles').upsert(
-      {
-        id: authData.user.id,
-        role,
-        failed_login_attempts: 0,
-      },
-      { onConflict: 'id' },
-    );
-
-    if (profileError) {
-      this.logger.error(`Profile creation failed: ${profileError.message}`);
-      // Rollback: xóa profile và user vừa tạo
-      try {
-        await supabase.from('profiles').delete().eq('id', authData.user.id);
-        await supabase.auth.admin.deleteUser(authData.user.id);
-      } catch (rollbackErr: any) {
-        this.logger.warn(`Failed to rollback user ${authData.user.id}: ${rollbackErr?.message}`);
-      }
-
-      throw new HttpException(
-        { error: { code: 'FAILED_TO_CREATE_PROFILE', message: 'Failed to create profile' } },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-
     return {
       user: {
         id: authData.user.id,
@@ -98,28 +70,11 @@ export class AuthService {
   async login(email: string, password: string): Promise<any> {
     const supabase = this.supabaseService.getClient();
 
-    // Tìm user_id theo email để kiểm tra trạng thái khóa và số lần đăng nhập thất bại
-    let profile: any = null;
-
-    try {
-      const { data: userListData } = await supabase.auth.admin.listUsers({
-        page: 1,
-        perPage: 1000,
-      });
-      const foundUser = userListData?.users?.find(
-        (u) => u.email?.toLowerCase() === email.trim().toLowerCase(),
-      );
-      if (foundUser) {
-        const { data: p } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', foundUser.id)
-          .single();
-        profile = p;
-      }
-    } catch (err: any) {
-      this.logger.warn(`Failed to pre-fetch profile for ${email}: ${err?.message}`);
-    }
+    // Indexed lookup covers every account, not just the first Auth API page.
+    const { data: profile, error: lookupError } = await supabase.from('profiles')
+      .select('*').eq('email', email.trim().toLowerCase()).maybeSingle();
+    if (lookupError) throw new HttpException('Không thể kiểm tra tài khoản.', HttpStatus.SERVICE_UNAVAILABLE);
+    if (profile) assertAccountActive(profile);
 
     if (profile?.locked_until && new Date(profile.locked_until) > new Date()) {
       throw new HttpException(
@@ -141,7 +96,7 @@ export class AuthService {
           updateData.locked_until = new Date(Date.now() + 15 * 60 * 1000).toISOString();
         }
 
-        await supabase
+        await this.supabaseService.getAdminClient()
           .from('profiles')
           .update(updateData)
           .eq('id', profile.id);
@@ -155,21 +110,18 @@ export class AuthService {
 
     // Đăng nhập thành công — reset counter
     if (data.user) {
-      await supabase
+      await this.supabaseService.getAdminClient()
         .from('profiles')
         .update({ failed_login_attempts: 0, locked_until: null })
         .eq('id', data.user.id);
     }
 
-    // Lấy profile mới nhất nếu chưa có
-    if (!profile && data.user) {
-      const { data: p } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-      profile = p;
-    }
+    // Re-read after authentication so a concurrent ban/role change takes effect.
+    const { data: currentProfile, error: profileError } = await this.supabaseService.getAdminClient()
+      .from('profiles').select('*').eq('id', data.user.id).single();
+    if (profileError || !currentProfile) throw new UnauthorizedException('User profile not found');
+    assertAccountActive(currentProfile);
+    assertTokenCurrent(currentProfile, data.session?.access_token ?? '');
 
     return {
       access_token: data.session?.access_token,
@@ -177,7 +129,7 @@ export class AuthService {
       user: {
         id: data.user?.id,
         email: data.user?.email,
-        role: profile?.role ?? data.user?.user_metadata?.role ?? 'learner',
+        role: currentProfile.role,
         fullName: data.user?.user_metadata?.full_name ?? '',
       },
     };
@@ -195,11 +147,13 @@ export class AuthService {
       throw new UnauthorizedException('Session expired. Please sign in again.');
     }
 
-    const { data: profile, error: profileError } = await supabase.from('profiles')
-      .select('role').eq('id', data.user.id).single();
+    const { data: profile, error: profileError } = await this.supabaseService.getAdminClient().from('profiles')
+      .select('role,disabled_at,revoked_before').eq('id', data.user.id).single();
     if (profileError || !profile) {
       throw new UnauthorizedException('User profile not found');
     }
+    assertAccountActive(profile);
+    assertTokenCurrent(profile, data.session.access_token);
 
     return {
       access_token: data.session.access_token,

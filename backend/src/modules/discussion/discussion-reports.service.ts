@@ -12,6 +12,8 @@ type ReportRow = {
   created_at: string;
   resolved_at: string | null;
   moderator_reason: string | null;
+  restored_at: string | null;
+  restoration_reason: string | null;
   post?: { id: string; title: string; content: string; chapter_id: string; lesson_id: string | null; status: string } | null;
   comment?: { id: string; content: string; post_id: string; status: string } | null;
 };
@@ -69,7 +71,10 @@ export class DiscussionReportsService {
     return data;
   }
 
-  async list(status = 'pending', rawLimit?: string, rawOffset?: string) {
+  async list(status = 'pending', rawLimit?: string, rawOffset?: string, targetType = 'all') {
+    if (!['all', 'post', 'comment'].includes(targetType)) {
+      throw new BadRequestException('Loại nội dung báo cáo không hợp lệ');
+    }
     if (!['pending', 'dismissed', 'hidden', 'removed', 'all'].includes(status)) {
       throw new BadRequestException('Trạng thái báo cáo không hợp lệ');
     }
@@ -82,10 +87,11 @@ export class DiscussionReportsService {
 
     let query = this.db.from('discussion_reports')
       .select(`id, post_id, comment_id, reason, status, created_at, resolved_at,
-        moderator_reason,
+        moderator_reason, restored_at, restoration_reason,
         post:discussion_posts!discussion_reports_post_id_fkey(id, title, content, chapter_id, lesson_id, status),
         comment:discussion_comments!discussion_reports_comment_id_fkey(id, content, post_id, status)`, { count: 'exact' });
     if (status !== 'all') query = query.eq('status', status);
+    if (targetType !== 'all') query = query.not(targetType === 'post' ? 'post_id' : 'comment_id', 'is', null);
     const { data, error, count } = await query.order('created_at', { ascending: false })
       .order('id', { ascending: false }).range(offset, offset + limit - 1);
     if (error) this.dbError(error);
@@ -93,7 +99,7 @@ export class DiscussionReportsService {
 
     const postIds = [...new Set(rows.map((row) => row.comment?.post_id).filter((id): id is string => Boolean(id)))];
     const { data: parentPosts, error: parentsError } = postIds.length
-      ? await this.db.from('discussion_posts').select('id, title, chapter_id, lesson_id').in('id', postIds)
+      ? await this.db.from('discussion_posts').select('id, title, content, chapter_id, lesson_id').in('id', postIds)
       : { data: [], error: null };
     if (parentsError) this.dbError(parentsError);
     const parents = new Map((parentPosts ?? []).map((row) => [row.id, row]));
@@ -120,10 +126,13 @@ export class DiscussionReportsService {
           created_at: row.created_at,
           resolved_at: row.resolved_at,
           moderator_reason: row.moderator_reason,
+          restored_at: row.restored_at,
+          restoration_reason: row.restoration_reason,
           content: row.post?.content ?? row.comment?.content ?? null,
           content_status: row.post?.status ?? row.comment?.status ?? null,
           post_id: row.post_id ?? row.comment?.post_id ?? null,
           post_title: parent?.title ?? null,
+          post_content: parent?.content ?? null,
           chapter_id: parent?.chapter_id ?? null,
           chapter_title: parent?.chapter_id ? chapterNames.get(parent.chapter_id) ?? null : null,
           lesson_id: parent?.lesson_id ?? null,
@@ -150,6 +159,20 @@ export class DiscussionReportsService {
     });
     if (error?.code === 'P0002') throw new NotFoundException('Không tìm thấy báo cáo');
     if (error?.code === 'P0001') throw new ConflictException('Báo cáo hoặc nội dung đã được xử lý');
+    if (error) this.dbError(error);
+    return data;
+  }
+
+  async restore(id: string, input: string, adminId: string) {
+    const reason = input?.trim();
+    if (!reason || reason.length < 10 || reason.length > 1000) {
+      throw new BadRequestException('Lý do khôi phục phải có từ 10 đến 1000 ký tự');
+    }
+    const { data, error } = await this.db.rpc('restore_hidden_discussion_report', {
+      p_report_id: id, p_admin_id: adminId, p_reason: reason,
+    });
+    if (error?.code === 'P0002') throw new NotFoundException('Không tìm thấy báo cáo');
+    if (error?.code === 'P0001') throw new ConflictException('Nội dung không còn ở trạng thái có thể khôi phục. Hãy tải lại danh sách.');
     if (error) this.dbError(error);
     return data;
   }

@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { SupabaseService } from '../../config/supabase.service.js';
+import { assertAccountActive, assertTokenCurrent } from './account-access.js';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -40,6 +41,9 @@ export class JwtAuthGuard implements CanActivate {
       if (profileError || !profile) {
         throw new UnauthorizedException('User profile not found');
       }
+
+      assertAccountActive(profile);
+      assertTokenCurrent(profile, token);
 
       // Gắn user + profile vào request
       request.user = {

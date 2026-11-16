@@ -51,8 +51,8 @@ describe('AuthService self-registration role', () => {
     await expect(service.register('student@example.com', 'ValidPassword1!', 'Student'))
       .resolves.toMatchObject({ user: { role: 'learner', fullName: 'Student' } });
     expect(createUser).toHaveBeenCalledWith(expect.objectContaining({
-      user_metadata: { role: 'learner', full_name: 'Student' },
+      user_metadata: { full_name: 'Student' },
     }));
-    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({ role: 'learner' }), { onConflict: 'id' });
+    expect(upsert).not.toHaveBeenCalled();
   });
 });

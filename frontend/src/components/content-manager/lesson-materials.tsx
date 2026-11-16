@@ -75,7 +75,7 @@ export default function LessonMaterials({ lessonId }: { lessonId: string }) {
   }
 
   async function remove(id: string) {
-    if (!window.confirm('Delete this material?')) return;
+    if (!window.confirm('Xóa tài liệu này?')) return;
     setBusy(true);
     setError(null);
     try {
@@ -107,7 +107,7 @@ export default function LessonMaterials({ lessonId }: { lessonId: string }) {
         <p className="text-xs text-[#637981]">Tệp PDF, hình ảnh và mã nguồn tối đa 6 MiB</p>
       </div>
       <label className={`inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#002C3E] px-3 py-2 text-xs font-semibold text-white ${busy ? 'opacity-50' : ''}`}>
-        <Upload className="h-4 w-4" /> {busy ? 'Working…' : 'Upload file'}
+        <Upload className="h-4 w-4" /> {busy ? 'Đang xử lý…' : 'Tải tệp lên'}
         <input type="file" className="sr-only" accept=".pdf,.png,.jpg,.jpeg,.webp,.cs,.zip" disabled={busy} onChange={(event) => { void uploadFile(event.target.files?.[0]); event.target.value = ''; }} />
       </label>
     </div>
@@ -125,10 +125,10 @@ export default function LessonMaterials({ lessonId }: { lessonId: string }) {
             </div> : <p className="truncate text-sm font-medium text-[#002C3E]">{item.title}</p>}
             <p className="text-xs text-[#637981]">{item.file_type} · {formatMaterialSize(item.file_size)}</p>
           </div>
-          <button type="button" title="Mở" aria-label={`Open ${item.title}`} onClick={() => void open(item.id, false)} className="rounded p-1.5 text-slate-600 hover:bg-slate-100"><ExternalLink className="h-4 w-4" /></button>
-          <button type="button" title="Tải xuống" aria-label={`Download ${item.title}`} onClick={() => void open(item.id, true)} className="rounded p-1.5 text-slate-600 hover:bg-slate-100"><Download className="h-4 w-4" /></button>
-          <button type="button" title="Đổi tên" aria-label={`Rename ${item.title}`} onClick={() => { setEditingId(item.id); setEditTitle(item.title); }} className="rounded p-1.5 text-slate-600 hover:bg-slate-100"><Pencil className="h-4 w-4" /></button>
-          <button type="button" title="Xóa" aria-label={`Delete ${item.title}`} disabled={busy} onClick={() => void remove(item.id)} className="rounded p-1.5 text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
+          <button type="button" title="Mở" aria-label={`Mở ${item.title}`} onClick={() => void open(item.id, false)} className="rounded p-1.5 text-slate-600 hover:bg-slate-100"><ExternalLink className="h-4 w-4" /></button>
+          <button type="button" title="Tải xuống" aria-label={`Tải xuống ${item.title}`} onClick={() => void open(item.id, true)} className="rounded p-1.5 text-slate-600 hover:bg-slate-100"><Download className="h-4 w-4" /></button>
+          <button type="button" title="Đổi tên" aria-label={`Đổi tên ${item.title}`} onClick={() => { setEditingId(item.id); setEditTitle(item.title); }} className="rounded p-1.5 text-slate-600 hover:bg-slate-100"><Pencil className="h-4 w-4" /></button>
+          <button type="button" title="Xóa" aria-label={`Xóa ${item.title}`} disabled={busy} onClick={() => void remove(item.id)} className="rounded p-1.5 text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
         </li>)}
       </ul>}
   </section>;

@@ -4,7 +4,7 @@
 
 **Cách đọc:** Các mức `100%` và `0%` ở mục 2 được chép theo bảng tính cũ, phản ánh tiến độ nhóm đã đánh dấu vào tháng 8–9/2026. Chúng **không phải kết quả kiểm thử hoặc nghiệm thu mã hiện tại**. Mục 3 ghi **người chịu trách nhiệm đã chốt**, không có nghĩa chức năng đã làm xong; hạn mới và tiến độ triển khai cần được cập nhật riêng.
 
-**Cập nhật 16/11/2026:** Trang phụ trách toàn bộ chức năng trong khu vực quản trị (`admin`), gồm giao diện chung, báo cáo/kiểm duyệt thảo luận (`FR-50`–`FR-51`) và quản lý tài khoản (`FR-44`). Linh không còn phụ trách chức năng quản trị tài khoản. Phân công giao diện thảo luận phía học sinh và các việc khác của Linh giữ như mục 3.
+**Cập nhật 16/11/2026:** Trang phụ trách toàn bộ chức năng trong khu vực quản trị (`admin`), gồm giao diện chung, báo cáo/kiểm duyệt thảo luận (`FR-50`–`FR-51`) và quản lý tài khoản (`FR-44`). Linh không còn phụ trách chức năng quản trị tài khoản. Phân công giao diện thảo luận phía học sinh và các việc khác của Linh giữ như mục 3. Khoa cũng nhận toàn bộ phần chạy và chấm C# an toàn.
 
 **Tài liệu từng thành viên:** [Trang](phan-cong-trang.md) · [Linh](phan-cong-linh.md) · [Khoa](phan-cong-khoa.md).
 
@@ -30,7 +30,7 @@ Các đường dẫn chỉ giúp tìm phần mã có liên quan; chúng không c
 | Tạo, sửa, xóa khóa học, chương, bài học | `100%` | Cần kiểm tra lại từng luồng với API và dữ liệu thật khi nghiệm thu. |
 | Trang soạn bài học, nội dung lý thuyết và ví dụ C# | `100%` | Không suy ra tính năng xem trước/xuất bản hoàn chỉnh chỉ từ trạng thái của trang soạn. |
 | Giao diện tạo nội dung AI và hàng chờ duyệt | `100%` | Đây là trạng thái **giao diện** trong bảng; luồng backend tạo bản nháp, nhận xét, lịch sử và duyệt vẫn cần làm. |
-| Tải tài liệu đính kèm lên bài học | `0%` | Chưa có luồng tải tệp hoàn chỉnh được xác nhận. |
+| Tải tài liệu đính kèm lên bài học | `Hoàn thành` | Người biên soạn tải, đổi tên, mở/tải xuống và xóa tệp của bài học nháp. Tệp được lưu trong Storage riêng tư; học viên chỉ xem/tải tài liệu của bài học và khóa học đã xuất bản. |
 | Nút AI sinh nội dung bài học và quy trình kiểm duyệt/xuất bản nội dung AI | `0%` | Tiếp tục thuộc phạm vi Trang theo phân công cũ. |
 
 ### Linh — câu hỏi và quiz
@@ -62,9 +62,8 @@ Các phần việc dưới đây là trách nhiệm triển khai **toàn luồng
 
 | Chức năng | Người phụ trách chính | Phần việc đã chốt |
 | --- | --- | --- |
-| Phòng thực hành C# — biên soạn (`FR-21`–`FR-27`) | **Khoa** | Danh sách, tạo/xem/sửa/sao chép/xóa bài; gắn bài học; nhập ví dụ, bộ kiểm tra công khai/ẩn, gợi ý và lời giải; xem trước, kiểm tra lời giải tham khảo và xuất bản/thu hồi. Khoa chịu trách nhiệm dữ liệu bài thực hành và bộ kiểm tra. |
-| Phòng thực hành C# — chạy và chấm an toàn (phục vụ `FR-26`, `FR-30`, `FR-31` và nộp bài) | **Trang** | Dịch vụ biên dịch/chạy C# trong môi trường cách ly; nhận đầu vào dạng văn bản kể cả chuỗi/nhiều dòng; giới hạn tài nguyên và tần suất; chạy từng bộ kiểm tra, so đầu ra, phân biệt lỗi và bảo vệ bộ kiểm tra ẩn. Cung cấp kết quả cho luồng xem trước, chạy thử và nộp bài. |
-| Phòng thực hành C# — học sinh (`FR-28`–`FR-33`) | **Linh** | Danh sách bài đã xuất bản, trình soạn mã, chạy với dữ liệu tự nhập, chạy thử bộ công khai, xem kết quả, mở gợi ý, nộp bài, lưu mã/lần làm/tiến độ và tiếp tục bài đang làm. Linh tích hợp kết quả từ dịch vụ của Trang. |
+| Phòng thực hành C# — biên soạn, chạy và chấm an toàn (`FR-21`–`FR-27`, `FR-30`–`FR-31` và nộp bài) | **Khoa** | Danh sách, tạo/xem/sửa/sao chép/xóa bài; gắn bài học; nhập ví dụ, bộ kiểm tra công khai/ẩn, gợi ý và lời giải; xem trước, kiểm tra lời giải tham khảo và xuất bản/thu hồi. Khoa cũng làm dịch vụ biên dịch/chạy C# cách ly, giới hạn tài nguyên và tần suất, chạy từng bộ kiểm tra, so đầu ra, phân biệt lỗi, bảo vệ bộ ẩn và cung cấp kết quả cho xem trước, chạy thử, nộp bài. |
+| Phòng thực hành C# — học sinh (`FR-28`–`FR-33`) | **Linh** | Danh sách bài đã xuất bản, trình soạn mã, chạy với dữ liệu tự nhập, chạy thử bộ công khai, xem kết quả, mở gợi ý, nộp bài, lưu mã/lần làm/tiến độ và tiếp tục bài đang làm. Linh tích hợp kết quả từ dịch vụ của Khoa. |
 | Thảo luận — bài đăng và đánh dấu hữu ích (`FR-46`, phần bài đăng của `FR-48`, `FR-49`) | **Khoa** | Tạo câu hỏi, ghi chú và bài chia sẻ gắn với chương/bài học; sửa/xóa bài đăng của chính tác giả; đánh dấu hoặc bỏ đánh dấu hữu ích cho bài đăng và bình luận, mỗi tài khoản được tính một lượt. Khoa chịu trách nhiệm dữ liệu bài đăng và lượt đánh dấu. |
 | Thảo luận — xem và bình luận (`FR-45`, `FR-47`, phần bình luận của `FR-48`) | **Linh** | Danh sách và chi tiết thảo luận trong trang chương/bài học; tìm/lọc bài đăng; tạo, xem, sửa và xóa bình luận của chính tác giả. Linh ghép các thành phần đăng bài, hữu ích và báo cáo vào giao diện học sinh. |
 | Thảo luận — báo cáo và kiểm duyệt (`FR-50`–`FR-51`) | **Trang** | Học sinh gửi báo cáo kèm lý do; hàng chờ báo cáo cho quản trị viên; xem ngữ cảnh, bỏ qua/ẩn/gỡ nội dung và lưu người xử lý, thời điểm, lý do. Trang chịu trách nhiệm quy tắc hiển thị của nội dung đã bị xử lý và quyền quản trị của luồng này. |
@@ -73,7 +72,7 @@ Các phần việc dưới đây là trách nhiệm triển khai **toàn luồng
 
 | Hạng mục | Người phụ trách chính | Phạm vi cần làm |
 | --- | --- | --- |
-| Quản lý tài khoản quản trị viên (`FR-44`) | **Trang** | Giao diện và API cho quản trị viên xem/tìm, tạo, sửa, vô hiệu hóa/khôi phục tài khoản và gán vai trò; kiểm tra quyền `admin` ở API. Trang chịu trách nhiệm toàn luồng, gồm nghiệm thu và bảo vệ thao tác đặc quyền ở backend. |
+| Quản lý tài khoản quản trị viên (`FR-44`) | **Trang** | Giao diện và API cho admin xem/tìm, sửa thông tin, vô hiệu hóa/khôi phục tài khoản; chỉ tạo content manager, không đổi vai trò. Trang chịu trách nhiệm toàn luồng, gồm nghiệm thu và bảo vệ thao tác đặc quyền ở backend. |
 | Tiến độ tổng hợp và tiếp tục học (`FR-42`–`FR-43`) | **Khoa** | Tổng hợp bài học, quiz/luyện tập và bài code; cho học sinh mở lại bài học đang dở. Linh cung cấp dữ liệu quiz/bài code; Trang cung cấp dữ liệu bài học. Linh vẫn phụ trách mở lại mã bài code ở `C06`/`C07`. |
 | Kiểm tra nội dung và lịch sử duyệt AI (`FR-12`–`FR-14`) | **Trang** | Kiểm tra nội dung bài học AI; hoàn thiện backend lưu nháp, phiên bản/lịch sử sửa, nhận xét, chấp thuận/trả lại cho quy trình duyệt và xuất bản đã giao. |
 | Kiểm tra câu hỏi AI (`FR-12`) | **Linh** | Phát hiện câu thiếu đáp án, gần trùng hoặc không phù hợp với bài học được chọn; trả cảnh báo để người biên soạn xử lý trước khi gửi duyệt. Phối hợp với Trang để dùng chung trạng thái duyệt. |

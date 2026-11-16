@@ -19,6 +19,7 @@ import type {
   AdminDiscussionReportPage,
   ReportDecision,
   ReportFilter,
+  ReportTargetFilter,
 } from "@/types/admin-discussion-report";
 
 const LIMIT = 20;
@@ -81,10 +82,12 @@ function errorMessage(error: unknown) {
 
 export default function DiscussionReportsPage() {
   const [filter, setFilter] = useState<ReportFilter>("pending");
+  const [targetType, setTargetType] = useState<ReportTargetFilter>("all");
   const [offset, setOffset] = useState(0);
   const [page, setPage] = useState<AdminDiscussionReportPage | null>(null);
   const [selected, setSelected] = useState<AdminDiscussionReport | null>(null);
   const [decision, setDecision] = useState<ReportDecision | null>(null);
+  const [restoring, setRestoring] = useState(false);
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -93,13 +96,28 @@ export default function DiscussionReportsPage() {
   const [notice, setNotice] = useState("");
   const [revision, setRevision] = useState(0);
 
-  const reload = useCallback(() => setRevision((value) => value + 1), []);
+  const resetDecision = useCallback(() => {
+    setRestoring(false);
+    setDecision(null);
+    setReason("");
+    setActionError("");
+  }, []);
+  const reload = useCallback(() => {
+    resetDecision();
+    setSelected(null);
+    setLoading(true);
+    setRevision((value) => value + 1);
+  }, [resetDecision]);
   useEffect(() => {
     let active = true;
     adminDiscussionReportsApi
-      .list(filter, offset, LIMIT)
+      .list(filter, offset, LIMIT, targetType)
       .then((result) => {
         if (!active) return;
+        if (offset > 0 && offset >= result.total) {
+          setOffset(Math.max(0, Math.ceil(result.total / LIMIT) - 1) * LIMIT);
+          return;
+        }
         setPage(result);
         setError("");
         setLoading(false);
@@ -120,9 +138,11 @@ export default function DiscussionReportsPage() {
     return () => {
       active = false;
     };
-  }, [filter, offset, revision]);
+  }, [filter, offset, revision, targetType]);
 
   const changeFilter = (value: ReportFilter) => {
+    if (saving || value === filter) return;
+    resetDecision();
     setFilter(value);
     setOffset(0);
     setPage(null);
@@ -131,12 +151,16 @@ export default function DiscussionReportsPage() {
     setNotice("");
   };
   const changeOffset = (value: number) => {
+    if (saving || value === offset) return;
+    resetDecision();
     setOffset(value);
     setPage(null);
     setSelected(null);
     setLoading(true);
   };
   const chooseReport = (item: AdminDiscussionReport) => {
+    if (saving) return;
+    setRestoring(false);
     setSelected(item);
     setDecision(null);
     setReason("");
@@ -144,7 +168,7 @@ export default function DiscussionReportsPage() {
     setNotice("");
   };
   const resolve = async () => {
-    if (!selected || !decision || saving) return;
+    if (!selected || selected.status !== "pending" || !decision || saving || loading) return;
     const cleanReason = reason.trim();
     if (cleanReason.length < 10 || cleanReason.length > 1000) {
       setActionError("Lý do xử lý cần từ 10 đến 1000 ký tự.");
@@ -175,6 +199,21 @@ export default function DiscussionReportsPage() {
     }
   };
 
+  const restore = async () => {
+    if (!selected || saving || loading || reason.trim().length < 10) return;
+    setSaving(true);
+    setActionError("");
+    try {
+      await adminDiscussionReportsApi.restore(selected.id, reason.trim());
+      setNotice("Đã khôi phục nội dung bị ẩn.");
+      reload();
+    } catch (caught: unknown) {
+      setActionError(errorMessage(caught));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-7">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -192,6 +231,7 @@ export default function DiscussionReportsPage() {
         </div>
         <button
           type="button"
+          disabled={saving || loading}
           onClick={() => {
             setLoading(true);
             reload();
@@ -246,7 +286,7 @@ export default function DiscussionReportsPage() {
             </span>
           </div>
           <p className="mt-3 truncate text-base font-semibold">
-            {selected ? statusLabels[selected.status] : "—"}
+            {selected ? selected.restored_at ? "Đã khôi phục" : statusLabels[selected.status] : "—"}
           </p>
         </div>
       </div>
@@ -259,6 +299,7 @@ export default function DiscussionReportsPage() {
           <button
             key={item.value}
             type="button"
+            disabled={saving}
             aria-pressed={filter === item.value}
             onClick={() => changeFilter(item.value)}
             className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${filter === item.value ? "bg-[#002C3E] text-white" : "border border-[#DFE6DF] bg-white text-[#637981] hover:text-[#002C3E]"}`}
@@ -267,6 +308,26 @@ export default function DiscussionReportsPage() {
           </button>
         ))}
       </div>
+      <label className="flex items-center gap-3 text-sm font-semibold">
+        Loại nội dung
+        <select
+          aria-label="Loại nội dung"
+          value={targetType}
+          disabled={saving}
+          onChange={(event) => {
+            setTargetType(event.target.value as ReportTargetFilter);
+            setOffset(0);
+            setPage(null);
+            setNotice("");
+            reload();
+          }}
+          className="rounded-xl border border-[#DFE6DF] bg-white px-3 py-2"
+        >
+          <option value="all">Tất cả nội dung</option>
+          <option value="comment">Bình luận</option>
+          <option value="post">Bài đăng</option>
+        </select>
+      </label>
       {error && (
         <div
           role="alert"
@@ -313,6 +374,7 @@ export default function DiscussionReportsPage() {
                 <button
                   key={item.id}
                   type="button"
+                  disabled={saving}
                   onClick={() => chooseReport(item)}
                   aria-pressed={selected?.id === item.id}
                   className={`w-full px-5 py-4 text-left transition-colors hover:bg-[#F7F8F3] ${selected?.id === item.id ? "bg-[#EAF4F3]" : ""}`}
@@ -321,7 +383,7 @@ export default function DiscussionReportsPage() {
                     <span className="min-w-0">
                       <span className="block text-xs font-semibold text-[#157985]">
                         {item.target_type === "post" ? "Bài đăng" : "Bình luận"}{" "}
-                        · {statusLabels[item.status]}
+                        · {item.restored_at ? "Đã khôi phục" : statusLabels[item.status]}
                       </span>
                       <span className="mt-1 block truncate text-sm font-semibold">
                         {item.post_title || "Bài thảo luận"}
@@ -354,7 +416,7 @@ export default function DiscussionReportsPage() {
                 <button
                   type="button"
                   aria-label="Trang trước"
-                  disabled={offset === 0}
+                  disabled={saving || loading || offset === 0}
                   onClick={() => changeOffset(Math.max(0, offset - LIMIT))}
                   className="rounded-lg border p-2 disabled:opacity-40"
                 >
@@ -363,7 +425,7 @@ export default function DiscussionReportsPage() {
                 <button
                   type="button"
                   aria-label="Trang sau"
-                  disabled={offset + LIMIT >= page.total}
+                  disabled={saving || loading || offset + LIMIT >= page.total}
                   onClick={() => changeOffset(offset + LIMIT)}
                   className="rounded-lg border p-2 disabled:opacity-40"
                 >
@@ -394,7 +456,7 @@ export default function DiscussionReportsPage() {
                   {selected.target_type === "post" ? "Bài đăng" : "Bình luận"}
                 </span>
                 <span className="rounded-full bg-[#EDF1ED] px-3 py-1 text-xs font-semibold">
-                  {statusLabels[selected.status]}
+                  {selected.restored_at ? "Đã khôi phục" : statusLabels[selected.status]}
                 </span>
                 <span className="ml-auto text-xs text-[#637981]">
                   {formatDate(selected.created_at)}
@@ -413,6 +475,16 @@ export default function DiscussionReportsPage() {
                     .join(" · ") || "Chưa có thông tin chương/bài học"}
                 </p>
               </div>
+              {selected.target_type === "comment" && selected.post_content && (
+                <details className="rounded-xl border border-[#DFE6DF] p-4">
+                  <summary className="cursor-pointer text-sm font-semibold">
+                    Xem nội dung bài đăng gốc
+                  </summary>
+                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6">
+                    {selected.post_content}
+                  </p>
+                </details>
+              )}
               <div className="rounded-xl border border-[#DFE6DF] bg-[#F7F8F3] p-4">
                 <p className="text-xs font-semibold uppercase tracking-wider text-[#637981]">
                   Nội dung bị báo cáo
@@ -437,6 +509,7 @@ export default function DiscussionReportsPage() {
                       <button
                         key={item.value}
                         type="button"
+                        disabled={saving || loading}
                         onClick={() => {
                           setDecision(item.value);
                           setActionError("");
@@ -464,6 +537,7 @@ export default function DiscussionReportsPage() {
                       </label>
                       <textarea
                         id="moderator-reason"
+                        disabled={saving}
                         value={reason}
                         onChange={(event) => setReason(event.target.value)}
                         maxLength={1000}
@@ -475,6 +549,17 @@ export default function DiscussionReportsPage() {
                         <span>Quyết định sẽ được lưu vào lịch sử báo cáo.</span>
                         <span>{reason.trim().length}/1000</span>
                       </div>
+                      {decision !== "dismissed" && (
+                        <p className="text-sm text-amber-800">
+                          Nội dung sẽ không còn hiển thị cho học viên. Tất cả báo cáo
+                          đang chờ về cùng nội dung này cũng được đóng.
+                        </p>
+                      )}
+                      {decision !== "dismissed" && (
+                        <p className="text-sm text-[#157985]">
+                          Người đăng nội dung sẽ nhận thông báo bị {decision === "hidden" ? "ẩn" : "gỡ"} kèm lý do bạn nhập.
+                        </p>
+                      )}
                       {actionError && (
                         <p role="alert" className="text-sm text-rose-700">
                           {actionError}
@@ -483,6 +568,7 @@ export default function DiscussionReportsPage() {
                       <div className="flex flex-wrap justify-end gap-2">
                         <button
                           type="button"
+                          disabled={saving}
                           onClick={() => {
                             setDecision(null);
                             setReason("");
@@ -494,7 +580,7 @@ export default function DiscussionReportsPage() {
                         </button>
                         <button
                           type="button"
-                          disabled={saving || reason.trim().length < 10}
+                          disabled={saving || loading || reason.trim().length < 10}
                           onClick={() => void resolve()}
                           className="inline-flex items-center gap-2 rounded-xl bg-[#002C3E] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
                         >
@@ -518,6 +604,32 @@ export default function DiscussionReportsPage() {
                   <p className="mt-2 whitespace-pre-wrap text-sm">
                     {selected.moderator_reason || "Không có lý do xử lý."}
                   </p>
+                  {selected.restored_at && (
+                    <div className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">
+                      <p className="font-semibold">Đã khôi phục lúc {formatDate(selected.restored_at)}</p>
+                      <p className="mt-2 whitespace-pre-wrap break-words">{selected.restoration_reason}</p>
+                    </div>
+                  )}
+                  {selected.status === "hidden" && !selected.restored_at && selected.content_status === "hidden" && (
+                    <div className="mt-4 space-y-3">
+                      {!restoring ? (
+                        <button type="button" disabled={loading || saving} onClick={() => { resetDecision(); setRestoring(true); }} className="rounded-xl bg-[#002C3E] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
+                          Khôi phục nội dung
+                        </button>
+                      ) : (
+                        <div className="space-y-3 rounded-xl border border-[#DFE6DF] p-4">
+                          <p className="text-sm text-[#637981]">Nội dung sẽ hiện lại khi bài đăng và chương/bài học cho phép truy cập. Lịch sử xử lý vẫn được giữ.</p>
+                          <label htmlFor="restore-reason" className="block text-sm font-semibold">Lý do khôi phục</label>
+                          <textarea id="restore-reason" value={reason} onChange={event => setReason(event.target.value)} disabled={saving} rows={3} maxLength={1000} placeholder="Nhập lý do khôi phục (10–1000 ký tự)" className="w-full rounded-xl border border-[#DFE6DF] p-3 text-sm" />
+                          {actionError && <p role="alert" className="text-sm text-rose-700">{actionError}</p>}
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <button type="button" disabled={saving} onClick={resetDecision} className="rounded-xl px-4 py-2 text-sm font-semibold">Hủy</button>
+                            <button type="button" disabled={saving || loading || reason.trim().length < 10} onClick={() => void restore()} className="rounded-xl bg-[#002C3E] px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">{saving ? "Đang khôi phục..." : "Xác nhận khôi phục"}</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

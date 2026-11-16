@@ -20,17 +20,17 @@ Tài liệu này ghi **phạm vi Khoa phụ trách**, không xác nhận chức 
 
 ## 2. Chức năng mới đã chốt
 
-### 2.1. Biên soạn bài thực hành C# (`FR-21`–`FR-27`)
+### 2.1. Biên soạn, chạy và chấm bài thực hành C# (`FR-21`–`FR-27`, `FR-30`–`FR-31`)
 
-Khoa phụ trách phía người biên soạn trong [Phòng thực hành C#](chi-tiet-phong-thuc-hanh-csharp.md).
+Khoa phụ trách phần người biên soạn, dịch vụ chạy/chấm và kết quả trả về cho giao diện trong [Phòng thực hành C#](chi-tiet-phong-thuc-hanh-csharp.md).
 
 - Danh sách, tìm/lọc, tạo, xem, sửa, sao chép, xóa hoặc thu hồi bài thực hành; gắn từng bài với bài học phù hợp.
 - Nhập tiêu đề, yêu cầu, mục tiêu, độ khó, mã khởi đầu và ví dụ đầu vào/đầu ra; mô tả rõ định dạng cho bài nhận chuỗi, nhiều giá trị hoặc nhiều dòng.
-- Tạo các bộ kiểm tra riêng cho từng bài, đánh dấu công khai/ẩn và nhập kết quả mong đợi; cung cấp dữ liệu đúng định dạng cho dịch vụ chấm của Trang.
+- Tạo các bộ kiểm tra riêng cho từng bài, đánh dấu công khai/ẩn và nhập kết quả mong đợi; dùng dữ liệu này cho dịch vụ chạy/chấm của chính Khoa.
 - Nhập ba mức gợi ý, lời giải tham khảo và giải thích; xem trước giao diện học sinh và chạy thử lời giải trên các bộ kiểm tra.
 - Lưu nháp, kiểm tra điều kiện trước xuất bản, xuất bản/thu hồi; giữ phiên bản bài khi đã có học sinh nộp để không làm mất lịch sử.
 
-Trang phụ trách chạy/chấm lời giải và bài nộp; Linh dùng đề đã xuất bản để làm giao diện học sinh và lưu tiến độ. Ba người cùng thống nhất dữ liệu bài và kết quả trước khi nối các luồng.
+Khoa cũng phụ trách dịch vụ biên dịch/chạy C# trong môi trường cách ly cho xem trước, chạy thử và nộp bài: nhận đầu vào văn bản kể cả chuỗi/nhiều dòng; giới hạn thời gian, bộ nhớ, CPU, số tiến trình, kích thước đầu vào/đầu ra và tần suất; chạy từng bộ kiểm tra, so đầu ra; phân biệt lỗi biên dịch, lỗi khi chạy, sai kết quả và hết thời gian; không làm lộ bộ kiểm tra ẩn. Linh dùng đề đã xuất bản, kết quả chạy/chấm của Khoa để làm giao diện học sinh và lưu tiến độ. Ba người cùng thống nhất dữ liệu bài và kết quả trước khi nối các luồng.
 
 ### 2.2. Bài đăng và đánh dấu hữu ích trong thảo luận (`FR-46`, phần bài đăng của `FR-48`, `FR-49`)
 

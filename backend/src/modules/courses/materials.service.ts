@@ -105,8 +105,10 @@ export class MaterialsService {
   async upload(lessonId: string, file: UploadedFile, requestedTitle?: string) {
     const lesson = await this.getLesson(lessonId);
     if (lesson.status !== 'draft') throw new ConflictException('Materials can only be changed on draft lessons');
+    const originalName = file?.originalname?.trim();
+    if (!originalName) throw new BadRequestException('File name is required');
     const config = this.validateFile(file);
-    const title = requestedTitle?.trim() || file.originalname;
+    const title = requestedTitle?.trim() || originalName;
     if (title.length > 255) throw new BadRequestException('Title is too long');
     const path = `${lessonId}/${randomUUID()}${config.extension}`;
     const client = this.supabaseService.getClient();

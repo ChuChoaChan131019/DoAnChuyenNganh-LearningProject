@@ -42,4 +42,11 @@ describe('D04 report API authorization', () => {
     await controller.resolve('report', dto, { user: { id: 'real-admin' } });
     expect(resolve).toHaveBeenCalledWith('report', dto, 'real-admin');
   });
+
+  it('uses the authenticated admin for restoration', async () => {
+    const restore = vi.fn();
+    const controller = new AdminDiscussionReportsController({ restore } as never);
+    await controller.restore('report', { reason: 'Khôi phục nội dung đúng' }, { user: { id: 'real-admin' } });
+    expect(restore).toHaveBeenCalledWith('report', 'Khôi phục nội dung đúng', 'real-admin');
+  });
 });
