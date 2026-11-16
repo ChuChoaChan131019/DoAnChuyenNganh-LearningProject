@@ -5,6 +5,7 @@ import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { TutorMessageDto } from './dto/tutor-message.dto.js';
 import { GenerateLessonDto } from './dto/generate-lesson.dto.js';
+import { GenerateAiQuestionsDto } from './dto/generate-ai-questions.dto.js';
 
 @Controller('api/v1/ai')
 @UseGuards(JwtAuthGuard)
@@ -29,5 +30,12 @@ export class AiController {
   @Roles('content_manager', 'admin')
   generateLesson(@Body() body: GenerateLessonDto) {
     return this.aiService.generateLessonDraft(body);
+  }
+
+  @Post('questions/generate')
+  @UseGuards(RolesGuard)
+  @Roles('content_manager', 'admin')
+  generateQuestions(@Body() body: GenerateAiQuestionsDto, @Req() request: any) {
+    return this.aiService.generateAuthoringQuestions(body, request.user.id);
   }
 }

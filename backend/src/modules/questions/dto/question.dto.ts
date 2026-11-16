@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -35,6 +36,7 @@ export enum QuestionStatus {
 export class QuestionOptionDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(1000)
   option_text!: string;
 
   @IsBoolean()
@@ -64,10 +66,12 @@ export class QuestionDto {
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(5000)
   content!: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(5000)
   explanation?: string | null;
 
   @IsEnum(QuestionStatus)
@@ -77,11 +81,27 @@ export class QuestionDto {
   @ValidateNested({ each: true })
   @Type(() => QuestionOptionDto)
   options!: QuestionOptionDto[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  expected_version?: number;
 }
 
 export class SubmitQuestionDto {
+  @IsOptional()
   @IsEnum(QuestionStatus)
-  status!: QuestionStatus;
+  status?: QuestionStatus;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  reason?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  expected_version?: number;
 }
 
 export class QuizQuestionItemDto {

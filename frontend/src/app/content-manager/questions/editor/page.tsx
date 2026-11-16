@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Save,
@@ -16,7 +16,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { ApiClientError, questionApi } from '@/lib/api';
-import { ChapterOption, CourseOption, LessonOption, QuestionPayload, QuestionStatus } from '@/types/question';
+import { ChapterOption, CourseOption, LessonOption, QuestionHistoryItem, QuestionPayload, QuestionStatus } from '@/types/question';
 
 // ==========================================
 // CENTRALIZED STYLES
@@ -86,6 +86,7 @@ export interface QuestionFormData {
   content: string;
   explanation: string;
   status: QuestionStatus;
+  version?: number;
   options: AnswerOption[];
 }
 
@@ -133,6 +134,23 @@ function QuestionEditorContent() {
   const [isLoadingChapters, setIsLoadingChapters] = useState(false);
   const [isLoadingLessons, setIsLoadingLessons] = useState(false);
   const [placementError, setPlacementError] = useState<string | null>(null);
+  const [history, setHistory] = useState<QuestionHistoryItem[]>([]);
+  const mutationInFlight = useRef(false);
+  const savedVersion = useRef<number | undefined>(undefined);
+  const savedQuestionId = useRef<string | null>(null);
+  const isMutating = isSaving || isSubmitting || isUpdating;
+  const isLoadingEditor = isLoadingCourses || isLoadingChapters || isLoadingLessons;
+  const rememberSavedQuestion = (saved: { id: string; version?: number }) => {
+    if (!questionId) {
+      savedQuestionId.current = saved.id;
+      setCreatedQuestionId(saved.id);
+    }
+    if (saved.version !== undefined) {
+      savedVersion.current = saved.version;
+      setFormData((current) => ({ ...current, version: saved.version }));
+    }
+  };
+
 
   useEffect(() => {
     if (!questionId) return;
@@ -142,7 +160,10 @@ function QuestionEditorContent() {
       setIsLoadingChapters(true);
       setIsLoadingLessons(true);
       try {
-        const question = await questionApi.getById(questionId);
+        const [question, questionHistory] = await Promise.all([
+          questionApi.getById(questionId),
+          questionApi.getHistory(questionId).catch(() => [] as QuestionHistoryItem[]),
+        ]);
         const courseId = String(question.course_id ?? question.course?.id ?? '');
         const chapterId = String(question.chapter_id ?? question.chapter?.id ?? '');
         const lessonId = String(question.lesson_id ?? question.lesson?.id ?? '');
@@ -162,6 +183,8 @@ function QuestionEditorContent() {
         if (!active) return;
         setChapters(loadedChapters);
         setLessons(loadedLessons);
+        setHistory(questionHistory);
+        savedVersion.current = question.version;
         setFormData((current) => ({
           ...current,
           course: courseId,
@@ -172,6 +195,7 @@ function QuestionEditorContent() {
           content: question.content ?? '',
           explanation: question.explanation ?? '',
           status: question.status,
+           version: question.version,
           options: loadedOptions,
         }));
       } catch (error: unknown) {
@@ -268,8 +292,36 @@ function QuestionEditorContent() {
     });
   };
 
+  const handleTypeChange = (type: QuestionType) => {
+    setFormData((prev) => {
+      if (type === 'fill_in_blank') {
+        return {
+          ...prev,
+          type,
+          options: [{ ...(prev.options[0] ?? { id: crypto.randomUUID(), label: 'A', text: '' }), isCorrect: true }],
+        };
+      }
+      if (type === 'true_false') {
+        return {
+          ...prev,
+          type,
+          options: [
+            { ...(prev.options[0] ?? { id: crypto.randomUUID(), label: 'A', text: '' }), label: 'A', text: 'Đúng', isCorrect: true },
+            { ...(prev.options[1] ?? { id: crypto.randomUUID(), label: 'B', text: '' }), label: 'B', text: 'Sai', isCorrect: false },
+          ],
+        };
+      }
+      const minimum = type === 'multiple_choice' ? 3 : 2;
+      const options = [...prev.options];
+      while (options.length < minimum) {
+        options.push({ id: crypto.randomUUID(), label: OPTION_LABELS[options.length], text: '', isCorrect: false });
+      }
+      return { ...prev, type, options: options.map((option, index) => ({ ...option, label: OPTION_LABELS[index] })) };
+    });
+  };
+
   const handleAddOption = () => {
-    if (formData.options.length >= OPTION_LABELS.length) return;
+    if (formData.type === 'fill_in_blank' || formData.type === 'true_false' || formData.options.length >= OPTION_LABELS.length) return;
     const nextIndex = formData.options.length;
     const newOption: AnswerOption = {
       id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
@@ -285,8 +337,9 @@ function QuestionEditorContent() {
   };
 
   const handleDeleteOption = (id: string) => {
-    if (formData.options.length <= 2) {
-      alert('A question must contain at least 2 options.');
+    const minimum = formData.type === 'multiple_choice' ? 3 : formData.type === 'fill_in_blank' || formData.type === 'true_false' ? 2 : 2;
+    if (formData.options.length <= minimum || formData.type === 'fill_in_blank') {
+      alert(formData.type === 'fill_in_blank' ? 'Điền khuyết cần giữ lại một đáp án chuẩn.' : 'A question must contain at least 2 options.');
       return;
     }
 
@@ -315,11 +368,12 @@ function QuestionEditorContent() {
     content: formData.content,
     explanation: formData.explanation || null,
     status,
-    options: formData.type === 'fill_in_blank' ? [] : formData.options.map((option, index) => ({
+    options: formData.options.map((option, index) => ({
       option_text: option.text,
       is_correct: option.isCorrect,
       order_index: index,
     })),
+    expected_version: savedVersion.current ?? formData.version,
   });
 
   const validateForm = () => {
@@ -339,9 +393,23 @@ function QuestionEditorContent() {
       alert('Vui lòng nhập lời giải thích.');
       return false;
     }
-    if (formData.type !== 'fill_in_blank') {
-      if (formData.options.length < 2) {
-        alert('A question must contain at least 2 options.');
+    if (formData.options.length === 0) {
+      alert('Vui lòng nhập đáp án.');
+      return false;
+    }
+    if (formData.type === 'fill_in_blank') {
+      if (formData.options.length !== 1 || !formData.options[0].text.trim()) {
+        alert('Điền khuyết cần đúng một đáp án chuẩn.');
+        return false;
+      }
+      if (!formData.options[0].isCorrect) {
+        alert('Hãy đánh dấu đáp án chuẩn.');
+        return false;
+      }
+    } else {
+      const minimum = formData.type === 'multiple_choice' ? 3 : 2;
+      if (formData.options.length < minimum) {
+        alert(`Dạng câu hỏi này cần ít nhất ${minimum} phương án.`);
         return false;
       }
       const emptyOption = formData.options.find((option) => !option.text.trim());
@@ -353,57 +421,79 @@ function QuestionEditorContent() {
         alert('Please mark at least one correct answer.');
         return false;
       }
+      if (formData.type === 'multiple_choice' && formData.options.filter((option) => option.isCorrect).length < 2) {
+        alert('Câu nhiều đáp án cần ít nhất hai đáp án đúng.');
+        return false;
+      }
+      if (formData.type === 'multiple_choice' && formData.options.every((option) => option.isCorrect)) {
+        alert('Câu nhiều đáp án cần ít nhất một phương án sai.');
+        return false;
+      }
+      if (formData.type === 'true_false' && formData.options.length !== 2) {
+        alert('Câu đúng/sai cần đúng hai phương án Đúng và Sai.');
+        return false;
+      }
     }
     return true;
   };
 
   const handleSaveDraft = async () => {
-    if (!validateForm()) return;
+    if (mutationInFlight.current || isLoadingEditor || !validateForm()) return;
+    mutationInFlight.current = true;
     setIsSaving(true);
     try {
-      const existingId = questionId ?? createdQuestionId;
+      const existingId = questionId ?? savedQuestionId.current ?? createdQuestionId;
       const saved = existingId
         ? await questionApi.update(existingId, buildPayload('draft'))
         : await questionApi.create(buildPayload('draft'));
-      if (!questionId) setCreatedQuestionId(saved.id);
+      rememberSavedQuestion(saved);
+      if (existingId) setHistory(await questionApi.getHistory(existingId).catch(() => history));
       alert('Draft saved successfully!');
     } catch (error: unknown) {
       alert(getApiErrorMessage(error));
     } finally {
+      mutationInFlight.current = false;
       setIsSaving(false);
     }
   };
 
   const handleSubmitForReview = async () => {
-    if (!validateForm()) return;
-
+    if (mutationInFlight.current || isLoadingEditor || !validateForm()) return;
+    mutationInFlight.current = true;
     setIsSubmitting(true);
     try {
-      const existingId = questionId ?? createdQuestionId;
+      const existingId = questionId ?? savedQuestionId.current ?? createdQuestionId;
       const saved = existingId
-        ? { id: existingId }
+        ? await questionApi.update(existingId, buildPayload('draft'))
         : await questionApi.create(buildPayload('draft'));
-      if (!questionId) setCreatedQuestionId(saved.id);
-      await questionApi.submitForReview(saved.id);
-      alert('Question submitted for review!');
+      // The save may commit even if submission fails; retain its new id/version for retry.
+      rememberSavedQuestion(saved);
+      const submitted = await questionApi.submitForReview(saved.id, saved.version ?? savedVersion.current ?? formData.version);
+      rememberSavedQuestion(submitted);
+      alert('Đã gửi câu hỏi vào hàng chờ duyệt.');
+      router.push('/content-manager/questions/review');
     } catch (error: unknown) {
       alert(getApiErrorMessage(error));
     } finally {
+      mutationInFlight.current = false;
       setIsSubmitting(false);
     }
   };
 
   const handleUpdate = async () => {
-    if (!questionId || !validateForm()) return;
-
+    if (mutationInFlight.current || isLoadingEditor || !questionId || !validateForm()) return;
+    mutationInFlight.current = true;
     setIsUpdating(true);
     try {
-      await questionApi.update(questionId, buildPayload(formData.status));
+      const saved = await questionApi.update(questionId, buildPayload('draft'));
+      rememberSavedQuestion(saved);
+      setHistory(await questionApi.getHistory(questionId).catch(() => history));
       alert('Question updated successfully!');
       router.push('/content-manager/questions/bank');
     } catch (error: unknown) {
       alert(getApiErrorMessage(error));
     } finally {
+      mutationInFlight.current = false;
       setIsUpdating(false);
     }
   };
@@ -422,38 +512,24 @@ function QuestionEditorContent() {
         </div>
 
         <div className="flex items-center gap-3">
-          {questionId ? (
-            <button
-              type="button"
-              onClick={() => void handleUpdate()}
-              disabled={isUpdating}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#c93f3a] disabled:opacity-60"
-            >
-              <Save className="h-4 w-4" />
-              <span>{isUpdating ? 'Đang cập nhật...' : 'Update Question'}</span>
-            </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => void handleSaveDraft()}
-                disabled={isSaving}
-                className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-60"
-              >
-                <Save className="h-4 w-4 text-gray-500" />
-                <span>{isSaving ? 'Đang lưu...' : 'Lưu bản nháp'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSubmitForReview()}
-                disabled={isSubmitting}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#c93f3a] disabled:opacity-60"
-              >
-                <SendHorizontal className="h-4 w-4" />
-                <span>{isSubmitting ? 'Đang gửi...' : 'Gửi duyệt'}</span>
-              </button>
-            </>
-          )}
+          <button
+            type="button"
+            onClick={() => void (questionId ? handleUpdate() : handleSaveDraft())}
+            disabled={isMutating || isLoadingEditor}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-60"
+          >
+            <Save className="h-4 w-4 text-gray-500" />
+            <span>{isSaving || isUpdating ? 'Đang lưu...' : questionId ? 'Lưu thay đổi' : 'Lưu bản nháp'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSubmitForReview()}
+            disabled={isMutating || isLoadingEditor}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#c93f3a] disabled:opacity-60"
+          >
+            <SendHorizontal className="h-4 w-4" />
+            <span>{isSubmitting ? 'Đang gửi...' : 'Gửi duyệt'}</span>
+          </button>
         </div>
       </div>
 
@@ -545,7 +621,7 @@ function QuestionEditorContent() {
                 <label className={STYLES.label}>Dạng câu hỏi</label>
                 <select
                   value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value as QuestionType })}
+                  onChange={(e) => handleTypeChange(e.target.value as QuestionType)}
                   className={STYLES.select}
                 >
                   <option value="single_choice">Một đáp án</option>
@@ -617,7 +693,7 @@ function QuestionEditorContent() {
               <button
                 type="button"
                 onClick={handleAddOption}
-                disabled={formData.options.length >= OPTION_LABELS.length}
+                disabled={formData.type === 'fill_in_blank' || formData.type === 'true_false' || formData.options.length >= OPTION_LABELS.length}
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition disabled:opacity-40"
               >
                 <Plus className="w-4 h-4" />
@@ -764,6 +840,31 @@ function QuestionEditorContent() {
               {chapters.find((chapter) => chapter.id === formData.chapter)?.title ?? 'Select a chapter in Placement.'}
             </p>
           </div>
+
+          {questionId && (
+            <div className={`${STYLES.sectionCard} space-y-3`}>
+              <div className="flex items-center justify-between">
+                <h2 className={STYLES.sectionTitle}>Lịch sử phiên bản</h2>
+                <span className="text-xs text-gray-400">{history.length} lần ghi nhận</span>
+              </div>
+              {history.length === 0 ? (
+                <p className="text-xs text-gray-500">Chưa có lịch sử hoặc lịch sử chưa được triển khai trên môi trường này.</p>
+              ) : (
+                <div className="space-y-2">
+                  {history.map((entry) => (
+                    <div key={entry.id} className="rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs text-gray-600">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-gray-800">v{entry.version} · {entry.action}</span>
+                        <span>{new Date(entry.created_at).toLocaleString('vi-VN')}</span>
+                      </div>
+                      <p className="mt-1 text-gray-500">Người thao tác: {entry.actor_id}</p>
+                      {entry.reason && <p className="mt-1 text-rose-700">Nhận xét: {entry.reason}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </aside>
       </main>
     </div>

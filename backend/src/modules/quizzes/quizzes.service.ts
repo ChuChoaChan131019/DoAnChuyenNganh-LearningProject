@@ -9,6 +9,7 @@ type QuizQuestionRow = {
 };
 
 type QuestionRecord = {
+  status?: string;
   content?: string;
   question_type?: string;
   options?: Array<{ id: string; option_text: string; is_correct?: boolean }>;
@@ -132,10 +133,13 @@ export class QuizzesService {
  async getQuestions(quizId: string, role?: string) {
     await this.requireQuiz(quizId, role);
     const { data, error } = await this.supabaseService.getClient().from('quiz_questions')
-      .select('question_id,score_weight,questions(id,content,question_type,explanation,options:question_options(id,option_text,order_index,is_correct))')
+      .select('question_id,score_weight,questions(id,status,content,question_type,explanation,options:question_options(id,option_text,order_index,is_correct))')
       .eq('quiz_id', quizId);
     this.throwQueryError(error);
-    return data ?? [];
+    const questions = (data ?? []) as QuizQuestionRow[];
+    return role === 'learner'
+      ? questions.filter((item) => this.questionRecord(item)?.status === 'approved')
+      : questions;
   }
 
   async startAttempt(quizId: string, learnerId: string) {
@@ -340,10 +344,10 @@ export class QuizzesService {
 
   private async getScoringQuestions(quizId: string): Promise<QuizQuestionRow[]> {
     const { data, error } = await this.supabaseService.getClient().from('quiz_questions')
-      .select('question_id,score_weight,questions(id,content,question_type,options:question_options(id,option_text,order_index,is_correct))')
+      .select('question_id,score_weight,questions(id,status,content,question_type,options:question_options(id,option_text,order_index,is_correct))')
       .eq('quiz_id', quizId);
     this.throwQueryError(error);
-    return (data ?? []) as QuizQuestionRow[];
+    return (data ?? []).filter((item) => this.questionRecord(item as QuizQuestionRow)?.status === 'approved') as QuizQuestionRow[];
   }
 
   private async getTotals(quizId: string) {
