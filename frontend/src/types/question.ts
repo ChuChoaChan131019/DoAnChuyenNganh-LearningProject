@@ -37,6 +37,25 @@ export interface QuestionItem {
   lesson_title?: string;
   course_title?: string;
   options?: QuestionOption[];
+  submitted_for_review_at?: string | null;
+  version?: number;
+  created_by?: string | null;
+  updated_by?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+}
+
+export interface QuestionHistoryItem {
+  id: string;
+  question_id: string;
+  version: number;
+  action: 'created' | 'updated' | 'submitted' | 'approved' | 'rejected';
+  from_status?: QuestionStatus | null;
+  to_status?: QuestionStatus | null;
+  actor_id: string;
+  reason?: string | null;
+  snapshot?: Record<string, unknown> | null;
+  created_at: string;
 }
 
 export interface QuestionFilters {
@@ -56,6 +75,42 @@ export type QuestionPayload = {
   explanation?: string | null;
   status: QuestionStatus;
   options: QuestionOption[];
+  expected_version?: number;
+};
+
+export type AiGeneratedQuestion = {
+  course_id?: string;
+  chapter_id?: string;
+  lesson_id?: string;
+  chapter_title?: string;
+  lesson_title?: string;
+  client_id: string;
+  content: string;
+  question_type: QuestionType;
+  difficulty: DifficultyLevel;
+  explanation: string;
+  options: QuestionOption[];
+};
+
+export type GenerateAiQuestionsRequest = {
+  course_id: string;
+  chapter_id?: string;
+  lesson_id?: string;
+  question_type: QuestionType;
+  difficulty: DifficultyLevel;
+  count: number;
+  topic?: string;
+  instructions?: string;
+  exclude_contents?: string[];
+};
+
+export type SaveAiDraftRequest = {
+  batch_id: string;
+  questions: Array<AiGeneratedQuestion & {
+    course_id: string;
+    chapter_id: string;
+    lesson_id: string;
+  }>;
 };
 
 export type CourseOption = { id: string; title: string; slug?: string };

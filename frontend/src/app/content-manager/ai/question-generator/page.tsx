@@ -1,518 +1,1035 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
-  Sparkles,
-  Check,
-  RotateCw,
-  Edit3,
-  Trash2,
-  ChevronDown,
   ArrowRight,
+  Check,
+  ExternalLink,
   Loader2,
-} from 'lucide-react';
+  RefreshCw,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
+import {
+  changeQuestionOptions,
+  completeSavedMapping,
+  draftErrors,
+  makeSaveSnapshot,
+  resolveGeneratedSource,
+} from "@/lib/ai-question-drafts";
+import { ApiClientError, questionApi } from "@/lib/api";
+import type {
+  AiGeneratedQuestion,
+  ChapterOption,
+  CourseOption,
+  DifficultyLevel,
+  GenerateAiQuestionsRequest,
+  LessonOption,
+  QuestionOption,
+  QuestionType,
+  SaveAiDraftRequest,
+} from "@/types/question";
 
-/* ==========================================================================
-   CENTRALIZED STYLES (ĐỒNG BỘ NÚT & WORKFLOW CARD CHUẨN PILL)
-   ========================================================================== */
-const STYLES = {
-  // Primary Action Button (Dùng cho "Duyệt tất cả và lưu vào ngân hàng" & "Tạo câu hỏi")
-  primaryActionBtn:
-    'inline-flex items-center justify-center gap-2 rounded-2xl bg-[#F7444E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-[#e03b44] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20 disabled:opacity-50 disabled:cursor-not-allowed',
+const TYPE_LABELS: Record<QuestionType, string> = {
+  single_choice: "Một đáp án",
+  multiple_choice: "Nhiều đáp án",
+  true_false: "Đúng / Sai",
+  fill_in_blank: "Điền vào chỗ trống",
+};
+const DIFFICULTY_LABELS: Record<DifficultyLevel, string> = {
+  easy: "Dễ",
+  medium: "Trung bình",
+  hard: "Khó",
+};
+const inputClass =
+  "h-10 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm text-gray-900 outline-none transition focus:border-[#14919B] focus:ring-1 focus:ring-[#14919B] disabled:bg-gray-50 disabled:text-gray-400";
+const textareaClass =
+  "w-full rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-900 outline-none transition focus:border-[#14919B] focus:ring-1 focus:ring-[#14919B]";
+const primaryButton =
+  "inline-flex items-center justify-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#df3c45] disabled:cursor-not-allowed disabled:opacity-50";
+const secondaryButton =
+  "inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50";
 
-  // Nút hành động đơn lẻ trong Footer mỗi Card (Edit, Regenerate, Delete)
-  cardActionBtn:
-    'inline-flex items-center justify-center gap-1.5 rounded-2xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all duration-150 hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98] focus:outline-none',
-
-  // Nút Delete có icon hồng đỏ đặc trưng
-  cardDeleteBtn:
-    'inline-flex items-center justify-center gap-1.5 rounded-2xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all duration-150 hover:bg-rose-50/50 hover:border-rose-200 hover:text-rose-600 active:scale-[0.98] focus:outline-none',
-
-  // Nút Approve riêng từng câu (Bo tròn viên thuốc pill, màu đỏ brand)
-  cardApproveBtn:
-    'inline-flex items-center justify-center gap-1.5 rounded-2xl bg-[#F7444E] px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-[#e03b44] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#F7444E]/20',
-
-  // Card Layouts
-  card: 'rounded-2xl border border-gray-200/80 bg-[#FFFAFC]/50 p-6 shadow-sm transition-all',
-
-  // Form elements
-  label: 'block text-xs font-semibold text-gray-700 mb-1.5',
-  input:
-    'h-10 w-full rounded-xl border border-gray-200  px-3.5 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-[#14919B] focus:outline-none focus:ring-1 focus:ring-[#14919B]',
-  select:
-    'h-10 w-full appearance-none rounded-xl border border-gray-200 px-3.5 pr-9 text-sm text-gray-900 transition-colors focus:border-[#14919B] focus:outline-none focus:ring-1 focus:ring-[#14919B]',
-  textarea:
-    'w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-[#14919B] focus:outline-none focus:ring-1 focus:ring-[#14919B]',
-
-  // Badges
-  aiTag:
-    'inline-flex items-center gap-1 rounded-md border border-[#B6ECF0] bg-[#E6F7F8] px-2.5 py-0.5 text-xs font-semibold text-[#14919B]',
-  difficulty: {
-    'Dễ': 'border-emerald-200/60 bg-emerald-50 text-emerald-700',
-    'Trung bình': 'border-amber-200/60 bg-amber-50 text-amber-700',
-    'Khó': 'border-rose-200/60 bg-rose-50 text-rose-700',
-  },
-
-  // Workflow Header Step Bar
-  workflowContainer:
-    'flex flex-wrap items-center gap-2.5 rounded-2xl border border-gray-200/80 bg-[#FFFAFC]/50 p-3 shadow-sm',
-  workflowPills: {
-    aiGenerated:
-      'inline-flex items-center rounded-2xl bg-[#EBF8FA] px-4 py-1.5 text-xs font-medium text-[#118A94]',
-    neutral:
-      'inline-flex items-center rounded-2xl bg-white px-4 py-1.5 text-xs font-medium text-gray-600',
-    approved:
-      'inline-flex items-center rounded-2xl bg-[#F7444E]/10 px-4 py-1.5 text-xs font-medium text-gray-600',
-    published:
-      'inline-flex items-center rounded-2xl bg-[#EAF7F0] px-4 py-1.5 text-xs font-medium text-[#0F766E]',
-  },
-
-  // Options styling
-  optionCorrect:
-    'flex items-center justify-between rounded-xl border border-emerald-300 bg-emerald-50/70 p-3.5 text-sm font-medium text-emerald-900 shadow-sm transition-all',
-  optionDefault:
-    'flex items-center justify-between rounded-xl border border-gray-200 p-3.5 text-sm text-gray-700 hover:border-gray-300 transition-all',
-  letterCircleCorrect:
-    'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-emerald-400 bg-white text-xs font-bold text-emerald-700',
-  letterCircleDefault:
-    'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-gray-50 text-xs font-semibold text-gray-500',
+type DraftQuestion = AiGeneratedQuestion & {
+  course_id: string;
+  chapter_id: string;
+  lesson_id: string;
 };
 
-/* ==========================================================================
-   TYPES & INTERFACES
-   ========================================================================== */
-export type DifficultyLevel = 'Dễ' | 'Trung bình' | 'Khó';
-export type QuestionType =
-  | 'Một đáp án'
-  | 'Nhiều đáp án'
-  | 'Đúng / Sai'
-  | 'Điền vào chỗ trống';
-
-export interface AnswerOption {
-  id: string;
-  label: string;
-  text: string;
-  isCorrect: boolean;
+function makeId() {
+  return crypto.randomUUID();
+}
+function normalizeGeneratedQuestion(
+  question: AiGeneratedQuestion,
+  placement: { course_id: string; chapter_id?: string; lesson_id?: string },
+): DraftQuestion {
+  const source = resolveGeneratedSource(question, placement);
+  if (!source) throw new ApiClientError('Đề xuất chưa có nguồn chương/bài học khớp phạm vi đã chọn để lưu.', 'AI_SOURCE_MISMATCH', 503);
+  return {
+    ...question,
+    client_id: question.client_id || makeId(),
+    ...source,
+    options: question.options.map((option, index) => ({
+      ...option,
+      order_index: index,
+    })),
+  };
+}
+function getErrorMessage(error: unknown) {
+  return error instanceof ApiClientError
+    ? error.message
+    : "Không thể hoàn tất yêu cầu. Vui lòng thử lại.";
 }
 
-export interface GeneratedQuestion {
-  id: string;
-  title: string;
-  type: QuestionType;
-  difficulty: DifficultyLevel;
-  lesson: string;
-  options: AnswerOption[];
-  explanation: string;
-}
-
-/* ==========================================================================
-   SAMPLE MOCK DATA
-   ========================================================================== */
-const INITIAL_QUESTIONS: GeneratedQuestion[] = [
-  {
-    id: 'q1',
-    title: 'Chọn tất cả phát biểu đúng về interface trong C#.',
-    type: 'Nhiều đáp án',
-    difficulty: 'Trung bình',
-    lesson: 'Interface',
-    options: [
-      { id: 'a', label: 'A', text: 'Một lớp có thể triển khai nhiều interface', isCorrect: true },
-      { id: 'b', label: 'B', text: 'Interface có thể khai báo trường dữ liệu đối tượng', isCorrect: false },
-      { id: 'c', label: 'C', text: 'Interface có thể chứa phần triển khai phương thức mặc định (C# 8 trở lên)', isCorrect: true },
-      { id: 'd', label: 'D', text: 'Một interface có thể kế thừa từ interface khác', isCorrect: true },
-    ],
-    explanation:
-      'Một lớp có thể triển khai nhiều interface nhưng chỉ kế thừa một lớp cơ sở. Từ C# 8, interface có thể cung cấp phần triển khai mặc định.',
-  },
-  {
-    id: 'q2',
-    title: 'Điền vào chỗ trống: từ khóa dùng để ngăn ghi đè thêm một thành viên virtual là ______.',
-    type: 'Điền vào chỗ trống',
-    difficulty: 'Trung bình',
-    lesson: 'virtual, override, sealed',
-    options: [
-      { id: 'a', label: 'A', text: 'sealed', isCorrect: true },
-    ],
-    explanation:
-      'Từ khóa sealed override ngăn thành viên bị ghi đè thêm ở các lớp kế thừa phía sau.',
-  },
-  {
-    id: 'q3',
-    title: 'Điều gì xảy ra khi một ngoại lệ được ném bên trong khối finally?',
-    type: 'Một đáp án',
-    difficulty: 'Khó',
-    lesson: 'The finally Block',
-    options: [
-      { id: 'a', label: 'A', text: 'Ngoại lệ bị bỏ qua mà không thông báo', isCorrect: false },
-      { id: 'b', label: 'B', text: 'Ngoại lệ mới thay thế ngoại lệ ban đầu và được truyền tiếp', isCorrect: true },
-      { id: 'c', label: 'C', text: 'Môi trường chạy chương trình kết thúc ngay lập tức', isCorrect: false },
-      { id: 'd', label: 'D', text: 'Ngoại lệ được bọc trong AggregateException', isCorrect: false },
-    ],
-    explanation:
-      'Ngoại lệ mới thay thế ngoại lệ đang được xử lý và tiếp tục truyền lên trên. Vì vậy, không nên ném ngoại lệ trong khối finally.',
-  },
-  {
-    id: 'q4',
-    title: 'Kiểu tập hợp nào đảm bảo thời gian tra cứu trung bình theo khóa là O(1)?',
-    type: 'Một đáp án',
-    difficulty: 'Trung bình',
-    lesson: 'Dictionary<TKey, TValue>',
-    options: [
-      { id: 'a', label: 'A', text: 'List<T> — danh sách liên kết tuần tự', isCorrect: false },
-      { id: 'b', label: 'B', text: 'Dictionary<TKey, TValue> — từ điển khóa và giá trị', isCorrect: true },
-      { id: 'c', label: 'C', text: 'Queue<T> — hàng đợi', isCorrect: false },
-      { id: 'd', label: 'D', text: 'LinkedList<T> — danh sách liên kết', isCorrect: false },
-    ],
-    explanation:
-      'Dictionary<TKey, TValue> sử dụng bảng băm nên có thời gian tra cứu trung bình O(1).',
-  },
-];
-
-/* ==========================================================================
-   PAGE COMPONENT
-   ========================================================================== */
 export default function AIQuestionGeneratorPage() {
-  const [questions, setQuestions] = useState<GeneratedQuestion[]>(INITIAL_QUESTIONS);
+  const router = useRouter();
+  const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [chapters, setChapters] = useState<ChapterOption[]>([]);
+  const [lessons, setLessons] = useState<LessonOption[]>([]);
+  const [courseId, setCourseId] = useState("");
+  const [chapterId, setChapterId] = useState("");
+  const [lessonId, setLessonId] = useState("");
+  const [questionType, setQuestionType] =
+    useState<QuestionType>("single_choice");
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>("medium");
+  const [count, setCount] = useState(5);
+  const [topic, setTopic] = useState("");
+  const [instructions, setInstructions] = useState("");
+  const [questions, setQuestions] = useState<DraftQuestion[]>([]);
+  const [warnings, setWarnings] = useState<
+    Array<{ code: string; message: string }>
+  >([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(true);
+  const [isLoadingChapters, setIsLoadingChapters] = useState(false);
+  const [isLoadingLessons, setIsLoadingLessons] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-
-  // Form State
-  const [course, setCourse] = useState('Lập trình hướng đối tượng với C#');
-  const [chapter, setChapter] = useState('Inheritance & Polymorphism');
-  const [lesson, setLesson] = useState('Interfaces');
-  const [topic, setTopic] = useState('Interface vs abstract class');
-  const [questionType, setQuestionType] = useState<QuestionType>('Nhiều đáp án');
-  const [difficulty, setDifficulty] = useState<DifficultyLevel>('Trung bình');
-  const [count, setCount] = useState<number>(8);
-  const [instructions, setInstructions] = useState(
-    'Include one code-reading question using a C# snippet.'
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [isSavingAll, setIsSavingAll] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [pendingSave, setPendingSave] = useState<SaveAiDraftRequest | null>(
+    null,
   );
+  const [saveConflict, setSaveConflict] = useState(false);
+  const [savedLinks, setSavedLinks] = useState<
+    Array<{ client_id: string; id: string }>
+  >([]);
+  const pendingRef = useRef<SaveAiDraftRequest | null>(null);
+  const busyRef = useRef(false);
+  const questionsRef = useRef(questions);
+  const versions = useRef({ chapters: 0, lessons: 0, generation: 0 });
+  const busy = isGenerating || savingId !== null || isSavingAll;
+  const locked = busy || pendingSave !== null;
+  const replaceQuestions = (
+    next: DraftQuestion[] | ((current: DraftQuestion[]) => DraftQuestion[]),
+  ) => {
+    const value =
+      typeof next === "function" ? next(questionsRef.current) : next;
+    questionsRef.current = value;
+    setQuestions(value);
+  };
+  const isLocked = () => busyRef.current || pendingRef.current !== null;
+  const resetSource = () => {
+    versions.current.chapters += 1;
+    versions.current.lessons += 1;
+    versions.current.generation += 1;
+    setIsLoadingChapters(false);
+    setIsLoadingLessons(false);
+    setWarnings([]);
+    setError("");
+    setSuccess("");
+  };
+  useEffect(
+    () => () => {
+      versions.current.chapters += 1;
+      versions.current.lessons += 1;
+      versions.current.generation += 1;
+    },
+    [],
+  );
+  useEffect(() => {
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      if (pendingRef.current || questionsRef.current.length) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    const warnBeforeNavigation = (event: MouseEvent) => {
+      const anchor = (event.target as Element).closest?.("a[href]");
+      if (
+        anchor &&
+        (pendingRef.current || questionsRef.current.length) &&
+        !window.confirm(
+          pendingRef.current
+            ? "Chưa xác định kết quả lưu. Hãy kiểm tra ngân hàng trước khi tạo thao tác mới. Rời trang sẽ mất thông tin retry. Tiếp tục?"
+            : "Các đề xuất chưa lưu sẽ mất khi rời trang. Tiếp tục?",
+        )
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    document.addEventListener("click", warnBeforeNavigation, true);
+    return () => {
+      window.removeEventListener("beforeunload", warnBeforeLeaving);
+      document.removeEventListener("click", warnBeforeNavigation, true);
+    };
+  }, []);
 
-  const handleGenerate = () => {
+  useEffect(() => {
+    let active = true;
+    questionApi
+      .listCourses()
+      .then((items) => {
+        if (active) setCourses(items);
+      })
+      .catch((requestError) => {
+        if (active) setError(getErrorMessage(requestError));
+      })
+      .finally(() => {
+        if (active) setIsLoadingCourses(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const selectedScopeTitle = useMemo(() => {
+    if (lessonId) return lessons.find(lesson => lesson.id === lessonId)?.title ?? '';
+    if (chapterId) return chapters.find(chapter => chapter.id === chapterId)?.title ?? '';
+    return courses.find(course => course.id === courseId)?.title ?? '';
+  }, [courseId, chapterId, lessonId, courses, chapters, lessons]);
+  const confirmDiscard = () =>
+    !questions.length ||
+    window.confirm(
+      "Các đề xuất chưa lưu sẽ mất khi đổi phạm vi nguồn. Bạn có muốn tiếp tục không?",
+    );
+
+  const handleCourseChange = async (nextCourseId: string) => {
+    if (isLocked() || !confirmDiscard()) return;
+    resetSource();
+    setCourseId(nextCourseId);
+    setChapterId("");
+    setLessonId("");
+    setChapters([]);
+    setLessons([]);
+    replaceQuestions([]);
+    if (!nextCourseId) return;
+    const version = versions.current.chapters;
+    setIsLoadingChapters(true);
+    try {
+      const items = await questionApi.listChapters(nextCourseId);
+      if (version === versions.current.chapters) setChapters(items);
+    } catch (requestError) {
+      if (version === versions.current.chapters)
+        setError(getErrorMessage(requestError));
+    } finally {
+      if (version === versions.current.chapters) setIsLoadingChapters(false);
+    }
+  };
+  const handleChapterChange = async (nextChapterId: string) => {
+    if (isLocked() || !confirmDiscard()) return;
+    versions.current.lessons += 1;
+    versions.current.generation += 1;
+    setChapterId(nextChapterId);
+    setLessonId("");
+    setLessons([]);
+    replaceQuestions([]);
+    setWarnings([]);
+    setError("");
+    setSuccess("");
+    setIsLoadingLessons(false);
+    if (!nextChapterId || !courseId) return;
+    const version = versions.current.lessons;
+    setIsLoadingLessons(true);
+    try {
+      const items = await questionApi.listLessons(courseId, nextChapterId);
+      if (version === versions.current.lessons) setLessons(items);
+    } catch (requestError) {
+      if (version === versions.current.lessons)
+        setError(getErrorMessage(requestError));
+    } finally {
+      if (version === versions.current.lessons) setIsLoadingLessons(false);
+    }
+  };
+  const handleLessonChange = (nextLessonId: string) => {
+    if (isLocked() || !confirmDiscard()) return;
+    versions.current.generation += 1;
+    setLessonId(nextLessonId);
+    replaceQuestions([]);
+    setWarnings([]);
+    setSuccess("");
+    setError("");
+  };
+
+  const handleGenerate = async () => {
+    if (isLocked()) return;
+    if (!courseId) {
+      setError("Vui lòng chọn khóa học trước khi sinh câu hỏi.");
+      return;
+    }
+    if (questionsRef.current.length + count > 10) {
+      setError(
+        "Tối đa 10 đề xuất chưa lưu. Hãy lưu hoặc bỏ bớt trước khi sinh thêm.",
+      );
+      return;
+    }
+    busyRef.current = true;
+    const version = ++versions.current.generation;
     setIsGenerating(true);
-    setTimeout(() => {
-      setIsGenerating(false);
-    }, 1000);
+    setError("");
+    setSuccess("");
+    try {
+      const payload: GenerateAiQuestionsRequest = {
+        course_id: courseId,
+        chapter_id: chapterId || undefined,
+        lesson_id: lessonId || undefined,
+        question_type: questionType,
+        difficulty,
+        count,
+        topic: topic.trim() || undefined,
+        instructions: instructions.trim() || undefined,
+      };
+      const response = await questionApi.generateAiQuestions(payload);
+      if (version !== versions.current.generation) return;
+      if (
+        (lessonId && response.source.lesson_id !== lessonId) ||
+        (response.source.course_id && response.source.course_id !== courseId) ||
+        (chapterId && response.source.chapter_id && response.source.chapter_id !== chapterId) ||
+        response.questions.length !== count
+      )
+        throw new Error("Invalid generation response");
+      const incoming = response.questions.map(question => normalizeGeneratedQuestion(question, {
+        course_id: courseId, chapter_id: chapterId || undefined, lesson_id: lessonId || undefined,
+      }));
+      if (incoming.some(question => question.course_id !== courseId
+        || (chapterId && question.chapter_id !== chapterId) || (lessonId && question.lesson_id !== lessonId))) {
+        throw new ApiClientError('Nguồn câu hỏi không khớp phạm vi đã chọn. Vui lòng tạo lại.', 'AI_SOURCE_MISMATCH', 503);
+      }
+      replaceQuestions(current => [...current, ...incoming]);
+      setWarnings(response.warnings ?? []);
+      setSuccess(
+        `Đã tạo ${response.questions.length} đề xuất theo phạm vi “${response.source.title}”.`,
+      );
+    } catch (requestError) {
+      if (version === versions.current.generation)
+        setError(getErrorMessage(requestError));
+    } finally {
+      if (version === versions.current.generation) {
+        setIsGenerating(false);
+        busyRef.current = false;
+      }
+    }
   };
-
-  const handleApproveOne = (id: string) => {
-    setQuestions((prev) => prev.filter((q) => q.id !== id));
+  const updateQuestion = (clientId: string, update: Partial<DraftQuestion>) => {
+    if (isLocked()) return;
+    replaceQuestions((current) =>
+      current.map((question) =>
+        question.client_id === clientId ? { ...question, ...update } : question,
+      ),
+    );
   };
-
-  const handleApproveAll = () => {
-    setQuestions([]);
+  const updateOption = (
+    clientId: string,
+    index: number,
+    update: Partial<QuestionOption>,
+  ) => {
+    if (isLocked()) return;
+    replaceQuestions((current) =>
+      current.map((question) =>
+        question.client_id !== clientId
+          ? question
+          : {
+              ...question,
+              options: question.options.map((option, optionIndex) =>
+                optionIndex === index ? { ...option, ...update } : option,
+              ),
+            },
+      ),
+    );
   };
-
-  const handleDeleteOne = (id: string) => {
-    setQuestions((prev) => prev.filter((q) => q.id !== id));
+  const toggleCorrect = (question: DraftQuestion, index: number) => {
+    if (question.question_type === "fill_in_blank") return;
+    updateQuestion(question.client_id, {
+      options: question.options.map((option, optionIndex) => ({
+        ...option,
+        is_correct:
+          question.question_type === "multiple_choice"
+            ? optionIndex === index
+              ? !option.is_correct
+              : option.is_correct
+            : optionIndex === index,
+      })),
+    });
   };
+  const handleTypeChange = (question: DraftQuestion, nextType: QuestionType) =>
+    updateQuestion(question.client_id, {
+      question_type: nextType,
+      options: changeQuestionOptions(question.options, nextType),
+    });
+  const changeOptionCount = (question: DraftQuestion, removeIndex?: number) => {
+    if (
+      isLocked() ||
+      !["single_choice", "multiple_choice"].includes(question.question_type)
+    )
+      return;
+    const minimum = question.question_type === "multiple_choice" ? 3 : 2;
+    if (removeIndex === undefined && question.options.length < 8)
+      updateQuestion(question.client_id, {
+        options: [
+          ...question.options,
+          {
+            option_text: "",
+            is_correct: false,
+            order_index: question.options.length,
+          },
+        ],
+      });
+    else if (removeIndex !== undefined && question.options.length > minimum)
+      updateQuestion(question.client_id, {
+        options: question.options
+          .filter((_, index) => index !== removeIndex)
+          .map((option, order_index) => ({ ...option, order_index })),
+      });
+  };
+  const handleRegenerate = async (question: DraftQuestion) => {
+    if (isLocked()) return;
+    busyRef.current = true;
+    const version = ++versions.current.generation;
+    const fingerprint = JSON.stringify(question);
+    setSavingId(question.client_id);
+    setError("");
+    setSuccess("");
+    try {
+      const response = await questionApi.generateAiQuestions({
+        course_id: question.course_id,
+        chapter_id: question.chapter_id,
+        lesson_id: question.lesson_id,
+        question_type: question.question_type,
+        difficulty: question.difficulty,
+        count: 1,
+        topic: topic.trim() || undefined,
+        instructions: instructions.trim() || undefined,
+        exclude_contents: questionsRef.current
+          .slice(0, 5)
+          .map((item) => item.content.slice(0, 1000)),
+      });
+      if (version !== versions.current.generation) return;
+      if (
+        response.source.lesson_id !== question.lesson_id ||
+        response.questions.length !== 1
+      )
+        throw new Error("Invalid generation response");
+      replaceQuestions((current) =>
+        current.map((item) =>
+          item.client_id === question.client_id &&
+          JSON.stringify(item) === fingerprint
+            ? normalizeGeneratedQuestion(
+                { ...response.questions[0], client_id: question.client_id },
+                {
+                  course_id: question.course_id,
+                  chapter_id: question.chapter_id,
+                  lesson_id: question.lesson_id,
+                },
+              )
+            : item,
+        ),
+      );
+      setWarnings(response.warnings ?? []);
+    } catch (requestError) {
+      if (version === versions.current.generation)
+        setError(getErrorMessage(requestError));
+    } finally {
+      if (version === versions.current.generation) {
+        setSavingId(null);
+        busyRef.current = false;
+      }
+    }
+  };
+  const saveQuestions = async (items: DraftQuestion[], retry = false) => {
+    if (
+      busyRef.current ||
+      (pendingRef.current && !retry) ||
+      (retry && saveConflict)
+    )
+      return;
+    let snapshot = pendingRef.current;
+    if (!retry) {
+      if (!items.length || items.length > 10) return;
+      const invalid = items
+        .map((item, index) => ({ index, errors: draftErrors(item) }))
+        .find((item) => item.errors.length);
+      if (invalid) {
+        setError(`Câu ${invalid.index + 1}: ${invalid.errors.join(" ")}`);
+        return;
+      }
+      snapshot = makeSaveSnapshot(makeId(), items);
+      pendingRef.current = snapshot;
+      setPendingSave(snapshot);
+      setSaveConflict(false);
+    }
+    if (!snapshot) return;
+    busyRef.current = true;
+    setIsSavingAll(snapshot.questions.length > 1);
+    setSavingId(snapshot.questions[0].client_id);
+    setError("");
+    setSuccess("");
+    try {
+      const result = await questionApi.saveAiDrafts(snapshot);
+      if (!completeSavedMapping(snapshot, result.saved))
+        throw new Error("Incomplete saved mapping");
+      const savedIds = new Set(
+        snapshot.questions.map((question) => question.client_id),
+      );
+      replaceQuestions((current) =>
+        current.filter((question) => !savedIds.has(question.client_id)),
+      );
+      setSavedLinks((current) => [...current, ...result.saved]);
+      pendingRef.current = null;
+      setPendingSave(null);
+      setSuccess(
+        `Đã lưu ${savedIds.size} câu thành bản nháp. Mở editor để kiểm tra và gửi duyệt.`,
+      );
+    } catch (requestError) {
+      if (
+        requestError instanceof ApiClientError &&
+        [400, 401, 403, 404, 413, 422].includes(requestError.status)
+      ) {
+        pendingRef.current = null;
+        setPendingSave(null);
+        setError(getErrorMessage(requestError));
+      } else if (
+        requestError instanceof ApiClientError &&
+        requestError.status === 409
+      ) {
+        setSaveConflict(true);
+        setError(
+          "Thao tác lưu bị xung đột. Hãy đối soát ngân hàng trước khi tải lại; không tạo batch mới để thử lại.",
+        );
+      } else
+        setError(
+          "Chưa xác định kết quả lưu. Bấm “Thử lưu lại” để gửi lại đúng thao tác cũ. Không tải lại trang hoặc tạo thao tác mới trước khi đối soát ngân hàng.",
+        );
+    } finally {
+      busyRef.current = false;
+      setSavingId(null);
+      setIsSavingAll(false);
+    }
+  };
+  const handleSaveOne = (question: DraftQuestion) => saveQuestions([question]);
+  const handleSaveAll = () => saveQuestions(questionsRef.current);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      {/* Header & Workflow Progress */}
-      <div className="space-y-4">
+      <header className="space-y-4">
         <div>
-          <span className={STYLES.aiTag}>
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-[#B6ECF0] bg-[#E6F7F8] px-2.5 py-1 text-xs font-semibold text-[#14919B]">
             <Sparkles className="h-3.5 w-3.5" />
             Có hỗ trợ trí tuệ nhân tạo
           </span>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-            Công cụ tạo câu hỏi bằng trí tuệ nhân tạo
+            Tạo câu hỏi bằng AI
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Generated questions never publish automatically — they enter the review workflow[cite: 1].
+          <p className="mt-1 max-w-3xl text-sm text-gray-500">
+            AI chỉ tạo đề xuất từ nội dung bài học. Câu hỏi được lưu thành bản
+            nháp và phải gửi duyệt riêng, không tự động xuất bản.
           </p>
         </div>
-
-        {/* Workflow Steps Indicator */}
-        <div className={STYLES.workflowContainer}>
-          <span className={STYLES.workflowPills.aiGenerated}>
-            Tạo tự động
+        <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-gray-200/80 bg-[#FFFAFC]/50 p-3 text-xs font-medium text-gray-600 shadow-sm">
+          <span className="rounded-2xl bg-[#EBF8FA] px-4 py-1.5 text-[#118A94]">
+            Tạo đề xuất
           </span>
-          <ArrowRight className="h-3.5 w-3.5 text-gray-400 stroke-[1.5]" />
-          <span className={STYLES.workflowPills.neutral}>
-            Bản nháp
-          </span>
-          <ArrowRight className="h-3.5 w-3.5 text-gray-400 stroke-[1.5]" />
-          <span className={STYLES.workflowPills.neutral}>
-            Duyệt
-          </span>
-          <ArrowRight className="h-3.5 w-3.5 text-gray-400 stroke-[1.5]" />
-          <span className={STYLES.workflowPills.approved}>
-            Đã duyệt
-          </span>
-          <ArrowRight className="h-3.5 w-3.5 text-gray-400 stroke-[1.5]" />
-          <span className={STYLES.workflowPills.published}>
-            Đã xuất bản
+          <ArrowRight className="h-3.5 w-3.5 text-gray-400" />
+          <span className="rounded-2xl bg-white px-4 py-1.5">Sửa / bỏ</span>
+          <ArrowRight className="h-3.5 w-3.5 text-gray-400" />
+          <span className="rounded-2xl bg-white px-4 py-1.5">Lưu bản nháp</span>
+          <ArrowRight className="h-3.5 w-3.5 text-gray-400" />
+          <span className="rounded-2xl bg-amber-50 px-4 py-1.5 text-amber-700">
+            Gửi duyệt
           </span>
         </div>
-      </div>
-
-      {/* Main 2-Column Content Grid */}
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
-        {/* Left Column: Generation Setup */}
-        <div className={`space-y-4 lg:col-span-4 ${STYLES.card}`}>
-          <h2 className="text-base font-bold text-gray-900">Thiết lập nội dung tạo</h2>
-
-          <div className="space-y-3.5">
-            <div>
-              <label className={STYLES.label}>Khóa học</label>
-              <div className="relative">
-                <select
-                  value={course}
-                  onChange={(e) => setCourse(e.target.value)}
-                  className={STYLES.select}
-                >
-                  <option value="Lập trình hướng đối tượng với C#">Lập trình hướng đối tượng với C#</option>
-                  <option value="C# cơ bản">C# cơ bản</option>
-                  <option value="Tập hợp và LINQ">Tập hợp và LINQ</option>
-                  <option value="Xử lý ngoại lệ trong C#">Xử lý ngoại lệ trong C#</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              </div>
-            </div>
-
-            <div>
-              <label className={STYLES.label}>Chương</label>
-              <input
-                type="text"
-                value={chapter}
-                onChange={(e) => setChapter(e.target.value)}
-                className={STYLES.input}
-              />
-            </div>
-
-            <div>
-              <label className={STYLES.label}>Bài học</label>
-              <input
-                type="text"
-                value={lesson}
-                onChange={(e) => setLesson(e.target.value)}
-                className={STYLES.input}
-              />
-            </div>
-
-            <div>
-              <label className={STYLES.label}>Chủ đề</label>
-              <input
-                type="text"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                className={STYLES.input}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={STYLES.label}>Dạng câu hỏi</label>
-                <div className="relative">
-                  <select
-                    value={questionType}
-                    onChange={(e) => setQuestionType(e.target.value as QuestionType)}
-                    className={STYLES.select}
-                  >
-                    <option value="Một đáp án">Một đáp án</option>
-                    <option value="Nhiều đáp án">Nhiều đáp án</option>
-                    <option value="Đúng / Sai">Đúng / Sai</option>
-                    <option value="Điền vào chỗ trống">Điền vào chỗ trống</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                </div>
-              </div>
-
-              <div>
-                <label className={STYLES.label}>Độ khó</label>
-                <div className="relative">
-                  <select
-                    value={difficulty}
-                    onChange={(e) => setDifficulty(e.target.value as DifficultyLevel)}
-                    className={STYLES.select}
-                  >
-                    <option value="Dễ">Dễ</option>
-                    <option value="Trung bình">Trung bình</option>
-                    <option value="Khó">Khó</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className={STYLES.label}>Số lượng</label>
-              <input
-                type="number"
-                min={1}
-                max={20}
-                value={count}
-                onChange={(e) => setCount(parseInt(e.target.value, 10) || 1)}
-                className={STYLES.input}
-              />
-            </div>
-
-            <div>
-              <label className={STYLES.label}>Hướng dẫn bổ sung</label>
-              <textarea
-                rows={3}
-                value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
-                className={STYLES.textarea}
-              />
-            </div>
-
+      </header>
+      {(error || success) && (
+        <div
+          className={`rounded-xl border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}
+          role="status"
+        >
+          {error || success}
+        </div>
+      )}
+      {pendingSave && (
+        <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p>
+            {busy
+              ? "Đang lưu bản nháp..."
+              : "Đang giữ thao tác lưu chưa rõ kết quả. Rời hoặc tải lại trang sẽ mất thông tin retry; cần kiểm tra ngân hàng trước khi tạo thao tác mới."}
+          </p>
+          {!saveConflict && (
             <button
               type="button"
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className={`w-full ${STYLES.primaryActionBtn}`}
+              disabled={busy}
+              onClick={() => void saveQuestions([], true)}
+              className={secondaryButton}
             >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Đang tạo câu hỏi...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  Tạo câu hỏi
-                </>
-              )}
+              Thử lưu lại
             </button>
-          </div>
+          )}
+          <a href="/content-manager/questions/bank" className="ml-3 underline">
+            Kiểm tra ngân hàng
+          </a>
         </div>
-
-        {/* Right Column: Pending Decisions */}
-        <div className="space-y-4 lg:col-span-8">
-          {/* Top Bar Summary & Inline Action Button */}
-          <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-            <span className="text-sm font-medium text-gray-600">
-              {questions.length} generated questions pending your decision
-            </span>
+      )}
+      {savedLinks.length > 0 && (
+        <div className="flex flex-wrap gap-3 text-sm">
+          {savedLinks.map((saved, index) => (
+            <a
+              key={saved.id}
+              className="text-teal-700 underline"
+              href={`/content-manager/questions/editor?id=${encodeURIComponent(saved.id)}`}
+            >
+              Mở câu đã lưu {index + 1}
+            </a>
+          ))}
+        </div>
+      )}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        <fieldset
+          disabled={locked}
+          className="space-y-4 rounded-2xl border border-gray-200/80 bg-[#FFFAFC]/50 p-5 shadow-sm lg:col-span-4"
+        >
+          <div>
+            <h2 className="text-base font-bold text-gray-900">
+              Thiết lập nội dung
+            </h2>
+            <p className="mt-1 text-xs text-gray-500">
+              Chọn khóa học; chọn thêm chương hoặc bài học để thu hẹp phạm vi.
+            </p>
+          </div>
+          <label className="block text-xs font-semibold text-gray-700">
+            Khóa học
+            <select
+              value={courseId}
+              onChange={(event) => void handleCourseChange(event.target.value)}
+              disabled={isLoadingCourses}
+              className={`mt-1.5 ${inputClass}`}
+            >
+              <option value="">
+                {isLoadingCourses ? "Đang tải..." : "Chọn khóa học"}
+              </option>
+              {courses.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-xs font-semibold text-gray-700">
+            Chương (tùy chọn)
+            <div className="relative mt-1.5">
+              <select
+                value={chapterId}
+                onChange={(event) =>
+                  void handleChapterChange(event.target.value)
+                }
+                disabled={!courseId || isLoadingChapters}
+                className={inputClass}
+              >
+                <option value="">
+                  {isLoadingChapters ? "Đang tải..." : "Tất cả chương trong khóa học"}
+                </option>
+                {chapters.map((chapter) => (
+                  <option key={chapter.id} value={chapter.id}>
+                    {chapter.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </label>
+          <label className="block text-xs font-semibold text-gray-700">
+            Bài học (tùy chọn)
+            <div className="relative mt-1.5">
+              <select
+                value={lessonId}
+                onChange={(event) => handleLessonChange(event.target.value)}
+                disabled={!chapterId || isLoadingLessons}
+                className={inputClass}
+              >
+                <option value="">
+                  {isLoadingLessons ? "Đang tải..." : chapterId ? "Tất cả bài học trong chương" : "Chọn chương để thu hẹp theo bài"}
+                </option>
+                {lessons.map((lesson) => (
+                  <option key={lesson.id} value={lesson.id}>
+                    {lesson.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-xs font-semibold text-gray-700">
+              Dạng câu
+              <select
+                value={questionType}
+                onChange={(event) =>
+                  setQuestionType(event.target.value as QuestionType)
+                }
+                className={`mt-1.5 ${inputClass}`}
+              >
+                {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs font-semibold text-gray-700">
+              Độ khó
+              <select
+                value={difficulty}
+                onChange={(event) =>
+                  setDifficulty(event.target.value as DifficultyLevel)
+                }
+                className={`mt-1.5 ${inputClass}`}
+              >
+                {Object.entries(DIFFICULTY_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label className="block text-xs font-semibold text-gray-700">
+            Số lượng
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={count}
+              onChange={(event) =>
+                setCount(
+                  Math.min(10, Math.max(1, Number(event.target.value) || 1)),
+                )
+              }
+              className={`mt-1.5 ${inputClass}`}
+            />
+          </label>
+          <label className="block text-xs font-semibold text-gray-700">
+            Chủ đề (không bắt buộc)
+            <input
+              maxLength={300}
+              value={topic}
+              onChange={(event) => setTopic(event.target.value)}
+              className={`mt-1.5 ${inputClass}`}
+              placeholder="Ví dụ: interface và abstract class"
+            />
+          </label>
+          <label className="block text-xs font-semibold text-gray-700">
+            Hướng dẫn bổ sung
+            <textarea
+              maxLength={2000}
+              rows={4}
+              value={instructions}
+              onChange={(event) => setInstructions(event.target.value)}
+              className={`mt-1.5 ${textareaClass}`}
+              placeholder="Yêu cầu cách diễn đạt hoặc ví dụ code..."
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => void handleGenerate()}
+            disabled={locked || !courseId || questions.length + count > 10}
+            className={`w-full ${primaryButton}`}
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Đang tạo...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                Tạo câu hỏi
+              </>
+            )}
+          </button>
+          {selectedScopeTitle && (
+            <p className="rounded-xl border border-teal-100 bg-teal-50/60 px-3 py-2 text-xs text-teal-800">
+              Phạm vi hiện tại: {selectedScopeTitle}
+            </p>
+          )}
+        </fieldset>
+        <section className="space-y-4 lg:col-span-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">
+                Đề xuất chưa lưu{" "}
+                <span className="text-gray-400">({questions.length})</span>
+              </h2>
+              <p className="text-xs text-gray-500">
+                Tối đa 10 đề xuất chưa lưu. Bỏ đề xuất chỉ thay đổi màn hình
+                hiện tại; tải lại trang sẽ không khôi phục đề xuất chưa lưu.
+              </p>
+            </div>
             {questions.length > 0 && (
               <button
                 type="button"
-                onClick={handleApproveAll}
-                className={STYLES.primaryActionBtn}
+                onClick={() => void handleSaveAll()}
+                disabled={locked}
+                className={primaryButton}
               >
-                <Check className="h-4 w-4" />
-                Duyệt tất cả và lưu vào ngân hàng
+                {isSavingAll ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
+                {isSavingAll ? "Đang lưu..." : "Lưu tất cả bản nháp"}
               </button>
             )}
           </div>
-
-          {/* Cards List */}
+          {warnings.length > 0 && (
+            <div className="space-y-1 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+              {warnings.map((warning) => (
+                <p key={`${warning.code}-${warning.message}`}>
+                  • {warning.message}
+                </p>
+              ))}
+            </div>
+          )}
           {questions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white p-12 text-center shadow-sm">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                <Check className="h-6 w-6" />
-              </div>
-              <h3 className="mt-4 text-base font-bold text-gray-900">Tất cả câu hỏi đã được duyệt!</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Tạo câu hỏi mới bằng bảng thiết lập bên trái.
+            <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-12 text-center shadow-sm">
+              <Sparkles className="mx-auto h-8 w-8 text-gray-300" />
+              <p className="mt-3 text-sm font-semibold text-gray-700">
+                Chưa có đề xuất
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                Chọn bài học rồi bấm “Tạo câu hỏi”.
               </p>
             </div>
           ) : (
-            questions.map((question) => (
-              <div key={question.id} className={`space-y-4 ${STYLES.card}`}>
-                {/* Badges */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={STYLES.aiTag}>
-                    <Sparkles className="h-3 w-3" />
-                    Tạo tự động
-                  </span>
-                  <span
-                    className={`rounded-md border px-2 py-0.5 text-xs font-semibold ${
-                      STYLES.difficulty[question.difficulty]
-                    }`}
+            questions.map((question, index) => (
+              <fieldset
+                disabled={locked}
+                key={question.client_id}
+                className="space-y-4 rounded-2xl border border-gray-200/80 bg-[#FFFAFC]/50 p-5 shadow-sm"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-md border border-teal-200 bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-700">
+                      <Sparkles className="h-3 w-3" />
+                      AI đề xuất
+                    </span>
+                    <span className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600">
+                      {TYPE_LABELS[question.question_type]}
+                    </span>
+                    <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                      {DIFFICULTY_LABELS[question.difficulty]}
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-400">Câu {index + 1}</span>
+                </div>
+                {(question.chapter_title || question.lesson_title) && <p className="text-xs text-teal-800">Nguồn câu hỏi: {[question.chapter_title, question.lesson_title].filter(Boolean).join(' / ')}</p>}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <select
+                    value={question.question_type}
+                    onChange={(event) =>
+                      handleTypeChange(
+                        question,
+                        event.target.value as QuestionType,
+                      )
+                    }
+                    className={inputClass}
                   >
-                    {question.difficulty}
-                  </span>
+                    {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={question.difficulty}
+                    onChange={(event) =>
+                      updateQuestion(question.client_id, {
+                        difficulty: event.target.value as DifficultyLevel,
+                      })
+                    }
+                    className={inputClass}
+                  >
+                    {Object.entries(DIFFICULTY_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <textarea
+                  aria-label="Đề bài"
+                  maxLength={5000}
+                  rows={3}
+                  value={question.content}
+                  onChange={(event) =>
+                    updateQuestion(question.client_id, {
+                      content: event.target.value,
+                    })
+                  }
+                  className={textareaClass}
+                />
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    {question.question_type === "fill_in_blank"
+                      ? "Đáp án chuẩn"
+                      : "Phương án trả lời"}
+                  </p>
                   <span className="text-xs text-gray-400">
-                    {question.type} · {question.lesson}
+                    {question.options.length}/8
                   </span>
                 </div>
-
-                {/* Title */}
-                <h3 className="text-base font-semibold leading-snug text-gray-900">
-                  {question.title}
-                </h3>
-
-                {/* Options List */}
                 <div className="space-y-2">
-                  {question.options.map((option) => (
+                  {question.options.map((option, optionIndex) => (
                     <div
-                      key={option.id}
-                      className={option.isCorrect ? STYLES.optionCorrect : STYLES.optionDefault}
+                      key={`${question.client_id}-${optionIndex}`}
+                      className={`flex items-center gap-2 rounded-xl border p-2.5 ${option.is_correct ? "border-emerald-300 bg-emerald-50/70" : "border-gray-200 bg-white"}`}
                     >
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={
-                            option.isCorrect
-                              ? STYLES.letterCircleCorrect
-                              : STYLES.letterCircleDefault
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-white text-xs font-bold text-gray-500">
+                        {String.fromCharCode(65 + optionIndex)}
+                      </span>
+                      <input
+                        aria-label={`Đáp án ${optionIndex + 1}`}
+                        maxLength={1000}
+                        readOnly={question.question_type === "true_false"}
+                        value={option.option_text}
+                        onChange={(event) =>
+                          updateOption(question.client_id, optionIndex, {
+                            option_text: event.target.value,
+                          })
+                        }
+                        className="min-w-0 flex-1 bg-transparent px-1 text-sm text-gray-800 outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleCorrect(question, optionIndex)}
+                        className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${option.is_correct ? "bg-emerald-600 text-white" : "border border-gray-200 bg-white text-gray-500"}`}
+                      >
+                        {question.question_type === "fill_in_blank"
+                          ? "Đáp án chuẩn"
+                          : option.is_correct
+                            ? "Đúng"
+                            : "Đánh dấu đúng"}
+                      </button>
+                      {["single_choice", "multiple_choice"].includes(
+                        question.question_type,
+                      ) && (
+                        <button
+                          type="button"
+                          aria-label={`Xóa đáp án ${optionIndex + 1}`}
+                          disabled={
+                            locked ||
+                            question.options.length <=
+                              (question.question_type === "multiple_choice"
+                                ? 3
+                                : 2)
                           }
+                          onClick={() =>
+                            changeOptionCount(question, optionIndex)
+                          }
+                          className={secondaryButton}
                         >
-                          {option.label}
-                        </span>
-                        <span>{option.text}</span>
-                      </div>
-                      {option.isCorrect && (
-                        <Check className="h-4 w-4 shrink-0 text-emerald-600" />
+                          <Trash2 className="h-3 w-3" />
+                        </button>
                       )}
                     </div>
                   ))}
                 </div>
-
-                {/* Explanation */}
-                <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-3.5 text-xs text-gray-600">
-                  <span className="font-bold text-gray-900">Explanation · </span>
-                  {question.explanation}
-                </div>
-
-                {/* Fixed Card Action Footer */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
-                  <div className="flex items-center gap-2.5">
-                    <button type="button" className={STYLES.cardActionBtn}>
-                      <Edit3 className="h-4 w-4 text-gray-600" />
-                      Chỉnh sửa
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setQuestions((prev) =>
-                          prev.map((q) =>
-                            q.id === question.id
-                              ? { ...q, title: `${q.title} (Regenerated)` }
-                              : q
-                          )
-                        )
-                      }
-                      className={STYLES.cardActionBtn}
-                    >
-                      <RotateCw className="h-4 w-4 text-gray-600" />
-                      Tạo lại
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteOne(question.id)}
-                      className={STYLES.cardDeleteBtn}
-                    >
-                      <Trash2 className="h-4 w-4 text-[#F7444E]" />
-                      Xóa
-                    </button>
-                  </div>
-
+                {["single_choice", "multiple_choice"].includes(
+                  question.question_type,
+                ) && (
                   <button
                     type="button"
-                    onClick={() => handleApproveOne(question.id)}
-                    className={STYLES.cardApproveBtn}
+                    disabled={locked || question.options.length >= 8}
+                    onClick={() => changeOptionCount(question)}
+                    className={secondaryButton}
                   >
-                    <Check className="h-4 w-4" />
-                    Duyệt
+                    Thêm đáp án
+                  </button>
+                )}
+                {draftErrors(question).length > 0 && (
+                  <p className="text-xs text-amber-700" role="status">
+                    {draftErrors(question).join(" ")}
+                  </p>
+                )}
+                <textarea
+                  aria-label="Giải thích"
+                  maxLength={5000}
+                  rows={2}
+                  value={question.explanation}
+                  onChange={(event) =>
+                    updateQuestion(question.client_id, {
+                      explanation: event.target.value,
+                    })
+                  }
+                  className={textareaClass}
+                  placeholder="Giải thích đáp án..."
+                />
+                <div className="flex flex-wrap justify-end gap-2 border-t border-gray-100 pt-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      !isLocked() &&
+                      replaceQuestions((current) =>
+                        current.filter(
+                          (item) => item.client_id !== question.client_id,
+                        ),
+                      )
+                    }
+                    disabled={locked}
+                    className={secondaryButton}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-rose-500" />
+                    Bỏ đề xuất
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleRegenerate(question)}
+                    disabled={locked}
+                    className={secondaryButton}
+                  >
+                    {savingId === question.client_id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    )}
+                    Tạo lại
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveOne(question)}
+                    disabled={locked}
+                    className={primaryButton}
+                  >
+                    {savingId === question.client_id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Check className="h-3.5 w-3.5" />
+                    )}
+                    Lưu bản nháp
                   </button>
                 </div>
-              </div>
+              </fieldset>
             ))
           )}
-        </div>
+          {questions.length === 0 && success.includes("bản nháp") && (
+            <button
+              type="button"
+              onClick={() => router.push("/content-manager/questions/bank")}
+              className={secondaryButton}
+            >
+              Mở ngân hàng câu hỏi
+              <ExternalLink className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </section>
       </div>
     </div>
   );

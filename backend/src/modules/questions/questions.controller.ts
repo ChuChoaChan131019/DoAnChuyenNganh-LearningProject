@@ -6,6 +6,7 @@ import {
   QuestionDto,
   SubmitQuestionDto,
 } from './dto/question.dto.js';
+import { SaveAiDraftBatchDto } from './dto/ai-draft.dto.js';
 import { QuestionsService } from './questions.service.js';
 
 @Controller('api/v1')
@@ -38,9 +39,19 @@ export class QuestionsController {
     return this.questionsService.getById(id);
   }
 
+  @Get('questions/:id/history')
+  getHistory(@Param('id') id: string) {
+    return this.questionsService.getHistory(id);
+  }
+
   @Post('questions')
   create(@Body() dto: QuestionDto, @Req() request: any) {
     return this.questionsService.create(dto, request.user.id);
+  }
+
+  @Post('questions/ai-drafts')
+  saveAiDrafts(@Body() dto: SaveAiDraftBatchDto, @Req() request: any) {
+    return this.questionsService.saveAiDrafts(dto, request.user.id);
   }
 
   @Put('questions/:id')
@@ -50,12 +61,12 @@ export class QuestionsController {
 
   @Patch('questions/:id/status')
   updateStatus(@Param('id') id: string, @Body() body: SubmitQuestionDto, @Req() request: any) {
-    return this.questionsService.updateStatus(id, body.status, request.user.id);
+    return this.questionsService.updateStatus(id, body.status, request.user.id, body.reason, body.expected_version);
   }
 
   @Post('questions/:id/submit-review')
-  submitForReview(@Param('id') id: string, @Req() request: any) {
-    return this.questionsService.submitForReview(id, request.user.id, request.user.role);
+  submitForReview(@Param('id') id: string, @Body() body: SubmitQuestionDto, @Req() request: any) {
+    return this.questionsService.submitForReview(id, request.user.id, request.user.role, body.expected_version);
   }
 
   @Delete('questions/:id')

@@ -152,6 +152,8 @@ Câu hỏi gắn khóa học và có thể gắn chương, bài học. Câu hỏ
 
 Migration `database/migrations/20261105004802_lesson_ai_practice.sql` thêm quyền sở hữu cho câu AI cá nhân và chỉ mục một phần `(generated_for_user_id, created_at desc)` trên các dòng có chủ sở hữu. Các truy vấn ngân hàng câu hỏi và luyện tập chung phải lọc `generated_for_user_id is null`; API luyện tập AI chỉ trả hoặc chấm câu riêng khi trường này trùng người dùng từ token.
 
+Migration `database/migrations/20261115090000_ai_question_authoring_drafts.sql` bổ sung định danh batch/client, hash payload, version và thời điểm gửi duyệt cho câu hỏi dùng chung. Hàm `save_ai_question_drafts` chỉ cấp quyền thực thi cho `service_role`, tự gán `draft`, `is_ai_generated=true`, `generated_for_user_id=null`, kiểm tra toàn bộ batch và rollback khi một câu không hợp lệ. Migration `20261115093000_ai_question_history.sql` bổ sung bảng lịch sử append-only và các RPC cập nhật/chuyển trạng thái có optimistic version cho luồng Content Manager. Migration `20261116093000_atomic_question_creation_history.sql` ghi sự kiện tạo câu hỏi cùng transaction với câu hỏi và phương án, và bảo đảm retry không nhân đôi lịch sử tạo.
+
 Hàm `save_ai_practice_questions(p_user_id, p_lesson_id, p_questions)` kiểm tra hồ sơ learner, quan hệ khóa học–chương–bài học và trạng thái `published`, sau đó lưu toàn bộ câu hỏi cùng phương án trong một giao dịch. Hàm chạy với quyền người gọi, chỉ cấp `EXECUTE` cho `service_role`; frontend không được gọi trực tiếp và không được tự cung cấp `p_user_id`.
 
 ### `question_options` — Phương án trả lời

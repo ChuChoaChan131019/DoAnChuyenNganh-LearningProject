@@ -18,6 +18,13 @@ const DIFFICULTY_LABELS: Record<string, string> = {
 };
 
 const API_ERROR_LABELS: Record<string, string> = {
+  "question must be submitted for review first": "Câu hỏi chưa được gửi duyệt. Hãy mở câu hỏi và bấm Gửi duyệt.",
+  "question must be submitted before review": "Câu hỏi chưa được gửi duyệt. Hãy mở câu hỏi và bấm Gửi duyệt.",
+  "question has changed; reload before reviewing it": "Câu hỏi đã thay đổi. Hãy tải lại danh sách trước khi duyệt.",
+  "question has changed; reload before submitting it": "Câu hỏi đã thay đổi. Hãy tải lại câu hỏi trước khi gửi duyệt.",
+  "question version conflict": "Câu hỏi đã thay đổi. Hãy tải lại để lấy phiên bản mới nhất.",
+  "only draft questions can be reviewed": "Chỉ có thể duyệt câu hỏi đang ở trạng thái chờ duyệt.",
+  "only draft questions can be submitted": "Hãy lưu câu hỏi thành bản nháp trước khi gửi duyệt.",
   "invalid email or password": "Email hoặc mật khẩu không chính xác.",
   "email already registered": "Email này đã được đăng ký.",
   "account is temporarily locked. try again later.": "Tài khoản đang tạm khóa. Vui lòng thử lại sau.",

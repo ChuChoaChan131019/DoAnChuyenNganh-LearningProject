@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Check, Inbox, Sparkles, X } from 'lucide-react';
 import { ApiClientError, questionApi } from '@/lib/api';
 import { vietnameseDifficulty } from '@/lib/ui-labels';
@@ -25,10 +26,10 @@ function DifficultyBadge({ difficulty }: { difficulty: DifficultyLevel }) {
   return <span className={`rounded-md border px-2 py-0.5 text-xs font-semibold ${DIFFICULTY_STYLES[difficulty]}`}>{vietnameseDifficulty(difficulty)}</span>;
 }
 
-function StatusBadge({ status }: { status: QuestionStatus }) {
+function StatusBadge({ status, submitted }: { status: QuestionStatus; submitted: boolean }) {
   const statusConfig: Record<QuestionStatus, { className: string; dot: string; label: string }> = {
     approved: { className: 'border-emerald-200 bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500', label: 'Đã duyệt' },
-    draft: { className: 'border-gray-200 bg-gray-100 text-gray-600', dot: 'bg-gray-400', label: 'Bản nháp' },
+    draft: { className: 'border-gray-200 bg-gray-100 text-gray-600', dot: 'bg-gray-400', label: submitted ? 'Chờ duyệt' : 'Bản nháp' },
     rejected: { className: 'border-rose-200 bg-rose-50 text-rose-700', dot: 'bg-rose-500', label: 'Đã từ chối' },
   };
   const current = statusConfig[status];
@@ -38,12 +39,13 @@ function StatusBadge({ status }: { status: QuestionStatus }) {
 function QuestionCard({ item, onApprove, onReject, isUpdating }: { item: QuestionItem; onApprove: () => void; onReject: () => void; isUpdating: boolean }) {
   return <article className="flex flex-col justify-between rounded-2xl border border-gray-200/80 bg-[#FFFAFC]/50 p-6 shadow-sm transition hover:shadow-md">
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3"><div className="flex flex-wrap items-center gap-2">{item.is_ai_generated && <span className="inline-flex items-center gap-1 rounded-md border border-teal-200/60 bg-teal-50 px-2 py-0.5 text-xs font-semibold text-teal-700"><Sparkles className="h-3 w-3" />Tạo tự động</span>}<DifficultyBadge difficulty={item.difficulty} /><StatusBadge status={item.status} /></div><span className="text-xs font-medium text-slate-400">{TYPE_LABELS[item.question_type]}</span></div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3"><div className="flex flex-wrap items-center gap-2">{item.is_ai_generated && <span className="inline-flex items-center gap-1 rounded-md border border-teal-200/60 bg-teal-50 px-2 py-0.5 text-xs font-semibold text-teal-700"><Sparkles className="h-3 w-3" />Tạo tự động</span>}<DifficultyBadge difficulty={item.difficulty} /><StatusBadge status={item.status} submitted={Boolean(item.submitted_for_review_at)} /></div><span className="text-xs font-medium text-slate-400">{TYPE_LABELS[item.question_type]}</span></div>
       <p className="my-4 text-base font-semibold leading-snug text-slate-900">{item.content}</p>
       <div className="space-y-2">{(item.options ?? []).map((option, index) => <div key={option.id ?? `${item.id}-${option.order_index}`} className={`flex items-center gap-3 rounded-xl border p-3 text-sm ${option.is_correct ? 'border-emerald-300 bg-emerald-50/70 font-medium text-emerald-900' : 'border-gray-200/80 text-slate-700'}`}><span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${option.is_correct ? 'border-emerald-400 bg-white text-emerald-700' : 'border-gray-300 bg-gray-100 text-slate-600'}`}>{String.fromCharCode(65 + index)}</span><span className="flex-1 break-words">{option.option_text}</span>{option.is_correct && <span className="rounded-md bg-emerald-100/60 px-2 py-0.5 text-xs font-semibold text-emerald-700">Đúng</span>}</div>)}</div>
       {item.explanation && <div className="mt-4 rounded-xl border border-gray-100 bg-slate-50 p-3"><p className="text-xs leading-relaxed text-slate-600"><span className="font-semibold text-slate-700">Giải thích: </span>{item.explanation}</p></div>}
     </div>
-    {item.status === 'draft' && <div className="mt-5 flex items-center justify-end gap-2.5 border-t border-gray-100 pt-4"><button type="button" disabled={isUpdating} onClick={onReject} className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-slate-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"><X className="h-3.5 w-3.5" />Từ chối</button><button type="button" disabled={isUpdating} onClick={onApprove} className="inline-flex items-center gap-1.5 rounded-xl bg-[#F7444E] px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#E03E47] disabled:cursor-not-allowed disabled:opacity-60"><Check className="h-3.5 w-3.5" />{isUpdating ? 'Đang lưu...' : 'Duyệt'}</button></div>}
+    {item.status === 'draft' && item.submitted_for_review_at && <div className="mt-5 flex items-center justify-end gap-2.5 border-t border-gray-100 pt-4"><button type="button" disabled={isUpdating} onClick={onReject} className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-slate-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"><X className="h-3.5 w-3.5" />Từ chối</button><button type="button" disabled={isUpdating} onClick={onApprove} className="inline-flex items-center gap-1.5 rounded-xl bg-[#F7444E] px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#E03E47] disabled:cursor-not-allowed disabled:opacity-60"><Check className="h-3.5 w-3.5" />{isUpdating ? 'Đang lưu...' : 'Duyệt'}</button></div>}
+    {item.status === 'draft' && !item.submitted_for_review_at && <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4"><p className="text-xs text-slate-500">Bản nháp này chưa được gửi duyệt.</p><Link href={`/content-manager/questions/editor?id=${encodeURIComponent(item.id)}`} className="text-sm font-semibold text-teal-700 underline">Mở để gửi duyệt</Link></div>}
   </article>;
 }
 
@@ -63,18 +65,23 @@ export default function QuestionReviewPage() {
         : currentTab === 'Rejected'
           ? 'rejected'
           : undefined;
-    questionApi.list({ status }).then((items) => { if (active) setQuestions(items); }).catch((requestError) => { if (active) setError(requestError instanceof ApiClientError ? requestError.message : 'Không thể tải danh sách câu hỏi cần duyệt.'); }).finally(() => { if (active) setIsLoading(false); });
+    questionApi.list({ status, submitted_for_review: currentTab === 'Pending' ? true : undefined }).then((items) => { if (active) setQuestions(items); }).catch((requestError) => { if (active) setError(requestError instanceof ApiClientError ? requestError.message : 'Không thể tải danh sách câu hỏi cần duyệt.'); }).finally(() => { if (active) setIsLoading(false); });
     return () => { active = false; };
   }, [currentTab]);
 
   const visibleQuestions = questions;
 
-  const updateStatus = async (id: string, status: 'approved' | 'rejected') => {
-    setUpdatingId(id);
+  const updateStatus = async (item: QuestionItem, status: 'approved' | 'rejected') => {
+    setUpdatingId(item.id);
     setError('');
     try {
-      await questionApi.updateStatus(id, status);
-      setQuestions((items) => items.filter((item) => item.id !== id));
+      const reason = status === 'rejected' ? window.prompt('Nhập lý do trả lại câu hỏi:')?.trim() : undefined;
+      if (status === 'rejected' && !reason) {
+        setUpdatingId(null);
+        return;
+      }
+      await questionApi.updateStatus(item.id, status, reason, item.version);
+      setQuestions((items) => items.filter((current) => current.id !== item.id));
     } catch (requestError) {
       setError(requestError instanceof ApiClientError ? requestError.message : 'Không thể cập nhật trạng thái câu hỏi.');
     } finally {
@@ -82,5 +89,5 @@ export default function QuestionReviewPage() {
     }
   };
 
-  return <div className="mx-auto max-w-7xl space-y-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Duyệt câu hỏi</h1><p className="mt-1 text-sm text-slate-500">Kiểm tra tính chính xác, cách diễn đạt và phần giải thích trước khi đưa câu hỏi vào sử dụng.</p></div><div className="inline-flex items-center gap-1 rounded-2xl border border-gray-200/80 bg-gray-200/60 p-1 text-xs font-semibold">{(['Tất cả', 'Pending', 'Approved', 'Rejected'] as TabFilter[]).map((tab) => <button key={tab} type="button" onClick={() => { setIsLoading(true); setCurrentTab(tab); }} className={`rounded-xl px-4 py-1.5 transition-all ${currentTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>{tab}</button>)}</div></div>{error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}{isLoading ? <p className="py-12 text-center text-sm text-slate-500">Đang tải câu hỏi...</p> : visibleQuestions.length ? <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">{visibleQuestions.map((item) => <QuestionCard key={item.id} item={item} isUpdating={updatingId === item.id} onApprove={() => updateStatus(item.id, 'approved')} onReject={() => updateStatus(item.id, 'rejected')} />)}</div> : <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-200/80 bg-white p-12 text-center shadow-sm"><Inbox className="mb-3 h-12 w-12 rounded-full bg-slate-100 p-3 text-slate-400" /><h3 className="text-base font-semibold text-slate-800">Không tìm thấy câu hỏi</h3><p className="mt-1 max-w-sm text-xs text-slate-500">There are currently no questions under the &quot;{currentTab}&quot; filter.</p></div>}</div>;
+  return <div className="mx-auto max-w-7xl space-y-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Duyệt câu hỏi</h1><p className="mt-1 text-sm text-slate-500">Kiểm tra tính chính xác, cách diễn đạt và phần giải thích trước khi đưa câu hỏi vào sử dụng.</p></div><div className="inline-flex items-center gap-1 rounded-2xl border border-gray-200/80 bg-gray-200/60 p-1 text-xs font-semibold">{(['Tất cả', 'Pending', 'Approved', 'Rejected'] as TabFilter[]).map((tab) => <button key={tab} type="button" onClick={() => { setIsLoading(true); setCurrentTab(tab); }} className={`rounded-xl px-4 py-1.5 transition-all ${currentTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>{tab}</button>)}</div></div>{error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}{isLoading ? <p className="py-12 text-center text-sm text-slate-500">Đang tải câu hỏi...</p> : visibleQuestions.length ? <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">{visibleQuestions.map((item) => <QuestionCard key={item.id} item={item} isUpdating={updatingId === item.id} onApprove={() => updateStatus(item, 'approved')} onReject={() => updateStatus(item, 'rejected')} />)}</div> : <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-200/80 bg-white p-12 text-center shadow-sm"><Inbox className="mb-3 h-12 w-12 rounded-full bg-slate-100 p-3 text-slate-400" /><h3 className="text-base font-semibold text-slate-800">Không tìm thấy câu hỏi</h3><p className="mt-1 max-w-sm text-xs text-slate-500">There are currently no questions under the &quot;{currentTab}&quot; filter.</p></div>}</div>;
 }

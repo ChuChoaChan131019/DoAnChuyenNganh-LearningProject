@@ -16,6 +16,7 @@ import type {
   ChapterOption,
   CourseOption,
   LessonOption,
+  QuestionHistoryItem,
   QuestionPayload,
 } from "../types/question";
 import type {
@@ -756,6 +757,7 @@ export const questionApi = {
       status?: import("../types/question").QuestionStatus;
       is_ai_generated?: boolean;
       is_deleted?: boolean;
+      submitted_for_review?: boolean;
     } = {},
   ): Promise<import("../types/question").QuestionItem[]> => {
     const params = new URLSearchParams();
@@ -771,6 +773,8 @@ export const questionApi = {
       params.set("is_ai_generated", String(filters.is_ai_generated));
     if (filters.is_deleted !== undefined)
       params.set("is_deleted", String(filters.is_deleted));
+    if (filters.submitted_for_review !== undefined)
+      params.set("submitted_for_review", String(filters.submitted_for_review));
     const query = params.toString();
     return request<import("../types/question").QuestionItem[]>(
       `/api/v1/questions${query ? `?${query}` : ""}`,
@@ -779,6 +783,7 @@ export const questionApi = {
   // The detail response includes nested relations not covered by QuestionItem.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getById: (id: string) => request<any>(`/api/v1/questions/${id}`),
+  getHistory: (id: string) => request<QuestionHistoryItem[]>(`/api/v1/questions/${id}/history`),
   listCourses: (): Promise<CourseOption[]> =>
     request<CourseOption[]>("/api/v1/courses"),
   listChapters: (courseId: string): Promise<ChapterOption[]> =>
@@ -789,16 +794,39 @@ export const questionApi = {
     request<LessonOption[]>(
       `/api/v1/courses/${encodeURIComponent(String(courseId))}/chapters/${encodeURIComponent(String(chapterId))}/lessons`,
     ),
+  generateAiQuestions: (
+    payload: import("../types/question").GenerateAiQuestionsRequest,
+  ) =>
+    request<{
+      questions: import("../types/question").AiGeneratedQuestion[];
+      warnings: Array<{ code: string; message: string; client_id?: string }>;
+      source: {
+        scope?: 'course' | 'chapter' | 'lesson'; course_id?: string; chapter_id?: string; lesson_id?: string; title: string;
+        lessons?: Array<{ lesson_id: string; chapter_id: string; title: string; chapter_title: string }>;
+      };
+    }>("/api/v1/ai/questions/generate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  saveAiDrafts: (payload: import("../types/question").SaveAiDraftRequest) =>
+    questionMutation(
+      request<{
+        saved: Array<{ client_id: string; id: string; status: string }>;
+      }>("/api/v1/questions/ai-drafts", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    ),
   create: (payload: QuestionPayload) =>
     questionMutation(
-      request<{ id: string }>("/api/v1/questions", {
+      request<{ id: string; status?: string; version?: number }>("/api/v1/questions", {
         method: "POST",
         body: JSON.stringify(payload),
       }),
     ),
   update: (id: string, payload: QuestionPayload) =>
     questionMutation(
-      request<{ id: string }>(`/api/v1/questions/${id}`, {
+      request<{ id: string; status?: string; version?: number }>(`/api/v1/questions/${id}`, {
         method: "PUT",
         body: JSON.stringify(payload),
       }),
@@ -806,23 +834,25 @@ export const questionApi = {
   updateStatus: (
     id: string,
     status: import("../types/question").QuestionStatus,
+    reason?: string,
+    expected_version?: number,
   ) =>
     questionMutation(
       request<{ id: string; status: string }>(
         `/api/v1/questions/${id}/status`,
         {
           method: "PATCH",
-          body: JSON.stringify({ status }),
+          body: JSON.stringify({ status, reason, expected_version }),
         },
       ),
     ),
-  submitForReview: (id: string) =>
+  submitForReview: (id: string, expected_version?: number) =>
     questionMutation(
-      request<{ id: string; review_pending: boolean }>(
+      request<{ id: string; version: number; status: import("../types/question").QuestionStatus; review_pending: boolean }>(
         `/api/v1/questions/${id}/submit-review`,
         {
           method: "POST",
-          body: JSON.stringify({}),
+          body: JSON.stringify({ expected_version }),
         },
       ),
     ),
