@@ -142,6 +142,8 @@ async function request<T>(
     if (response.status === 401 && typeof window !== "undefined") {
       if (
         !retried &&
+        code !== "ACCOUNT_DISABLED" &&
+        code !== "SESSION_REVOKED" &&
         token &&
         getStoredRefreshToken() &&
         endpoint !== "/api/v1/auth/login"
@@ -373,8 +375,13 @@ export const discussionApi = {
 };
 
 export const adminDiscussionReportsApi = {
-  list: (status: import('../types/admin-discussion-report').ReportFilter, offset = 0, limit = 20) => {
-    const params = new URLSearchParams({ status, offset: String(offset), limit: String(limit) });
+  restore: (id: string, reason: string) => request<unknown>(
+    `/api/v1/admin/discussion/reports/${encodeURIComponent(id)}/restore`, {
+      method: 'PATCH', body: JSON.stringify({ reason }),
+    },
+  ),
+  list: (status: import('../types/admin-discussion-report').ReportFilter, offset = 0, limit = 20, targetType: import('../types/admin-discussion-report').ReportTargetFilter = 'all') => {
+    const params = new URLSearchParams({ status, offset: String(offset), limit: String(limit), target_type: targetType });
     return request<import('../types/admin-discussion-report').AdminDiscussionReportPage>(
       `/api/v1/admin/discussion/reports?${params.toString()}`,
     );
@@ -384,6 +391,29 @@ export const adminDiscussionReportsApi = {
       method: 'PATCH',
       body: JSON.stringify({ decision, reason }),
     }),
+};
+
+export const discussionNotificationsApi = {
+  list: (offset = 0) => request<import('../types/discussion-notification').DiscussionNotificationPage>(
+    `/api/v1/discussion/notifications?offset=${offset}`,
+  ),
+  read: (id: string) => request<{ id: string; read_at: string }>(
+    `/api/v1/discussion/notifications/${encodeURIComponent(id)}/read`, { method: 'PATCH' },
+  ),
+};
+
+export const adminAccountsApi = {
+  list: (filters: { search: string; role: string; status: string; offset: number }) => {
+    const params = new URLSearchParams({ search: filters.search, role: filters.role, status: filters.status, offset: String(filters.offset), limit: '20' });
+    return request<import('../types/admin-account').AdminAccountPage>(`/api/v1/admin/accounts?${params}`);
+  },
+  detail: (id: string) => request<import('../types/admin-account').AdminAccount>(`/api/v1/admin/accounts/${encodeURIComponent(id)}`),
+  create: (input: import('../types/admin-account').AccountInput & { password: string }) =>
+    request<{ id: string }>('/api/v1/admin/accounts', { method: 'POST', body: JSON.stringify(input) }),
+  update: (id: string, input: import('../types/admin-account').AccountInput) =>
+    request<{ id: string }>(`/api/v1/admin/accounts/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  status: (id: string, status: import('../types/admin-account').AccountStatus) =>
+    request<{ id: string }>(`/api/v1/admin/accounts/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 };
 
 export const aiManagerApi = {

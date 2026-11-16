@@ -22,3 +22,10 @@ export class ResolveDiscussionReportDto {
   @MaxLength(1000)
   reason!: string;
 }
+
+export class RestoreDiscussionReportDto {
+  @IsString()
+  @MinLength(10)
+  @MaxLength(1000)
+  reason!: string;
+}

@@ -57,7 +57,7 @@ Các vị trí mã nguồn chính: [AppModule](../backend/src/app.module.ts), [c
 | FR-01 | Người dùng | Đăng ký bằng vai trò được phép; đăng nhập, đăng xuất và xem hồ sơ của mình. | Có |
 | FR-02 | Hệ thống | Điều hướng và kiểm tra quyền truy cập theo vai trò ở giao diện **và** API; trả lỗi khi truy cập sai quyền. | Có |
 | FR-03 | Hệ thống | Gắn mọi kết quả học tập với đúng tài khoản; người khác không đọc hoặc sửa được tiến độ cá nhân. | Một phần |
-| FR-44 | Quản trị viên | Xem, tìm kiếm, tạo, cập nhật, vô hiệu hóa hoặc khôi phục tài khoản; gán vai trò được phép và kiểm tra quyền ở API cho mọi thao tác quản trị. | Cần làm |
+| FR-44 | Quản trị viên | Xem/tìm tài khoản; chỉ tạo content manager; sửa họ tên/email; vô hiệu hóa/khôi phục. Không có chức năng đổi vai trò. Kiểm tra quyền ở API cho mọi thao tác quản trị. | Đã triển khai API và giao diện; xem tài liệu FR-44 |
 
 Các mã `FR-34`–`FR-39` không còn thuộc phạm vi phiên bản này. Giữ nguyên `FR-40`–`FR-44` để không đổi tham chiếu hiện có; chức năng Thảo luận dùng `FR-45`–`FR-51` (thay vì `FR-43`–`FR-49` trong bản đề xuất, vì `FR-43` và `FR-44` đã được sử dụng).
 
@@ -67,7 +67,7 @@ Các mã `FR-34`–`FR-39` không còn thuộc phạm vi phiên bản này. Gi�
 | --- | --- | --- | --- |
 | FR-04 | Người biên soạn | Tạo, tìm, sửa và xóa khóa học; đặt mức độ và trạng thái hiển thị. | Một phần |
 | FR-05 | Người biên soạn | Tạo, sửa, xóa, sắp xếp chương và bài học trong khóa học. | Có |
-| FR-06 | Người biên soạn | Soạn mục tiêu, nội dung, ví dụ C# và tài liệu minh họa cho bài học; lưu nháp. | Một phần |
+| FR-06 | Người biên soạn | Soạn mục tiêu, nội dung, ví dụ C# và tài liệu minh họa cho bài học; lưu nháp. | Một phần; luồng tệp đính kèm đã có |
 | FR-07 | Người biên soạn | Xem trước bài học theo cách học sinh sẽ thấy trước khi xuất bản. | Một phần |
 | FR-08 | Học sinh | Tìm khóa học/bài học; mở nội dung đã xuất bản và chuyển giữa các bài trong chương. | Một phần |
 | FR-09 | Hệ thống | Không trả nội dung nháp, chờ duyệt hoặc đã thu hồi qua API dành cho học sinh. | Một phần |
@@ -156,7 +156,7 @@ Học sinh trao đổi ngay tại chương hoặc bài học đang học. Bài �
 10. Học sinh chỉ được sửa hoặc xóa bài đăng và bình luận của mình. Quản trị viên có thể ẩn hoặc gỡ nội dung vi phạm; nội dung đã ẩn/gỡ không hiển thị với học sinh.
 11. Đánh dấu hữu ích giúp sắp xếp nội dung, không xác nhận kiến thức trong bài đăng là chính xác. Báo cáo phải có lý do và được lưu để quản trị viên xử lý.
 12. Nếu không có môi trường chạy C# an toàn, nút Chạy/Nộp phải báo rõ chức năng chưa khả dụng; không trả kết quả mô phỏng như thể code đã thực thi.
-13. Chỉ quản trị viên được quản lý tài khoản và thay đổi vai trò của người khác qua API quản trị. Đăng ký công khai không được tự cấp vai trò `admin`.
+13. Chỉ admin được quản lý tài khoản qua API quản trị và chỉ tạo content manager. Đăng ký công khai tạo learner. Không có API đổi vai trò; không cho tự vô hiệu hóa hoặc khóa admin hoạt động cuối cùng.
 14. Vô hiệu hóa tài khoản phải ngăn truy cập theo quy tắc xác thực được chọn nhưng không xóa tiến độ học tập và lịch sử nội dung gắn với tài khoản; chỉ quản trị viên được khôi phục tài khoản.
 
 ## 7. Yêu cầu an toàn và chất lượng
@@ -178,7 +178,7 @@ Học sinh trao đổi ngay tại chương hoặc bài học đang học. Bài �
 | AC-04 | Học sinh nhập mã sai, chạy thử, sửa mã, mở gợi ý, rời trang rồi quay lại và nộp bài đạt. | Phân biệt lỗi biên dịch/sai kết quả/hết thời gian; giữ mã, số lần chạy, mức gợi ý; chỉ nộp đạt mới đánh dấu hoàn thành. |
 | AC-05 | Học sinh mở một bài học đã xuất bản, đăng câu hỏi/ghi chú, bình luận, sửa nội dung của mình, đánh dấu hữu ích và báo cáo nội dung không phù hợp; quản trị viên xử lý báo cáo. | Bài đăng chỉ xuất hiện tại chương/bài học liên quan; học sinh không sửa được nội dung người khác; đánh dấu hữu ích không bị tính lặp; nội dung bị ẩn/gỡ biến mất khỏi giao diện học sinh và có lưu quyết định xử lý. |
 | AC-06 | Học sinh hỏi AI Tutor về một bài C# đã học. | Có phản hồi, lịch sử riêng và liên kết bài học khi tìm thấy nội dung phù hợp; không khẳng định có nguồn khi không tìm thấy. |
-| AC-07 | Quản trị viên tìm tài khoản, tạo hoặc cập nhật tài khoản, đổi vai trò, vô hiệu hóa rồi khôi phục tài khoản. | Chỉ `admin` gọi được API quản trị; vai trò mới có hiệu lực theo quy tắc xác thực; tài khoản bị vô hiệu hóa không truy cập được nhưng dữ liệu học tập vẫn còn sau khi khôi phục. |
+| AC-07 | Admin tìm tài khoản, tạo content manager, cập nhật họ tên/email, vô hiệu hóa rồi khôi phục tài khoản. | Chỉ `admin` gọi được API quản trị; không thể gửi thêm role để tạo admin/học viên hoặc đổi vai trò; tài khoản bị vô hiệu hóa không truy cập được, khôi phục cần đăng nhập mới và dữ liệu học tập vẫn còn. |
 | AC-08 | Học sinh học một bài, làm quiz và lưu một bài code rồi mở lại trang tiến độ. | Tiến độ tổng hợp từ kết quả thật của đúng học sinh; chọn “Tiếp tục học” mở đúng bài và khôi phục mã đã lưu, không dùng số liệu mẫu. |
 
 ## 9. Dữ liệu cần bổ sung khi triển khai
@@ -200,6 +200,6 @@ Học sinh trao đổi ngay tại chương hoặc bài học đang học. Bài �
 3. Quy tắc cho phép mở lời giải khi học sinh không giải được bài và cách ghi nhận bài đã xem lời giải.
 4. Loại tài liệu học sinh được chia sẻ (đường dẫn, tệp hoặc cả hai), giới hạn dung lượng/định dạng và quy tắc kiểm duyệt nội dung thảo luận.
 5. Cách xử lý bài thực hành và bài đăng thảo luận đã có dữ liệu khi chương/bài học liên kết bị thu hồi hoặc xóa.
-6. Cách tạo tài khoản quản trị viên ban đầu; ai được đổi vai trò; quy tắc vô hiệu hóa đối với phiên đăng nhập đang hoạt động và cách ghi nhận thao tác quản trị.
+6. Tài khoản admin ban đầu được cấp riêng ngoài giao diện. FR-44 chỉ tạo content manager, không đổi vai trò; quy tắc vô hiệu hóa phiên và audit được ghi trong [tài liệu FR-44](fr44-quan-ly-tai-khoan-api.md).
 
 Chỉ chuyển mục từ “Cần làm” sang “Có” sau khi đã có API, giao diện, dữ liệu bền vững và kiểm thử luồng tương ứng.

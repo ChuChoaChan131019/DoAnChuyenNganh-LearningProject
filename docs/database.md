@@ -58,6 +58,8 @@ Backend xác định quyền `learner`, `content_manager`, `admin` qua bảng n�
 | `created_at` | `timestamptz` | Có | Thời điểm tạo hồ sơ. |
 | `updated_at` | `timestamptz` | Có | Thời điểm cập nhật hồ sơ gần nhất. |
 
+Migration FR-44 `20261116132831_admin_accounts.sql` bổ sung `email` (text), `full_name` (text), `disabled_at` và `revoked_before` (timestamptz). Email/tên/trạng thái được đồng bộ từ Auth qua trigger trì hoãn đến cuối giao dịch. `disabled_at` độc lập với khóa đăng nhập tạm `locked_until`; `revoked_before` chặn JWT cũ sau khi khôi phục. Client chỉ được đọc hồ sơ theo RLS, không tự sửa vai trò hoặc trạng thái. Bảng `account_admin_events` lưu audit tạo/sửa/vô hiệu hóa/khôi phục, chỉ backend đọc được. Xem [API và quy tắc FR-44](fr44-quan-ly-tai-khoan-api.md).
+
 ## 2. Khóa học và bài học
 
 ### `courses` — Khóa học
@@ -112,7 +114,7 @@ Nội dung học cụ thể trong một chương; có thể chứa ví dụ code
 
 ### `materials` — Tài liệu đính kèm
 
-Lưu siêu dữ liệu của tệp/tài nguyên gắn với bài học. Chưa thấy backend hiện tại truy cập trực tiếp bảng này; `file_url` là đường dẫn tài nguyên, không phải nội dung tệp.
+Lưu siêu dữ liệu của tệp đính kèm gắn với bài học. Nội dung tệp nằm trong Supabase Storage bucket riêng tư `lesson-materials`; `file_url` là đường dẫn Storage, không phải URL công khai hoặc nội dung tệp. Backend cấp URL có chữ ký trong 5 phút sau khi kiểm tra quyền và trạng thái xuất bản.
 
 | Trường | Kiểu | Bắt buộc | Chức năng |
 | --- | --- | --- | --- |
@@ -123,6 +125,8 @@ Lưu siêu dữ liệu của tệp/tài nguyên gắn với bài học. Chưa th
 | `file_size` | `bigint` | Không | Kích thước tệp, đơn vị byte nếu có lưu. |
 | `created_at` | `timestamptz` | Không | Thời điểm thêm tài liệu. |
 | `lesson_id` | `uuid`, FK → `lessons.id` | Có | Bài học sở hữu tài liệu. |
+
+Tệp mới chỉ nhận PDF, PNG, JPG/JPEG, WebP, C# và ZIP, tối đa 6 MiB. Backend kiểm tra phần mở rộng, MIME và chữ ký/định dạng tệp trước khi lưu. Người biên soạn chỉ thêm, đổi tên hoặc xóa khi bài học còn nháp; học viên chỉ xem/tải tài liệu của bài học và khóa học đã xuất bản.
 
 ## 3. Câu hỏi và nội dung AI
 

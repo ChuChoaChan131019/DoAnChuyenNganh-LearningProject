@@ -6,6 +6,8 @@
 
 **Cập nhật phân công 16/11/2026:** `FR-44` (dòng 10 của tab “phân công các chức năng lần 2”) chuyển từ Linh sang Trang. Mốc 15/11 trong tài liệu này là lịch đề xuất cũ đã qua, không phải deadline mới; nhóm cần đặt lại hạn trước khi dùng để theo dõi.
 
+**Phạm vi FR-44 hiện tại:** chỉ tạo content manager, sửa thông tin và vô hiệu hóa/khôi phục; không đổi vai trò. Các dòng “gán vai trò” bên dưới thuộc đề xuất lịch sử. Xem [phạm vi đã triển khai](fr44-quan-ly-tai-khoan-api.md) trước khi cập nhật bảng tính.
+
 ## 1. Tab “phân công chức năng mới”
 
 Giữ `C01` ở dòng 2 như hiện tại: sheet đã ghi hoàn thành ngày 25/10 và deadline 26/10. Cập nhật cột `G` cho các dòng sau. Đổi tên `H1` từ **Phụ thuộc** thành **Cần xong trước khi nghiệm thu**, rồi thêm `I1` là **Có thể bắt đầu khi**. Cột `I` cho biết phần nào được làm trước bằng hợp đồng API hoặc dữ liệu mẫu; chỉ nghiệm thu sau khi các việc ở cột `H` xong và đã nối dữ liệu thật.

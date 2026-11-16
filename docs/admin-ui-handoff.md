@@ -8,6 +8,6 @@ Khu vực `/admin` dùng layout riêng với hai mục: **Báo cáo thảo luậ
 
 ## Tài khoản — Trang
 
-`/admin/accounts` hiện là **bản thiết kế giao diện**. Các dòng tài khoản là dữ liệu mẫu, được ghi rõ trên trang. Tìm kiếm/lọc và mở form chỉ minh họa tương tác; nút lưu, vô hiệu hóa và khôi phục chưa hoạt động. Không dùng các dòng mẫu này làm dữ liệu thực tế hoặc gọi Supabase trực tiếp từ frontend.
+`/admin/accounts` đã nối dữ liệu thật: tìm tên/email, lọc vai trò/trạng thái, phân trang, xem thống kê, sửa họ tên/email và vô hiệu hóa/khôi phục tài khoản. Form tạo chỉ dành cho **content manager**, gồm họ tên, email và mật khẩu khởi tạo. Vai trò được backend xác định; không có chức năng đổi vai trò hoặc tạo admin/học viên từ trang này.
 
-Trang tiếp tục FR-44: thay nguồn mẫu bằng API admin để danh sách/tìm/lọc/phân trang phản ánh dữ liệu thật; nối form tạo/sửa, thay đổi vai trò, vô hiệu hóa/khôi phục và trạng thái lỗi/thành công. Chốt trước hợp đồng API, cách tạo tài khoản (mật khẩu hay lời mời), trường được phép sửa và quy tắc thay đổi vai trò. Các thao tác đặc quyền chỉ chạy ở backend; Trang kiểm thử phân quyền trước khi nghiệm thu.
+Xem [API và quy tắc FR-44](fr44-quan-ly-tai-khoan-api.md). Cần áp dụng migration FR-44 trước khi chạy phiên bản backend này. Đăng ký công khai vẫn tạo học viên; tài khoản admin ban đầu được cấp riêng ngoài giao diện quản lý tài khoản.

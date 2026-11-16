@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { UserMenu } from '@/components/auth/user-menu';
+import { NotificationBell } from './notification-bell';
 import {
   GraduationCap,
   LayoutGrid,
@@ -13,7 +14,6 @@ import {
   Bot,
   MessagesSquare,
   Search,
-  Bell,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -114,13 +114,7 @@ export function LearnerTopbar() {
 
           <div className="hidden sm:block h-4 w-px bg-slate-200" />
 
-          <button
-            type="button"
-            aria-label="Thông báo"
-            className="relative rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
-          >
-            <Bell className="h-4 w-4" />
-          </button>
+          <NotificationBell />
 
           <UserMenu />
         </div>

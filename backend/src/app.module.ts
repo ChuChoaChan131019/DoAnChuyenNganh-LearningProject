@@ -12,6 +12,7 @@ import { QuizzesModule } from './modules/quizzes/quizzes.module.js';
 import { CodeExercisesModule } from './modules/code-exercises/code-exercises.module.js';
 import { DiscussionModule } from './modules/discussion/discussion.module.js';
 import { StatisticsModule } from './modules/statistics/statistics.module.js';
+import { AdminAccountsModule } from './modules/admin-accounts/admin-accounts.module.js';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { StatisticsModule } from './modules/statistics/statistics.module.js';
     CodeExercisesModule,
     DiscussionModule,
     StatisticsModule,
+    AdminAccountsModule,
   ],
 
   controllers: [AppController],

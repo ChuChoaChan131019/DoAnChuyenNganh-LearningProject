@@ -11,7 +11,7 @@ Tài liệu này ghi **phạm vi Trang phụ trách**, không xác nhận chức
 - Quản lý giao diện nội dung và cây khóa học → chương → bài học; sắp xếp, tìm và mở nội dung cần chỉnh sửa.
 - Tạo, xem, sửa, xóa khóa học, chương và bài học trong phạm vi quyền người biên soạn. Cấu trúc hiện tại không còn Category.
 - Soạn nội dung lý thuyết, mục tiêu học tập và ví dụ C# cho bài học; kiểm tra cách bài hiển thị trước khi công bố theo quy trình nội dung.
-- Xử lý tài liệu minh họa hoặc tệp đính kèm cho bài học khi nhóm chốt loại tệp và cách lưu trữ. Hạng mục tải tệp được ghi trong bảng cũ nhưng chưa có luồng hoàn chỉnh được xác nhận.
+- Xử lý tài liệu minh họa hoặc tệp đính kèm cho bài học. Đã hỗ trợ PDF, PNG, JPG/JPEG, WebP, C# và ZIP tối đa 6 MiB; tệp nằm trong Supabase Storage riêng tư và học viên chỉ mở/tải bằng URL có chữ ký sau khi API kiểm tra bài học đã xuất bản.
 
 ### 1.2. AI hỗ trợ biên soạn và kiểm tra nội dung
 
@@ -21,19 +21,7 @@ Tài liệu này ghi **phạm vi Trang phụ trách**, không xác nhận chức
 
 ## 2. Chức năng mới đã chốt
 
-### 2.1. Dịch vụ chạy và chấm C# an toàn
-
-Trang phụ trách phần chạy mã và trả kết quả cho [Phòng thực hành C#](chi-tiet-phong-thuc-hanh-csharp.md). Phần này phục vụ xem trước của người biên soạn, chạy thử và nộp bài của học sinh.
-
-- Nhận mã C# cùng dữ liệu đầu vào dạng văn bản; giữ nguyên chuỗi, dấu cách và nhiều dòng theo định dạng của từng bài.
-- Biên dịch, chạy chương trình trong môi trường cách ly và giới hạn thời gian, bộ nhớ, CPU, số tiến trình, kích thước đầu vào/đầu ra và tần suất yêu cầu.
-- Chạy từng bộ kiểm tra của đúng bài thực hành, so đầu ra thực tế với kết quả mong đợi và trả trạng thái đạt, sai kết quả, lỗi biên dịch, lỗi khi chạy hoặc hết thời gian.
-- Bảo vệ bộ kiểm tra ẩn: kết quả gửi cho học sinh không được làm lộ đầu vào hoặc đáp án của bộ ẩn.
-- Trả lỗi rõ ràng khi môi trường chạy không khả dụng; không tạo kết quả mô phỏng như thể mã đã chạy.
-
-Khoa cung cấp cấu trúc bài và bộ kiểm tra; Linh dùng kết quả chạy/chấm ở giao diện học sinh và lưu lần nộp, tiến độ. Dịch vụ chạy/chấm chính thức cần được triển khai và nghiệm thu theo tài liệu chức năng.
-
-### 2.2. Báo cáo và kiểm duyệt thảo luận (`FR-50`–`FR-51`)
+### 2.1. Báo cáo và kiểm duyệt thảo luận (`FR-50`–`FR-51`)
 
 Trang phụ trách luồng báo cáo và xử lý nội dung trong [Thảo luận và chia sẻ nội dung học tập](chi-tiet-thao-luan-chia-se-noi-dung.md).
 
@@ -44,10 +32,10 @@ Trang phụ trách luồng báo cáo và xử lý nội dung trong [Thảo luậ
 
 Khoa phụ trách dữ liệu bài đăng và lượt hữu ích; Linh phụ trách danh sách thảo luận và bình luận. Ba phần phải dùng chung quy ước về ID nội dung và trạng thái ẩn/gỡ.
 
-### 2.3. Kiểm tra nội dung và lịch sử duyệt AI (`FR-12`–`FR-14`)
+### 2.2. Kiểm tra nội dung và lịch sử duyệt AI (`FR-12`–`FR-14`)
 
 Trang chịu trách nhiệm phần backend còn thiếu của quy trình AI biên tập: kiểm tra nội dung bài học AI trước khi gửi duyệt; lưu bản nháp, phiên bản, người sửa và thời điểm sửa; cho người biên soạn nhận xét, chấp thuận hoặc trả lại. Kết quả kiểm tra là cảnh báo để người biên soạn quyết định, không tự xuất bản nội dung AI. Linh cung cấp kiểm tra riêng cho câu hỏi AI và phối hợp dùng chung trạng thái duyệt.
 
-### 2.4. Quản lý tài khoản và khu vực admin (`FR-44`)
+### 2.3. Quản lý tài khoản và khu vực admin (`FR-44`)
 
-Trang phụ trách toàn bộ giao diện và chức năng trong khu vực `/admin`, gồm trang báo cáo thảo luận ở mục 2.2 và quản lý tài khoản. Với `FR-44`, Trang làm API và giao diện để quản trị viên xem/tìm tài khoản, tạo, cập nhật, vô hiệu hóa/khôi phục và gán vai trò được phép. API phải kiểm tra quyền `admin`; thao tác đặc quyền chạy ở backend, không đưa khóa quản trị lên trình duyệt. Trang kiểm thử phân quyền và luồng thực tế trước khi nghiệm thu. Xem [trạng thái giao diện admin](admin-ui-handoff.md) để phân biệt phần đã nối API với phần còn dùng dữ liệu mẫu.
+Trang phụ trách toàn bộ giao diện và chức năng trong khu vực `/admin`, gồm trang báo cáo thảo luận ở mục 2.1 và quản lý tài khoản. Với `FR-44`, Trang làm API và giao diện để admin xem/tìm, sửa thông tin, vô hiệu hóa/khôi phục tài khoản và chỉ tạo content manager; không có chức năng đổi vai trò. API kiểm tra quyền `admin`; thao tác đặc quyền chạy ở backend, không đưa khóa quản trị lên trình duyệt. Trang kiểm thử phân quyền và luồng thực tế trước khi nghiệm thu. Xem [trạng thái giao diện admin](admin-ui-handoff.md).
