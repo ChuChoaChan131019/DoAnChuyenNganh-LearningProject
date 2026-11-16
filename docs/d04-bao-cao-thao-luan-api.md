@@ -14,6 +14,6 @@ Migration: `database/migrations/20261116090000_discussion_reports.sql`. Cần c�
 
 RPC `resolve_discussion_report` thực hiện thay đổi trạng thái nội dung và kết thúc các báo cáo đang chờ của cùng nội dung trong một giao dịch. `dismissed` chỉ đóng báo cáo đang xét. Bài/bình luận `hidden` hoặc `removed` không còn hiện trong API học viên và không thể được tương tác tiếp. RPC chỉ cấp quyền thực thi cho `service_role`; API kiểm tra role admin trước khi gọi.
 
-Chưa có trang `/admin/discussion-reports`; phần này sẽ làm chung với nhóm chức năng admin sau.
+Giao diện quản trị ở `/admin/discussion-reports` dùng hai API admin trên để lọc, xem ngữ cảnh và xử lý báo cáo. Khu vực `/admin` chỉ dành cho vai trò `admin`; quyền thực thi vẫn được kiểm tra tại backend.
 
 Kiểm thử migration bằng `npm test -w backend -- src/modules/discussion/discussion-reports.database.spec.ts`.
