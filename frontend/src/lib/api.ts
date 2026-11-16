@@ -372,6 +372,20 @@ export const discussionApi = {
     ),
 };
 
+export const adminDiscussionReportsApi = {
+  list: (status: import('../types/admin-discussion-report').ReportFilter, offset = 0, limit = 20) => {
+    const params = new URLSearchParams({ status, offset: String(offset), limit: String(limit) });
+    return request<import('../types/admin-discussion-report').AdminDiscussionReportPage>(
+      `/api/v1/admin/discussion/reports?${params.toString()}`,
+    );
+  },
+  resolve: (id: string, decision: import('../types/admin-discussion-report').ReportDecision, reason: string) =>
+    request<unknown>(`/api/v1/admin/discussion/reports/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ decision, reason }),
+    }),
+};
+
 export const aiManagerApi = {
   generateLesson: (payload: {
     course_id: string; chapter_id: string; title: string; topic: string;

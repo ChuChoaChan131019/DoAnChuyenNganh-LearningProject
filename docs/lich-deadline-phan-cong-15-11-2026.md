@@ -4,6 +4,8 @@
 **Mốc nhóm chọn:** hoàn thành hai chức năng mới và kiểm thử trước hoặc trong ngày **15/11/2026**.
 **Trạng thái:** lịch đề xuất để nhập vào Google Sheet; các ô trong bảng tính trực tuyến **chưa được sửa** vì phiên làm việc chưa có kết nối ghi Google Sheets. Không đánh dấu thêm công việc nào là đã hoàn thành.
 
+**Cập nhật phân công 16/11/2026:** `FR-44` (dòng 10 của tab “phân công các chức năng lần 2”) chuyển từ Linh sang Trang. Mốc 15/11 trong tài liệu này là lịch đề xuất cũ đã qua, không phải deadline mới; nhóm cần đặt lại hạn trước khi dùng để theo dõi.
+
 ## 1. Tab “phân công chức năng mới”
 
 Giữ `C01` ở dòng 2 như hiện tại: sheet đã ghi hoàn thành ngày 25/10 và deadline 26/10. Cập nhật cột `G` cho các dòng sau. Đổi tên `H1` từ **Phụ thuộc** thành **Cần xong trước khi nghiệm thu**, rồi thêm `I1` là **Có thể bắt đầu khi**. Cột `I` cho biết phần nào được làm trước bằng hợp đồng API hoặc dữ liệu mẫu; chỉ nghiệm thu sau khi các việc ở cột `H` xong và đã nối dữ liệu thật.
@@ -70,7 +72,7 @@ Tab này đang có tiêu đề ở dòng 1 và tám việc cũ ở dòng 2–9. 
 
 | Dòng mới | Phụ trách (A) | Công việc còn lại (B) | Tiến độ (C) | Deadline đề xuất (D) |
 | --- | --- | --- | --- | --- |
-| 10 | Linh | Quản lý tài khoản quản trị viên: xem/tìm, tạo, cập nhật, vô hiệu hóa/khôi phục và gán vai trò; API kiểm tra quyền admin. Trang rà soát phân quyền. | 0% | 15/11/2026 |
+| 10 | Trang | Quản lý tài khoản quản trị viên: xem/tìm, tạo, cập nhật, vô hiệu hóa/khôi phục và gán vai trò; API kiểm tra quyền admin. Trang chịu trách nhiệm toàn luồng và nghiệm thu phân quyền. | 0% | 15/11/2026 |
 | 11 | Khoa | Tổng hợp tiến độ bài học, quiz/luyện tập và bài code; cho học sinh mở lại bài học đang học dở. | 0% | 14/11/2026 |
 | 12 | Trang | Kiểm tra nội dung bài học AI; bổ sung backend lưu nháp, lịch sử phiên bản, nhận xét, chấp thuận/trả lại cho luồng duyệt. | 0% | 10/11/2026 |
 | 13 | Linh | Kiểm tra câu hỏi AI thiếu đáp án, gần trùng hoặc không khớp bài học; trả cảnh báo để biên soạn viên sửa. | 0% | 08/11/2026 |
@@ -78,7 +80,7 @@ Tab này đang có tiêu đề ở dòng 1 và tám việc cũ ở dòng 2–9. 
 Chọn ô `A10` trong tab này rồi dán nguyên khối dưới đây; các cột được ngăn bằng tab:
 
 ```text
-Linh	Quản lý tài khoản quản trị viên: xem/tìm, tạo, cập nhật, vô hiệu hóa/khôi phục và gán vai trò; API kiểm tra quyền admin. Trang rà soát phân quyền.	0%	15/11/2026
+Trang	Quản lý tài khoản quản trị viên: xem/tìm, tạo, cập nhật, vô hiệu hóa/khôi phục và gán vai trò; API kiểm tra quyền admin. Trang chịu trách nhiệm toàn luồng và nghiệm thu phân quyền.	0%	15/11/2026
 Khoa	Tổng hợp tiến độ bài học, quiz/luyện tập và bài code; cho học sinh mở lại bài học đang học dở.	0%	14/11/2026
 Trang	Kiểm tra nội dung bài học AI; bổ sung backend lưu nháp, lịch sử phiên bản, nhận xét, chấp thuận/trả lại cho luồng duyệt.	0%	10/11/2026
 Linh	Kiểm tra câu hỏi AI thiếu đáp án, gần trùng hoặc không khớp bài học; trả cảnh báo để biên soạn viên sửa.	0%	08/11/2026
@@ -97,7 +99,7 @@ Thêm cột `E` với tiêu đề **Thứ tự của người phụ trách**. Đ
 | 5 | Trang | 5 | Phê duyệt và xuất bản sau khi đã kiểm tra. |
 | 6 | Linh | 1 | Nút AI tạo câu luyện tập. |
 | 13 | Linh | 2 | Kiểm tra câu hỏi AI. |
-| 10 | Linh | 3 | Quản lý tài khoản quản trị viên. |
+| 10 | Trang | 6 | Quản lý tài khoản quản trị viên. |
 | 7 | Khoa | 1 | Thống kê dashboard người biên soạn. |
 | 8 | Khoa | 2 | Bong bóng AI Tutor. |
 | 9 | Khoa | 3 | AI Tutor bám bài học. |
@@ -115,7 +117,7 @@ Linh 1
 Khoa 1
 Khoa 2
 Khoa 3
-Linh 3
+Trang 6
 Khoa 4
 Trang 4
 Linh 2

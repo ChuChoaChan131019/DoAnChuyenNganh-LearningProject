@@ -4,6 +4,8 @@
 
 **Cách đọc:** Các mức `100%` và `0%` ở mục 2 được chép theo bảng tính cũ, phản ánh tiến độ nhóm đã đánh dấu vào tháng 8–9/2026. Chúng **không phải kết quả kiểm thử hoặc nghiệm thu mã hiện tại**. Mục 3 ghi **người chịu trách nhiệm đã chốt**, không có nghĩa chức năng đã làm xong; hạn mới và tiến độ triển khai cần được cập nhật riêng.
 
+**Cập nhật 16/11/2026:** Trang phụ trách toàn bộ chức năng trong khu vực quản trị (`admin`), gồm giao diện chung, báo cáo/kiểm duyệt thảo luận (`FR-50`–`FR-51`) và quản lý tài khoản (`FR-44`). Linh không còn phụ trách chức năng quản trị tài khoản. Phân công giao diện thảo luận phía học sinh và các việc khác của Linh giữ như mục 3.
+
 **Tài liệu từng thành viên:** [Trang](phan-cong-trang.md) · [Linh](phan-cong-linh.md) · [Khoa](phan-cong-khoa.md).
 
 **Lịch đề xuất theo mốc 15/11/2026:** [Deadline các việc mới và việc cũ chưa hoàn thành](lich-deadline-phan-cong-15-11-2026.md). Lịch này chưa được ghi vào Google Sheet trực tuyến.
@@ -71,7 +73,7 @@ Các phần việc dưới đây là trách nhiệm triển khai **toàn luồng
 
 | Hạng mục | Người phụ trách chính | Phạm vi cần làm |
 | --- | --- | --- |
-| Quản lý tài khoản quản trị viên (`FR-44`) | **Linh** | Giao diện và API cho quản trị viên xem/tìm, tạo, sửa, vô hiệu hóa/khôi phục tài khoản và gán vai trò. Trang phối hợp rà soát kiểm tra quyền ở API. |
+| Quản lý tài khoản quản trị viên (`FR-44`) | **Trang** | Giao diện và API cho quản trị viên xem/tìm, tạo, sửa, vô hiệu hóa/khôi phục tài khoản và gán vai trò; kiểm tra quyền `admin` ở API. Trang chịu trách nhiệm toàn luồng, gồm nghiệm thu và bảo vệ thao tác đặc quyền ở backend. |
 | Tiến độ tổng hợp và tiếp tục học (`FR-42`–`FR-43`) | **Khoa** | Tổng hợp bài học, quiz/luyện tập và bài code; cho học sinh mở lại bài học đang dở. Linh cung cấp dữ liệu quiz/bài code; Trang cung cấp dữ liệu bài học. Linh vẫn phụ trách mở lại mã bài code ở `C06`/`C07`. |
 | Kiểm tra nội dung và lịch sử duyệt AI (`FR-12`–`FR-14`) | **Trang** | Kiểm tra nội dung bài học AI; hoàn thiện backend lưu nháp, phiên bản/lịch sử sửa, nhận xét, chấp thuận/trả lại cho quy trình duyệt và xuất bản đã giao. |
 | Kiểm tra câu hỏi AI (`FR-12`) | **Linh** | Phát hiện câu thiếu đáp án, gần trùng hoặc không phù hợp với bài học được chọn; trả cảnh báo để người biên soạn xử lý trước khi gửi duyệt. Phối hợp với Trang để dùng chung trạng thái duyệt. |

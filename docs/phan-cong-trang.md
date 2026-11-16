@@ -1,6 +1,6 @@
 # Chức năng phụ trách — Trần Thị Phương Trang
 
-**Nguồn:** [phân công chung](phan-cong-cong-viec.md) và [đặc tả chức năng](dac-ta-chuc-nang-phan-he-noi-dung.md). Phần việc mới được chốt ngày 22/10/2026.
+**Nguồn:** [phân công chung](phan-cong-cong-viec.md) và [đặc tả chức năng](dac-ta-chuc-nang-phan-he-noi-dung.md). Phần việc mới được chốt ngày 22/10/2026; toàn bộ chức năng admin được chuyển cho Trang ngày 16/11/2026.
 
 Tài liệu này ghi **phạm vi Trang phụ trách**, không xác nhận chức năng đã hoàn thành. Phần ở mục 1 lấy từ phân công cũ; phần ở mục 2 là các việc mới đã chốt. Tiến độ hiện tại cần được cập nhật riêng trong phân công chung và PR.
 
@@ -48,4 +48,6 @@ Khoa phụ trách dữ liệu bài đăng và lượt hữu ích; Linh phụ tr�
 
 Trang chịu trách nhiệm phần backend còn thiếu của quy trình AI biên tập: kiểm tra nội dung bài học AI trước khi gửi duyệt; lưu bản nháp, phiên bản, người sửa và thời điểm sửa; cho người biên soạn nhận xét, chấp thuận hoặc trả lại. Kết quả kiểm tra là cảnh báo để người biên soạn quyết định, không tự xuất bản nội dung AI. Linh cung cấp kiểm tra riêng cho câu hỏi AI và phối hợp dùng chung trạng thái duyệt.
 
-Trang cũng phối hợp rà soát quyền `admin` trong API quản lý tài khoản do Linh phụ trách; đây không phải phần Trang tự làm toàn bộ giao diện và API tài khoản.
+### 2.4. Quản lý tài khoản và khu vực admin (`FR-44`)
+
+Trang phụ trách toàn bộ giao diện và chức năng trong khu vực `/admin`, gồm trang báo cáo thảo luận ở mục 2.2 và quản lý tài khoản. Với `FR-44`, Trang làm API và giao diện để quản trị viên xem/tìm tài khoản, tạo, cập nhật, vô hiệu hóa/khôi phục và gán vai trò được phép. API phải kiểm tra quyền `admin`; thao tác đặc quyền chạy ở backend, không đưa khóa quản trị lên trình duyệt. Trang kiểm thử phân quyền và luồng thực tế trước khi nghiệm thu. Xem [trạng thái giao diện admin](admin-ui-handoff.md) để phân biệt phần đã nối API với phần còn dùng dữ liệu mẫu.
