@@ -283,21 +283,33 @@ export const aiTutorApi = {
 };
 
 export const discussionApi = {
-  createReport: (payload: { target_type: 'post' | 'comment'; target_id: string; reason: string }) =>
-    request<{ id: string; status: 'pending'; created_at: string }>('/api/v1/discussion/reports', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+  createReport: (payload: {
+    target_type: "post" | "comment";
+    target_id: string;
+    reason: string;
+  }) =>
+    request<{ id: string; status: "pending"; created_at: string }>(
+      "/api/v1/discussion/reports",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
   createPost: (payload: CreateDiscussionPostInput) =>
     request<{ id: string }>("/api/v1/discussion/posts", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
   updatePost: (postId: string, payload: UpdateDiscussionPostInput) =>
-    request<Pick<DiscussionPostDetail, 'title' | 'content' | 'resource_url' | 'updated_at'>>(
-      `/api/v1/discussion/posts/${encodeURIComponent(postId)}`,
-      { method: "PATCH", body: JSON.stringify(payload) },
-    ),
+    request<
+      Pick<
+        DiscussionPostDetail,
+        "title" | "content" | "resource_url" | "updated_at"
+      >
+    >(`/api/v1/discussion/posts/${encodeURIComponent(postId)}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
   removePost: (postId: string) =>
     request<{ id: string; deleted: true; deleted_at: string }>(
       `/api/v1/discussion/posts/${encodeURIComponent(postId)}`,
@@ -376,62 +388,131 @@ export const discussionApi = {
 };
 
 export const adminDiscussionReportsApi = {
-  restore: (id: string, reason: string) => request<unknown>(
-    `/api/v1/admin/discussion/reports/${encodeURIComponent(id)}/restore`, {
-      method: 'PATCH', body: JSON.stringify({ reason }),
-    },
-  ),
-  list: (status: import('../types/admin-discussion-report').ReportFilter, offset = 0, limit = 20, targetType: import('../types/admin-discussion-report').ReportTargetFilter = 'all') => {
-    const params = new URLSearchParams({ status, offset: String(offset), limit: String(limit), target_type: targetType });
-    return request<import('../types/admin-discussion-report').AdminDiscussionReportPage>(
-      `/api/v1/admin/discussion/reports?${params.toString()}`,
-    );
+  restore: (id: string, reason: string) =>
+    request<unknown>(
+      `/api/v1/admin/discussion/reports/${encodeURIComponent(id)}/restore`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ reason }),
+      },
+    ),
+  list: (
+    status: import("../types/admin-discussion-report").ReportFilter,
+    offset = 0,
+    limit = 20,
+    targetType: import("../types/admin-discussion-report").ReportTargetFilter = "all",
+  ) => {
+    const params = new URLSearchParams({
+      status,
+      offset: String(offset),
+      limit: String(limit),
+      target_type: targetType,
+    });
+    return request<
+      import("../types/admin-discussion-report").AdminDiscussionReportPage
+    >(`/api/v1/admin/discussion/reports?${params.toString()}`);
   },
-  resolve: (id: string, decision: import('../types/admin-discussion-report').ReportDecision, reason: string) =>
-    request<unknown>(`/api/v1/admin/discussion/reports/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ decision, reason }),
-    }),
+  resolve: (
+    id: string,
+    decision: import("../types/admin-discussion-report").ReportDecision,
+    reason: string,
+  ) =>
+    request<unknown>(
+      `/api/v1/admin/discussion/reports/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ decision, reason }),
+      },
+    ),
 };
 
 export const discussionNotificationsApi = {
-  list: (offset = 0) => request<import('../types/discussion-notification').DiscussionNotificationPage>(
-    `/api/v1/discussion/notifications?offset=${offset}`,
-  ),
-  read: (id: string) => request<{ id: string; read_at: string }>(
-    `/api/v1/discussion/notifications/${encodeURIComponent(id)}/read`, { method: 'PATCH' },
-  ),
+  list: (offset = 0) =>
+    request<
+      import("../types/discussion-notification").DiscussionNotificationPage
+    >(`/api/v1/discussion/notifications?offset=${offset}`),
+  read: (id: string) =>
+    request<{ id: string; read_at: string }>(
+      `/api/v1/discussion/notifications/${encodeURIComponent(id)}/read`,
+      { method: "PATCH" },
+    ),
 };
 
 export const adminAccountsApi = {
-  list: (filters: { search: string; role: string; status: string; offset: number }) => {
-    const params = new URLSearchParams({ search: filters.search, role: filters.role, status: filters.status, offset: String(filters.offset), limit: '20' });
-    return request<import('../types/admin-account').AdminAccountPage>(`/api/v1/admin/accounts?${params}`);
+  list: (filters: {
+    search: string;
+    role: string;
+    status: string;
+    offset: number;
+  }) => {
+    const params = new URLSearchParams({
+      search: filters.search,
+      role: filters.role,
+      status: filters.status,
+      offset: String(filters.offset),
+      limit: "20",
+    });
+    return request<import("../types/admin-account").AdminAccountPage>(
+      `/api/v1/admin/accounts?${params}`,
+    );
   },
-  detail: (id: string) => request<import('../types/admin-account').AdminAccount>(`/api/v1/admin/accounts/${encodeURIComponent(id)}`),
-  create: (input: import('../types/admin-account').AccountInput & { password: string }) =>
-    request<{ id: string }>('/api/v1/admin/accounts', { method: 'POST', body: JSON.stringify(input) }),
-  update: (id: string, input: import('../types/admin-account').AccountInput) =>
-    request<{ id: string }>(`/api/v1/admin/accounts/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(input) }),
-  status: (id: string, status: import('../types/admin-account').AccountStatus) =>
-    request<{ id: string }>(`/api/v1/admin/accounts/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  detail: (id: string) =>
+    request<import("../types/admin-account").AdminAccount>(
+      `/api/v1/admin/accounts/${encodeURIComponent(id)}`,
+    ),
+  create: (
+    input: import("../types/admin-account").AccountInput & { password: string },
+  ) =>
+    request<{ id: string }>("/api/v1/admin/accounts", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: string, input: import("../types/admin-account").AccountInput) =>
+    request<{ id: string }>(
+      `/api/v1/admin/accounts/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: JSON.stringify(input) },
+    ),
+  status: (
+    id: string,
+    status: import("../types/admin-account").AccountStatus,
+  ) =>
+    request<{ id: string }>(
+      `/api/v1/admin/accounts/${encodeURIComponent(id)}/status`,
+      { method: "PATCH", body: JSON.stringify({ status }) },
+    ),
 };
 
 export const aiManagerApi = {
   generateLesson: (payload: {
-    course_id: string; chapter_id: string; title: string; topic: string;
-    level: 'basic' | 'intermediate' | 'advanced';
-    content_type: 'lesson' | 'exercise' | 'checklist';
-    word_count: number; instructions?: string;
-  }) => request<{
-    title: string; content: string; code_example: string;
-    estimated_duration_minutes: number; model: string;
-  }>('/api/v1/ai/content/generate', { method: 'POST', body: JSON.stringify(payload) }),
+    course_id: string;
+    chapter_id: string;
+    title: string;
+    topic: string;
+    level: "basic" | "intermediate" | "advanced";
+    content_type: "lesson" | "exercise" | "checklist";
+    word_count: number;
+    instructions?: string;
+  }) =>
+    request<{
+      title: string;
+      content: string;
+      code_example: string;
+      estimated_duration_minutes: number;
+      model: string;
+    }>("/api/v1/ai/content/generate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
 
 export type LessonValidationIssue = {
   code: string;
-  field: "title" | "content" | "code_example" | "estimated_duration_minutes" | "chapter";
+  field:
+    | "title"
+    | "content"
+    | "code_example"
+    | "estimated_duration_minutes"
+    | "chapter";
   message: string;
 };
 
@@ -616,10 +697,17 @@ export const courseApi = {
         body: JSON.stringify(payload),
       },
     ),
-  restoreLessonVersion: (lessonId: string, sourceVersion: number, currentVersion: number) =>
+  restoreLessonVersion: (
+    lessonId: string,
+    sourceVersion: number,
+    currentVersion: number,
+  ) =>
     request<{ version: number; status: string }>(
       `/api/v1/courses/lessons/${encodeURIComponent(lessonId)}/versions/${sourceVersion}/restore`,
-      { method: "POST", body: JSON.stringify({ current_version: currentVersion }) },
+      {
+        method: "POST",
+        body: JSON.stringify({ current_version: currentVersion }),
+      },
     ),
   removeLesson: (lessonId: string) =>
     request<{ id: string; message: string }>(
@@ -830,7 +918,8 @@ export const questionApi = {
   // The detail response includes nested relations not covered by QuestionItem.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getById: (id: string) => request<any>(`/api/v1/questions/${id}`),
-  getHistory: (id: string) => request<QuestionHistoryItem[]>(`/api/v1/questions/${id}/history`),
+  getHistory: (id: string) =>
+    request<QuestionHistoryItem[]>(`/api/v1/questions/${id}/history`),
   listCourses: (): Promise<CourseOption[]> =>
     request<CourseOption[]>("/api/v1/courses"),
   listChapters: (courseId: string): Promise<ChapterOption[]> =>
@@ -848,8 +937,17 @@ export const questionApi = {
       questions: import("../types/question").AiGeneratedQuestion[];
       warnings: Array<{ code: string; message: string; client_id?: string }>;
       source: {
-        scope?: 'course' | 'chapter' | 'lesson'; course_id?: string; chapter_id?: string; lesson_id?: string; title: string;
-        lessons?: Array<{ lesson_id: string; chapter_id: string; title: string; chapter_title: string }>;
+        scope?: "course" | "chapter" | "lesson";
+        course_id?: string;
+        chapter_id?: string;
+        lesson_id?: string;
+        title: string;
+        lessons?: Array<{
+          lesson_id: string;
+          chapter_id: string;
+          title: string;
+          chapter_title: string;
+        }>;
       };
     }>("/api/v1/ai/questions/generate", {
       method: "POST",
@@ -866,17 +964,23 @@ export const questionApi = {
     ),
   create: (payload: QuestionPayload) =>
     questionMutation(
-      request<{ id: string; status?: string; version?: number }>("/api/v1/questions", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
+      request<{ id: string; status?: string; version?: number }>(
+        "/api/v1/questions",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      ),
     ),
   update: (id: string, payload: QuestionPayload) =>
     questionMutation(
-      request<{ id: string; status?: string; version?: number }>(`/api/v1/questions/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      }),
+      request<{ id: string; status?: string; version?: number }>(
+        `/api/v1/questions/${id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        },
+      ),
     ),
   updateStatus: (
     id: string,
@@ -895,13 +999,15 @@ export const questionApi = {
     ),
   submitForReview: (id: string, expected_version?: number) =>
     questionMutation(
-      request<{ id: string; version: number; status: import("../types/question").QuestionStatus; review_pending: boolean }>(
-        `/api/v1/questions/${id}/submit-review`,
-        {
-          method: "POST",
-          body: JSON.stringify({ expected_version }),
-        },
-      ),
+      request<{
+        id: string;
+        version: number;
+        status: import("../types/question").QuestionStatus;
+        review_pending: boolean;
+      }>(`/api/v1/questions/${id}/submit-review`, {
+        method: "POST",
+        body: JSON.stringify({ expected_version }),
+      }),
     ),
   remove: (id: string) =>
     request<{ id: string; deleted: boolean }>(`/api/v1/questions/${id}`, {
@@ -1124,6 +1230,17 @@ export const codeExerciseApi = {
         body: JSON.stringify({
           code,
           expected_save_version: expectedSaveVersion,
+        }),
+      },
+    ),
+  runCode: (exerciseId: string, code: string, stdin: string) =>
+    request<import("../types/code-exercise").CsharpRunResponse>(
+      `/api/v1/learner/code-exercises/${encodeURIComponent(exerciseId)}/run`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          code,
+          stdin,
         }),
       },
     ),

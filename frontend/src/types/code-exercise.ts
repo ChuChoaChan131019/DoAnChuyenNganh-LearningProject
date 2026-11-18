@@ -1,5 +1,5 @@
-export type CodeDifficulty = 'easy' | 'medium' | 'hard';
-export type CodeProgressStatus = 'not_started' | 'in_progress' | 'completed';
+export type CodeDifficulty = "easy" | "medium" | "hard";
+export type CodeProgressStatus = "not_started" | "in_progress" | "completed";
 
 export type CodeExerciseLocation = {
   id: string;
@@ -71,4 +71,20 @@ export type SaveLearnerCodeResponse = {
   exercise_id: string;
   save_version: number;
   updated_at: string;
+};
+
+export type CsharpRunStatus =
+  | "success"
+  | "compile_error"
+  | "runtime_error"
+  | "time_limit"
+  | "resource_limit"
+  | "output_limit";
+
+export type CsharpRunResponse = {
+  status: CsharpRunStatus;
+  stdout: string;
+  stderr: string;
+  exit_code: number | null;
+  elapsed_ms: number;
 };
