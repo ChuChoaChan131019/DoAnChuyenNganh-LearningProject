@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Flag,
+  FileCheck2,
   Menu,
   PanelLeftClose,
   ShieldCheck,
@@ -16,6 +17,7 @@ import { UserMenu } from "@/components/auth/user-menu";
 const navigation = [
   { href: "/admin/discussion-reports", label: "Báo cáo thảo luận", icon: Flag },
   { href: "/admin/accounts", label: "Tài khoản", icon: Users },
+  { href: "/admin/content-review", label: "Duyệt nội dung", icon: FileCheck2 },
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {

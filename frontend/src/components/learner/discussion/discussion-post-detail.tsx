@@ -169,7 +169,7 @@ export function DiscussionPostDetail({
   }
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_16px_rgba(0,44,62,0.04)] sm:p-6">
+    <article className="discussion-scrollbar h-full min-h-0 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_16px_rgba(0,44,62,0.04)] sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <span className="inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-[#e4444d]">
@@ -275,7 +275,7 @@ export function DiscussionPostDetail({
           <CommentForm onSubmit={onCreateComment} />
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-3" aria-label="Danh sách bình luận">
           {comments.length === 0 ? (
             <p className="rounded-xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500">
               Chưa có bình luận. Hãy bắt đầu cuộc trao đổi.

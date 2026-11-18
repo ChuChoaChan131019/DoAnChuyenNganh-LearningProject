@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
@@ -12,6 +12,7 @@ import { ReorderChaptersDto } from './dto/reorder-chapters.dto.js';
 import { UpdateLessonDto } from './dto/update-lesson.dto.js';
 import { LessonReviewActionDto } from './dto/lesson-review-action.dto.js';
 import { ContainerReviewActionDto } from './dto/container-review-action.dto.js';
+import { RestoreLessonVersionDto, ValidateLessonDto } from './dto/validate-lesson.dto.js';
 
 @Controller('api/v1/courses')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -101,9 +102,42 @@ export class CoursesController {
     return this.coursesService.reviewHistory(lessonId);
   }
 
+  @Post('lessons/:lessonId/validate')
+  validateLesson(
+    @Param('lessonId') lessonId: string,
+    @Body() body: ValidateLessonDto,
+    @Req() request: any,
+  ) {
+    return this.coursesService.validateLesson(lessonId, request.user.id, body.version);
+  }
+
+  @Get('lessons/:lessonId/validations/latest')
+  latestLessonValidation(@Param('lessonId') lessonId: string) {
+    return this.coursesService.latestLessonValidation(lessonId);
+  }
+
   @Post('lessons/:lessonId/review-action')
   reviewAction(@Param('lessonId') lessonId: string, @Body() body: LessonReviewActionDto, @Req() request: any) {
     return this.coursesService.reviewAction(lessonId, request.user.id, body);
+  }
+
+  @Post('lessons/:lessonId/versions/:version/restore')
+  restoreLessonVersion(
+    @Param('lessonId') lessonId: string,
+    @Param('version') version: string,
+    @Body() body: RestoreLessonVersionDto,
+    @Req() request: any,
+  ) {
+    const sourceVersion = Number(version);
+    if (!Number.isInteger(sourceVersion) || sourceVersion < 1) {
+      throw new BadRequestException('Version must be a positive integer');
+    }
+    return this.coursesService.restoreLessonVersion(
+      lessonId,
+      request.user.id,
+      body.current_version,
+      sourceVersion,
+    );
   }
 
   @Patch(':courseId/chapters/:chapterId')

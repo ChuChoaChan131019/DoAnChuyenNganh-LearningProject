@@ -78,9 +78,9 @@ Các mã `FR-34`–`FR-39` không còn thuộc phạm vi phiên bản này. Gi�
 | --- | --- | --- | --- |
 | FR-10 | Người biên soạn | Chọn khóa học/bài học và yêu cầu AI tạo **bản nháp** nội dung hoặc câu hỏi theo mục tiêu học tập. | Cần làm; có giao diện mẫu |
 | FR-11 | Người biên soạn | Xem, sửa, lưu hoặc bỏ từng đề xuất do AI tạo; đề xuất không tự xuất bản. | Cần làm; có giao diện mẫu |
-| FR-12 | Hệ thống | Trước khi gửi duyệt, phát hiện trường bắt buộc bị thiếu, câu hỏi thiếu đáp án, câu gần trùng và câu không phù hợp với bài học được chọn; nêu rõ lý do để người biên soạn xử lý. | Cần làm |
-| FR-13 | Người biên soạn | Gửi nội dung để kiểm tra; người được phân công có thể sửa, nhận xét, chấp thuận hoặc trả lại. | Cần làm; có giao diện hàng chờ mẫu |
-| FR-14 | Hệ thống | Lưu phiên bản nội dung, người sửa, thời điểm, nhận xét và quyết định duyệt để tra cứu lịch sử. | Cần làm |
+| FR-12 | Hệ thống | Trước khi duyệt, phát hiện trường bắt buộc bị thiếu, nội dung nguy hiểm, nội dung gần trùng hoặc chưa phù hợp với chương; nêu rõ lỗi/cảnh báo để người biên soạn xử lý. Kiểm tra câu hỏi AI là phần riêng của Linh. | Có cho bài học; câu hỏi AI còn cần làm |
+| FR-13 | Người biên soạn | Chạy kiểm tra tự động, xử lý lỗi/cảnh báo, tự chấp thuận nội dung theo quyết định 18/11/2026. Không bắt buộc người khác duyệt. | Có cho bài học |
+| FR-14 | Hệ thống | Lưu phiên bản nội dung, người sửa, thời điểm, kết quả kiểm tra và quyết định duyệt để tra cứu hoặc khôi phục lịch sử. | Có cho bài học |
 | FR-15 | Người biên soạn | Xuất bản hoặc thu hồi nội dung sau khi đạt điều kiện kiểm tra; học sinh chỉ nhận bản đã xuất bản. | Một phần |
 
 ### 5.4. Câu hỏi và kiểm tra
@@ -195,7 +195,7 @@ Học sinh trao đổi ngay tại chương hoặc bài học đang học. Bài �
 
 ## 10. Quyết định cần chốt trước khi triển khai
 
-1. Ai trong nhóm `content_manager` được quyền duyệt và có cho phép tự duyệt nội dung mình tạo hay không?
+1. **Đã chốt 18/11/2026:** `content_manager` được tự kiểm tra và tự duyệt nội dung mình tạo; không bắt buộc người khác duyệt. Quy trình dùng `draft → approved → published`, xem [quy trình kiểm tra nội dung AI](quy-trinh-kiem-tra-noi-dung-ai.md).
 2. Bộ kiểm tra nào được công khai; so khớp đầu ra có bỏ qua khoảng trắng cuối dòng hay không; giới hạn thời gian/bộ nhớ của môi trường chạy C# là bao nhiêu?
 3. Quy tắc cho phép mở lời giải khi học sinh không giải được bài và cách ghi nhận bài đã xem lời giải.
 4. Loại tài liệu học sinh được chia sẻ (đường dẫn, tệp hoặc cả hai), giới hạn dung lượng/định dạng và quy tắc kiểm duyệt nội dung thảo luận.

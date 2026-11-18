@@ -12,8 +12,12 @@
     "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue.bold,magenta.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run start:dev",
     "dev:frontend": "cd frontend && npm run dev",
-    "install:all": "npm install"
-
+    "install:all": "npm install",
+    "data:validate:csharp": "node database/seeds/validate-csharp-fundamentals.mjs",
+    "data:compile:csharp": "node database/seeds/compile-csharp-fundamentals.mjs",
+    "data:import:csharp": "node database/seeds/import-csharp-fundamentals.mjs",
+    "data:verify:csharp": "node database/seeds/verify-csharp-fundamentals.mjs",
+    "data:import:discussion": "node database/seeds/import-csharp-discussion.mjs"
   },
   "repository": {
     "type": "git",
@@ -27,6 +31,7 @@
   },
   "homepage": "https://github.com/ChuChoaChan131019/DoAnChuyenNganh-LearningProject#readme",
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "concurrently": "^10.0.5",
+    "pg": "^8.16.3"
   }
 }
