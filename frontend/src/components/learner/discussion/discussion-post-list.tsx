@@ -60,22 +60,27 @@ export function DiscussionPostList({
   }
 
   return (
-    <div className="space-y-3">
-      {posts.map((post) => (
-        <DiscussionPostCard
-          key={post.id}
-          post={post}
-          active={selectedPostId === post.id}
-          locationLabel={getLocationLabel?.(post)}
-          onSelect={() => onSelect(post.id)}
-        />
-      ))}
+    <div className="h-full min-h-0">
+      <div
+        className="discussion-scrollbar max-h-[min(70vh,720px)] space-y-3 overflow-y-auto pr-1 [scrollbar-gutter:stable]"
+        aria-label="Danh sách bài thảo luận"
+      >
+        {posts.map((post) => (
+          <DiscussionPostCard
+            key={post.id}
+            post={post}
+            active={selectedPostId === post.id}
+            locationLabel={getLocationLabel?.(post)}
+            onSelect={() => onSelect(post.id)}
+          />
+        ))}
+      </div>
       {hasMore && (
         <button
           type="button"
           disabled={loadingMore}
           onClick={onLoadMore}
-          className="flex h-10 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
+          className="mt-3 flex h-10 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
         >
           {loadingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {loadingMore ? 'Đang tải…' : 'Xem thêm bài đăng'}

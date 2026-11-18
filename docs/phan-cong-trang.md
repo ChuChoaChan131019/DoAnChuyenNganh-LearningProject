@@ -36,6 +36,8 @@ Khoa phụ trách dữ liệu bài đăng và lượt hữu ích; Linh phụ tr�
 
 Trang chịu trách nhiệm phần backend còn thiếu của quy trình AI biên tập: kiểm tra nội dung bài học AI trước khi gửi duyệt; lưu bản nháp, phiên bản, người sửa và thời điểm sửa; cho người biên soạn nhận xét, chấp thuận hoặc trả lại. Kết quả kiểm tra là cảnh báo để người biên soạn quyết định, không tự xuất bản nội dung AI. Linh cung cấp kiểm tra riêng cho câu hỏi AI và phối hợp dùng chung trạng thái duyệt.
 
+**Quyết định 18/11/2026:** dùng quy trình tự duyệt `draft → approved → published`; không bắt buộc người khác duyệt và không dùng bước `in_review`/`return`. Phiên bản hiện tại phải qua kiểm tra tự động trước khi duyệt; lỗi chặn duyệt, cảnh báo cho phép người biên soạn xác nhận tiếp tục. Xem [quy trình kiểm tra nội dung AI](quy-trinh-kiem-tra-noi-dung-ai.md).
+
 ### 2.3. Quản lý tài khoản và khu vực admin (`FR-44`)
 
 Trang phụ trách toàn bộ giao diện và chức năng trong khu vực `/admin`, gồm trang báo cáo thảo luận ở mục 2.1 và quản lý tài khoản. Với `FR-44`, Trang làm API và giao diện để admin xem/tìm, sửa thông tin, vô hiệu hóa/khôi phục tài khoản và chỉ tạo content manager; không có chức năng đổi vai trò. API kiểm tra quyền `admin`; thao tác đặc quyền chạy ở backend, không đưa khóa quản trị lên trình duyệt. Trang kiểm thử phân quyền và luồng thực tế trước khi nghiệm thu. Xem [trạng thái giao diện admin](admin-ui-handoff.md).

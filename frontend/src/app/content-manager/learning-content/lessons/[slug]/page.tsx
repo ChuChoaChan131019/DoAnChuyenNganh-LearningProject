@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  AlertTriangle,
   Check,
+  CircleCheck,
   Eye,
   Globe2,
   Image as ImageIcon,
@@ -18,7 +20,7 @@ import {
   Code2,
   Trash2,
 } from "lucide-react";
-import { courseApi } from "@/lib/api";
+import { courseApi, type LessonValidationResult } from "@/lib/api";
 import LessonMaterials from "@/components/content-manager/lesson-materials";
 import { LessonMarkdown } from "@/components/lesson-markdown";
 import { vietnameseDifficulty, vietnameseStatus } from "@/lib/ui-labels";
@@ -39,6 +41,7 @@ export default function LessonEditorPage() {
   const [slug, setSlug] = useState("");
   const [content, setContent] = useState("");
   const [codeExample, setCodeExample] = useState("");
+  const [duration, setDuration] = useState(0);
   const [exercises, setExercises] = useState<Array<{
     id: string;
     content: string;
@@ -49,10 +52,12 @@ export default function LessonEditorPage() {
   const [chapterTitle, setChapterTitle] = useState("");
   const [status, setStatus] = useState("Draft");
   const [version, setVersion] = useState(1);
-  const [savedFields, setSavedFields] = useState({ title: "", content: "", codeExample: "" });
+  const [savedFields, setSavedFields] = useState({ title: "", content: "", codeExample: "", duration: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validation, setValidation] = useState<LessonValidationResult | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [showPlayground, setShowPlayground] = useState(true);
 
@@ -63,11 +68,12 @@ export default function LessonEditorPage() {
     setSaveMessage(null);
     setLoadError(null);
     try {
-      if (title.trim() !== savedFields.title || content !== savedFields.content || codeExample !== savedFields.codeExample) {
-        const saved = await courseApi.updateLesson(selectedSlug, { title: title.trim(), content, code_example: codeExample, version });
+      if (title.trim() !== savedFields.title || content !== savedFields.content || codeExample !== savedFields.codeExample || duration !== savedFields.duration) {
+        const saved = await courseApi.updateLesson(selectedSlug, { title: title.trim(), content, code_example: codeExample, estimated_duration_minutes: duration, version });
         setVersion(saved.version);
         setStatus("Draft");
-        setSavedFields({ title: title.trim(), content, codeExample });
+        setSavedFields({ title: title.trim(), content, codeExample, duration });
+        setValidation(null);
       }
       setSaveMessage("Lesson saved successfully.");
     } catch (error) {
@@ -77,22 +83,53 @@ export default function LessonEditorPage() {
     }
   };
 
-  const changeStatus = async (action: "approve" | "publish") => {
+  const hasUnsavedChanges = title.trim() !== savedFields.title || content !== savedFields.content || codeExample !== savedFields.codeExample || duration !== savedFields.duration;
+
+  const validateCurrent = async () => {
+    if (!selectedSlug || hasUnsavedChanges) {
+      setLoadError("Hãy lưu thay đổi trước khi kiểm tra nội dung.");
+      return null;
+    }
+    setIsValidating(true);
+    setLoadError(null);
+    try {
+      const result = await courseApi.validateLesson(selectedSlug, version);
+      setValidation(result);
+      return result;
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Không thể kiểm tra nội dung bài học.");
+      return null;
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const changeStatus = async (action: "approve" | "publish" | "unpublish") => {
     if (!selectedSlug) return;
-    if (title.trim() !== savedFields.title || content !== savedFields.content || codeExample !== savedFields.codeExample) {
+    if (hasUnsavedChanges) {
       setLoadError("Hãy lưu thay đổi trước khi cập nhật trạng thái bài học.");
       return;
     }
-    if (!window.confirm(action === "approve" ? "Approve this lesson?" : "Publish this lesson?")) return;
+    let reason: string | undefined;
+    if (action === "approve") {
+      const result = validation?.lesson_version === version ? validation : await validateCurrent();
+      if (!result || !result.valid) return;
+      if (result.warnings.length > 0 && !window.confirm(`Nội dung còn ${result.warnings.length} cảnh báo. Bạn vẫn muốn duyệt?`)) return;
+    }
+    if (action === "unpublish") {
+      reason = window.prompt("Nhập lý do gỡ xuất bản:")?.trim();
+      if (!reason) return;
+    } else if (!window.confirm(action === "approve" ? "Duyệt nội dung này?" : "Xuất bản bài học này?")) return;
 
     setIsSaving(true);
     setLoadError(null);
     setSaveMessage(null);
     try {
-      const updated = await courseApi.reviewAction(selectedSlug, { action, version });
+      const updated = await courseApi.reviewAction(selectedSlug, { action, version, reason });
       setVersion(updated.version);
-      setStatus(action === "approve" ? "Approved" : "Published");
-      setSaveMessage(action === "approve" ? "Lesson approved." : "Lesson published.");
+      setStatus(action === "approve" || action === "unpublish" ? "Approved" : "Published");
+      setValidation(null);
+      setSaveMessage(action === "approve" ? "Nội dung đã được duyệt." : action === "publish" ? "Bài học đã được xuất bản." : "Bài học đã được gỡ xuất bản.");
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Không thể thay đổi trạng thái bài học.");
     } finally {
@@ -128,8 +165,9 @@ export default function LessonEditorPage() {
         setSlug(lesson.id);
         setContent(lesson.content ?? "");
         setCodeExample(lesson.code_example ?? "");
+        setDuration(lesson.estimated_duration_minutes ?? 0);
         setVersion(lesson.version);
-        setSavedFields({ title: lesson.title, content: lesson.content ?? "", codeExample: lesson.code_example ?? "" });
+        setSavedFields({ title: lesson.title, content: lesson.content ?? "", codeExample: lesson.code_example ?? "", duration: lesson.estimated_duration_minutes ?? 0 });
         setExercises(lesson.exercises);
         setChapterTitle(lesson.chapter.title);
         courseApi.chapters(lesson.course.id)
@@ -158,6 +196,9 @@ export default function LessonEditorPage() {
               : "Draft",
         );
         setIsLoading(false);
+        void courseApi.latestLessonValidation(lesson.id).then((result) => {
+          if (isActive && result?.lesson_version === lesson.version) setValidation(result);
+        }).catch(() => undefined);
       })
       .catch(() => {
         if (!isActive) return;
@@ -183,7 +224,7 @@ export default function LessonEditorPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href={selectedSlug ? `/content-manager/learning-content/lessons/${selectedSlug}/preview` : "#"}
-            onClick={(event) => { if (title.trim() !== savedFields.title || content !== savedFields.content || codeExample !== savedFields.codeExample) { event.preventDefault(); setLoadError("Hãy lưu thay đổi trước khi xem trước bài học."); } }}
+            onClick={(event) => { if (hasUnsavedChanges) { event.preventDefault(); setLoadError("Hãy lưu thay đổi trước khi xem trước bài học."); } }}
             className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#002C3E] shadow-sm hover:bg-[#f8fbf9]"
           >
             <Eye className="h-4 w-4" />
@@ -198,6 +239,7 @@ export default function LessonEditorPage() {
             <Save className="h-4 w-4" />
             Lưu bản nháp
           </button>
+          {status === "Draft" && <button type="button" onClick={() => void validateCurrent()} disabled={isLoading || isSaving || isValidating || hasUnsavedChanges} className="inline-flex items-center gap-2 rounded-xl border border-[#78BCC4] bg-[#e6f7f8] px-4 py-2 text-sm font-semibold text-[#145a68] disabled:opacity-50"><CircleCheck className="h-4 w-4" />{isValidating ? "Đang kiểm tra..." : "Kiểm tra nội dung"}</button>}
           <button
             type="button"
             className="inline-flex items-center gap-2 rounded-xl border border-[#dfe6df] bg-white px-4 py-2 text-sm font-medium text-[#002C3E] shadow-sm hover:bg-[#f8fbf9]"
@@ -207,6 +249,7 @@ export default function LessonEditorPage() {
           </button>
           {status === "Draft" && <button type="button" onClick={() => void changeStatus("approve")} disabled={isLoading || isSaving} className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50"><Check className="h-4 w-4" />Duyệt</button>}
           {status === "Approved" && <button type="button" onClick={() => void changeStatus("publish")} disabled={isLoading || isSaving} className="inline-flex items-center gap-2 rounded-xl bg-[#14919B] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50"><Globe2 className="h-4 w-4" />Xuất bản</button>}
+          {status === "Published" && <button type="button" onClick={() => void changeStatus("unpublish")} disabled={isLoading || isSaving} className="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 disabled:opacity-50">Gỡ xuất bản</button>}
         </div>
       </div>
       <header>
@@ -234,6 +277,13 @@ export default function LessonEditorPage() {
         <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           {saveMessage}
         </p>
+      )}
+      {validation && validation.lesson_version === version && (
+        <section className={`rounded-2xl border p-5 ${validation.valid ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}>
+          <div className="flex items-center gap-2 font-semibold text-[#0f3741]">{validation.valid ? <CircleCheck className="h-5 w-5 text-emerald-600" /> : <AlertTriangle className="h-5 w-5 text-rose-600" />}{validation.valid ? "Nội dung đủ điều kiện duyệt" : `Còn ${validation.errors.length} lỗi cần sửa`}</div>
+          {validation.errors.length > 0 && <ul className="mt-3 space-y-1 text-sm text-rose-800">{validation.errors.map((issue) => <li key={`${issue.code}-${issue.field}`}>• {issue.message}</li>)}</ul>}
+          {validation.warnings.length > 0 && <div className="mt-4"><p className="text-sm font-semibold text-amber-900">Cảnh báo không chặn duyệt:</p><ul className="mt-1 space-y-1 text-sm text-amber-800">{validation.warnings.map((issue) => <li key={`${issue.code}-${issue.field}`}>• {issue.message}</li>)}</ul></div>}
+        </section>
       )}
       <div className="grid items-start gap-4 xl:grid-cols-[250px_minmax(0,1fr)_290px]">
         <aside className="rounded-2xl border border-[#dfe6df] bg-white p-3 shadow-sm">
@@ -268,7 +318,7 @@ export default function LessonEditorPage() {
             <textarea
               value={content}
               readOnly={status === "Published"}
-              onChange={(event) => setContent(event.target.value)}
+              onChange={(event) => { setContent(event.target.value); setValidation(null); }}
               className="min-h-[265px] w-full resize-y border-0 p-5 text-[16px] leading-relaxed text-[#16485a] outline-none focus:ring-2 focus:ring-[#78BCC4]/20"
             />
             {content.trim() && <div className="border-t border-[#dfe6df] bg-[#fbfcfa] p-5"><h3 className="mb-4 text-sm font-semibold text-[#0f3741]">Xem trước nội dung đã định dạng</h3><LessonMarkdown content={content} /></div>}
@@ -283,7 +333,7 @@ export default function LessonEditorPage() {
             <textarea
               value={codeExample}
               readOnly={status === "Published"}
-              onChange={(event) => setCodeExample(event.target.value)}
+              onChange={(event) => { setCodeExample(event.target.value); setValidation(null); }}
               placeholder="Thêm ví dụ mã C#..."
               className="mx-4 my-4 min-h-[180px] w-[calc(100%-2rem)] resize-y rounded-xl bg-[#061d26] p-5 font-mono text-sm leading-7 text-[#d8e9e8] outline-none focus:ring-2 focus:ring-[#78BCC4]/40"
             />
@@ -329,9 +379,13 @@ export default function LessonEditorPage() {
               <input
                 value={title}
                 readOnly={status === "Published"}
-                onChange={(event) => setTitle(event.target.value)}
+                onChange={(event) => { setTitle(event.target.value); setValidation(null); }}
                 className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] px-3 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4]"
               />
+            </label>
+            <label className="mt-4 block text-xs font-semibold text-[#526f78]">
+              Thời lượng dự kiến (phút)
+              <input type="number" min={1} max={1440} value={duration} readOnly={status === "Published"} onChange={(event) => { setDuration(Number(event.target.value)); setValidation(null); }} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe6df] px-3 text-sm text-[#002C3E] outline-none focus:border-[#78BCC4]" />
             </label>
             <label className="mt-4 block text-xs font-semibold text-[#526f78]">
               Mã bài học

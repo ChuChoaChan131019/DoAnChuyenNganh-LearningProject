@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ExternalLink, FileCode2, FileImage, FileText } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileCode2, FileImage, FileText, RotateCcw } from "lucide-react";
 import { courseApi, materialApi, type Material } from "@/lib/api";
 import { LessonMarkdown } from "@/components/lesson-markdown";
 
@@ -16,13 +16,27 @@ export default function LessonPreviewPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [history, setHistory] = useState<Event[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
+
+  const reload = async () => {
+    const [lessonData, materialData, events] = await Promise.all([
+      courseApi.lesson(slug),
+      materialApi.byLesson(slug),
+      courseApi.reviewHistory(slug),
+    ]);
+    setLesson(lessonData);
+    setMaterials(materialData);
+    setHistory(events);
+  };
 
   useEffect(() => {
     let active = true;
     Promise.all([courseApi.lesson(slug), materialApi.byLesson(slug), courseApi.reviewHistory(slug)])
       .then(([lessonData, materialData, events]) => {
         if (!active) return;
-        setLesson(lessonData); setMaterials(materialData); setHistory(events);
+        setLesson(lessonData);
+        setMaterials(materialData);
+        setHistory(events);
       })
       .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Không thể tải bản xem trước."); });
     return () => { active = false; };
@@ -37,6 +51,20 @@ export default function LessonPreviewPage() {
     } catch (cause) {
       tab?.close();
       setError(cause instanceof Error ? cause.message : "Không thể mở tài liệu.");
+    }
+  }
+
+  async function restoreVersion(sourceVersion: number) {
+    if (!lesson || restoring || !window.confirm(`Khôi phục nội dung phiên bản ${sourceVersion} thành một bản nháp mới?`)) return;
+    setRestoring(true);
+    setError(null);
+    try {
+      await courseApi.restoreLessonVersion(lesson.id, sourceVersion, lesson.version);
+      await reload();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Không thể khôi phục phiên bản.");
+    } finally {
+      setRestoring(false);
     }
   }
 
@@ -65,7 +93,7 @@ export default function LessonPreviewPage() {
         </article>
         <aside className="space-y-5">
           <section className="rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-sm"><h2 className="font-bold text-[#002C3E]">Tài liệu</h2><ul className="mt-4 space-y-2">{materials.map((item) => <li key={item.id}><button type="button" onClick={() => void openMaterial(item.id)} className="flex w-full items-center gap-2 rounded-xl border border-[#dfe6df] px-3 py-2 text-left text-sm text-[#16485a] hover:border-[#78BCC4]">{item.file_type === "Image" ? <FileImage className="h-4 w-4" /> : item.file_type === "Code Sample" ? <FileCode2 className="h-4 w-4" /> : <FileText className="h-4 w-4" />}<span className="min-w-0 flex-1 truncate">{item.title}</span><ExternalLink className="h-3.5 w-3.5" /></button></li>)}{!materials.length && <li className="text-sm text-[#637981]">Chưa có tệp đính kèm.</li>}</ul></section>
-          <section className="rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-sm"><h2 className="font-bold text-[#002C3E]">Lịch sử duyệt</h2><ol className="mt-4 space-y-3">{history.map((item) => <li key={item.id} className="border-l-2 border-[#78BCC4] pl-3 text-sm text-[#16485a]"><strong className="capitalize">{item.action}</strong> · v{item.version}<p className="text-xs text-[#637981]">{new Date(item.created_at).toLocaleString()} · {item.actor_email}</p>{item.reason && <p className="mt-1">{item.reason}</p>}</li>)}{!history.length && <li className="text-sm text-[#637981]">Chưa có quyết định nào.</li>}</ol></section>
+          <section className="rounded-2xl border border-[#dfe6df] bg-white p-5 shadow-sm"><h2 className="font-bold text-[#002C3E]">Lịch sử duyệt</h2><ol className="mt-4 space-y-4">{history.map((item, index) => <li key={item.id} className="border-l-2 border-[#78BCC4] pl-3 text-sm text-[#16485a]"><strong className="capitalize">{item.action}</strong> · v{item.version}<p className="text-xs text-[#637981]">{new Date(item.created_at).toLocaleString()} · {item.actor_email}</p>{item.reason && <p className="mt-1">{item.reason}</p>}{item.snapshot?.title && <details className="mt-2"><summary className="cursor-pointer text-xs font-semibold text-[#14919B]">Xem bản chụp</summary><p className="mt-2 font-semibold">{item.snapshot.title}</p><p className="mt-1 line-clamp-5 whitespace-pre-wrap text-xs text-[#637981]">{item.snapshot.content || "Không có nội dung"}</p>{item.snapshot.code_example && <pre className="mt-2 max-h-32 overflow-auto rounded-lg bg-[#061d26] p-2 text-[11px] text-[#d8e9e8]">{item.snapshot.code_example}</pre>}</details>}{lesson.status !== "published" && item.snapshot?.title && history.findIndex((event) => event.version === item.version) === index && item.version !== lesson.version && <button type="button" disabled={restoring} onClick={() => void restoreVersion(item.version)} className="mt-2 inline-flex items-center gap-1 rounded-lg border border-[#dfe6df] px-2 py-1 text-xs font-semibold text-[#526f78] disabled:opacity-50"><RotateCcw className="h-3 w-3" />Khôi phục v{item.version}</button>}</li>)}{!history.length && <li className="text-sm text-[#637981]">Chưa có quyết định nào.</li>}</ol></section>
         </aside>
       </div>
     </>}

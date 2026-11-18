@@ -74,7 +74,7 @@ Các phần việc dưới đây là trách nhiệm triển khai **toàn luồng
 | --- | --- | --- |
 | Quản lý tài khoản quản trị viên (`FR-44`) | **Trang** | Giao diện và API cho admin xem/tìm, sửa thông tin, vô hiệu hóa/khôi phục tài khoản; chỉ tạo content manager, không đổi vai trò. Trang chịu trách nhiệm toàn luồng, gồm nghiệm thu và bảo vệ thao tác đặc quyền ở backend. |
 | Tiến độ tổng hợp và tiếp tục học (`FR-42`–`FR-43`) | **Khoa** | Tổng hợp bài học, quiz/luyện tập và bài code; cho học sinh mở lại bài học đang dở. Linh cung cấp dữ liệu quiz/bài code; Trang cung cấp dữ liệu bài học. Linh vẫn phụ trách mở lại mã bài code ở `C06`/`C07`. |
-| Kiểm tra nội dung và lịch sử duyệt AI (`FR-12`–`FR-14`) | **Trang** | Kiểm tra nội dung bài học AI; hoàn thiện backend lưu nháp, phiên bản/lịch sử sửa, nhận xét, chấp thuận/trả lại cho quy trình duyệt và xuất bản đã giao. |
+| Kiểm tra nội dung và lịch sử duyệt AI (`FR-12`–`FR-14`) | **Trang** | Kiểm tra nội dung bài học AI; lưu nháp, kết quả kiểm tra, phiên bản/lịch sử sửa, tự duyệt và xuất bản. Theo quyết định 18/11/2026, không bắt buộc người khác duyệt và không dùng bước trả lại. |
 | Kiểm tra câu hỏi AI (`FR-12`) | **Linh** | Phát hiện câu thiếu đáp án, gần trùng hoặc không phù hợp với bài học được chọn; trả cảnh báo để người biên soạn xử lý trước khi gửi duyệt. Phối hợp với Trang để dùng chung trạng thái duyệt. |
 
 ## 4. Điểm phối hợp và theo dõi

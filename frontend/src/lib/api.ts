@@ -428,6 +428,23 @@ export const aiManagerApi = {
   }>('/api/v1/ai/content/generate', { method: 'POST', body: JSON.stringify(payload) }),
 };
 
+export type LessonValidationIssue = {
+  code: string;
+  field: "title" | "content" | "code_example" | "estimated_duration_minutes" | "chapter";
+  message: string;
+};
+
+export type LessonValidationResult = {
+  id: string;
+  valid: boolean;
+  lesson_version: number;
+  status?: "passed" | "failed";
+  errors: LessonValidationIssue[];
+  warnings: LessonValidationIssue[];
+  validator_version?: string;
+  created_at: string;
+};
+
 export const courseApi = {
   list: (): Promise<import("../types/learning-content").Course[]> => {
     return request("/api/v1/courses");
@@ -518,6 +535,13 @@ export const courseApi = {
             version: number;
             is_ai_generated: boolean;
             order_index: number;
+            validation: {
+              lesson_version: number;
+              status: "passed" | "failed";
+              errors: LessonValidationIssue[];
+              warnings: LessonValidationIssue[];
+              created_at: string;
+            } | null;
           }>;
         }>;
       }>
@@ -555,9 +579,27 @@ export const courseApi = {
         actor_id: string | null;
         actor_email: string;
         reason: string | null;
+        snapshot: {
+          title?: string;
+          content?: string | null;
+          code_example?: string | null;
+          estimated_duration_minutes?: number;
+          errors?: LessonValidationIssue[];
+          warnings?: LessonValidationIssue[];
+          restored_from_version?: number;
+        };
         created_at: string;
       }>
     >(`/api/v1/courses/lessons/${encodeURIComponent(lessonId)}/review-history`),
+  validateLesson: (lessonId: string, version: number) =>
+    request<LessonValidationResult>(
+      `/api/v1/courses/lessons/${encodeURIComponent(lessonId)}/validate`,
+      { method: "POST", body: JSON.stringify({ version }) },
+    ),
+  latestLessonValidation: (lessonId: string) =>
+    request<LessonValidationResult | null>(
+      `/api/v1/courses/lessons/${encodeURIComponent(lessonId)}/validations/latest`,
+    ),
   reviewAction: (
     lessonId: string,
     payload: {
@@ -572,6 +614,11 @@ export const courseApi = {
         method: "POST",
         body: JSON.stringify(payload),
       },
+    ),
+  restoreLessonVersion: (lessonId: string, sourceVersion: number, currentVersion: number) =>
+    request<{ version: number; status: string }>(
+      `/api/v1/courses/lessons/${encodeURIComponent(lessonId)}/versions/${sourceVersion}/restore`,
+      { method: "POST", body: JSON.stringify({ current_version: currentVersion }) },
     ),
   removeLesson: (lessonId: string) =>
     request<{ id: string; message: string }>(

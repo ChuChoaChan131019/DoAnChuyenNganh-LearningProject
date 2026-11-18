@@ -14,6 +14,8 @@
 
 > **Cập nhật 29/10/2026:** Migration `database/migrations/20261029_lesson_review_workflow.sql` đã thêm `created_by`, `updated_by`, `updated_at`, `version`, `submitted_by`, `submitted_at`, `reviewed_by`, `reviewed_at` và bảng `lesson_review_events` để lưu hành động, phiên bản, người thực hiện, lý do, thời gian và bản chụp nội dung. Hai hàm `save_lesson_content` và `apply_lesson_review_action` cập nhật cùng lịch sử trong một giao dịch. Các số liệu 17 bảng/129 cột và bảng mô tả cũ bên dưới là ảnh chụp ngày 21/10/2026, chưa bao gồm các migration mới.
 
+> **Cập nhật 18/11/2026:** Migration `database/migrations/20261118090000_lesson_validation_workflow.sql` thêm `lesson_validation_runs`, RPC `record_lesson_validation` và `restore_lesson_version`. Content Manager được tự duyệt, nhưng chỉ khi đúng phiên bản bài học đã có lần kiểm tra đạt. Bảng validation bật RLS, chặn `anon`/`authenticated` và chỉ cấp quyền cần thiết cho backend service role.
+
 **Ngày đối chiếu:** 21/10/2026
 
 **Nguồn:** đối chiếu trực tiếp `pg_catalog` của schema `public` trên Supabase ngày 21/10/2026; mô tả cách sử dụng dựa trên backend tại commit `e19dcb3` của nhánh `main`.

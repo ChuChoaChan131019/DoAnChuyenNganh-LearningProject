@@ -504,7 +504,7 @@ export function DiscussionSection({
         />
       </div>
 
-      <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
+      <div className="mt-5 grid items-stretch gap-5 lg:h-[min(70vh,760px)] lg:min-h-[520px] lg:min-w-0 lg:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
         <DiscussionPostList
           posts={posts}
           selectedPostId={selectedPostId}

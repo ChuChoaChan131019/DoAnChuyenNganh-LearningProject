@@ -14,6 +14,7 @@ import { CreateLessonDto } from './dto/create-lesson.dto.js';
 import { UpdateChapterDto } from './dto/update-chapter.dto.js';
 import { UpdateLessonDto } from './dto/update-lesson.dto.js';
 import { LessonReviewActionDto } from './dto/lesson-review-action.dto.js';
+import { validateLessonContent, type LessonValidationResult } from './lesson-validation.js';
 
 type ContentStatusLabel = 'Draft' | 'In review' | 'Approved' | 'Published';
 
@@ -159,6 +160,68 @@ export class CoursesService {
     throw new InternalServerErrorException('Unable to save lesson review change');
   }
 
+  private async latestValidationForVersion(lessonId: string, version: number) {
+    const { data, error } = await this.supabaseService.getClient()
+      .from('lesson_validation_runs')
+      .select('id, lesson_id, lesson_version, status, errors, warnings, validator_version, created_by, created_at')
+      .eq('lesson_id', lessonId)
+      .eq('lesson_version', version)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new InternalServerErrorException('Unable to load lesson validation');
+    return data;
+  }
+
+  async validateLesson(lessonId: string, actorId: string, version: number): Promise<LessonValidationResult & { id: string; created_at: string }> {
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase
+      .from('lessons')
+      .select('id, chapter_id, title, content, code_example, estimated_duration_minutes, version, chapters!inner(id, title)')
+      .eq('id', lessonId)
+      .maybeSingle();
+    if (error) throw new InternalServerErrorException('Unable to load lesson for validation');
+    if (!data) throw new NotFoundException('Lesson not found');
+    if (data.version !== version) throw new ConflictException('Lesson changed; reload and retry');
+
+    const { data: peerRows, error: peersError } = await supabase
+      .from('lessons')
+      .select('id, title, content')
+      .eq('chapter_id', data.chapter_id)
+      .neq('id', lessonId);
+    if (peersError) throw new InternalServerErrorException('Unable to compare lesson content');
+
+    const chapterRelation = data.chapters as unknown as { title?: string } | Array<{ title?: string }> | null;
+    const chapter = Array.isArray(chapterRelation) ? chapterRelation[0] : chapterRelation;
+    const result = validateLessonContent({
+      title: data.title,
+      content: data.content,
+      code_example: data.code_example,
+      estimated_duration_minutes: data.estimated_duration_minutes,
+      version: data.version,
+      chapter_title: chapter?.title ?? '',
+    }, peerRows ?? []);
+
+    const { data: run, error: recordError } = await supabase.rpc('record_lesson_validation', {
+      p_lesson_id: lessonId,
+      p_actor_id: actorId,
+      p_version: version,
+      p_errors: result.errors,
+      p_warnings: result.warnings,
+      p_validator_version: 'lesson-validator-v1',
+    });
+    if (recordError) this.reviewError(recordError);
+    return { ...result, id: run.id, created_at: run.created_at };
+  }
+
+  async latestLessonValidation(lessonId: string) {
+    const { data: lesson, error } = await this.supabaseService.getClient()
+      .from('lessons').select('id, version').eq('id', lessonId).maybeSingle();
+    if (error) throw new InternalServerErrorException('Unable to load lesson');
+    if (!lesson) throw new NotFoundException('Lesson not found');
+    return this.latestValidationForVersion(lessonId, lesson.version);
+  }
+
   async updateLesson(lessonId: string, updateLessonDto: UpdateLessonDto, actorId: string) {
     const payload = Object.fromEntries(
       Object.entries(updateLessonDto).filter(([key]) => key !== 'version')
@@ -187,6 +250,18 @@ export class CoursesService {
   }
 
   async reviewAction(lessonId: string, actorId: string, body: LessonReviewActionDto) {
+    if (body.action === 'approve') {
+      const existing = await this.latestValidationForVersion(lessonId, body.version);
+      if (!existing || existing.status !== 'passed') {
+        const validation = await this.validateLesson(lessonId, actorId, body.version);
+        if (!validation.valid) {
+          throw new BadRequestException({
+            message: 'Resolve lesson validation errors before approval',
+            validation,
+          });
+        }
+      }
+    }
     const { data, error } = await this.supabaseService.getClient().rpc('apply_lesson_review_action', {
       p_lesson_id: lessonId, p_actor_id: actorId, p_version: body.version,
       p_action: body.action, p_reason: body.reason ?? null,
@@ -201,7 +276,7 @@ export class CoursesService {
     if (lessonError) throw new InternalServerErrorException('Unable to find lesson');
     if (!lesson) throw new NotFoundException('Lesson not found');
     const { data, error } = await supabase.from('lesson_review_events')
-      .select('id, version, action, from_status, to_status, actor_id, reason, created_at')
+      .select('id, version, action, from_status, to_status, actor_id, reason, snapshot, created_at')
       .eq('lesson_id', lessonId).order('created_at', { ascending: false });
     if (error) throw new InternalServerErrorException('Unable to load review history');
     const actors = [...new Set((data ?? []).map((event) => event.actor_id).filter((id): id is string => !!id))];
@@ -243,6 +318,19 @@ export class CoursesService {
       : { data: [], error: null };
     if (lessonsError) throw new InternalServerErrorException('Unable to load review lessons');
 
+    const lessonIds = (lessons ?? []).map((lesson) => lesson.id);
+    const { data: validationRows, error: validationError } = lessonIds.length
+      ? await supabase.from('lesson_validation_runs')
+          .select('lesson_id, lesson_version, status, errors, warnings, created_at')
+          .in('lesson_id', lessonIds)
+          .order('created_at', { ascending: false })
+      : { data: [], error: null };
+    if (validationError) throw new InternalServerErrorException('Unable to load lesson validations');
+    const latestValidation = new Map<string, (typeof validationRows)[number]>();
+    for (const validation of validationRows ?? []) {
+      if (!latestValidation.has(validation.lesson_id)) latestValidation.set(validation.lesson_id, validation);
+    }
+
     const lessonsByChapter = new Map<string, typeof lessons>();
     for (const lesson of lessons ?? []) {
       const rows = lessonsByChapter.get(lesson.chapter_id) ?? [];
@@ -263,9 +351,21 @@ export class CoursesService {
         lessons: (lessonsByChapter.get(chapter.id) ?? []).map((lesson) => ({
           ...lesson,
           is_ai_generated: lesson.is_ai_generated ?? false,
+          validation: latestValidation.get(lesson.id) ?? null,
         })),
       })),
     }));
+  }
+
+  async restoreLessonVersion(lessonId: string, actorId: string, currentVersion: number, sourceVersion: number) {
+    const { data, error } = await this.supabaseService.getClient().rpc('restore_lesson_version', {
+      p_lesson_id: lessonId,
+      p_actor_id: actorId,
+      p_current_version: currentVersion,
+      p_source_version: sourceVersion,
+    });
+    if (error) this.reviewError(error);
+    return { ...data, status: statusLabels[data.status] ?? 'Draft' };
   }
 
   private nextContainerStatus(status: string, action: 'approve' | 'publish' | 'unpublish') {

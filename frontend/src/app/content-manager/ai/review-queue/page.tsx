@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, BookOpen, Check, ChevronDown, ChevronRight, FileText, Globe2, Layers, RotateCcw, Search, Sparkles, X } from "lucide-react";
-import { courseApi } from "@/lib/api";
+import { courseApi, type LessonValidationIssue } from "@/lib/api";
 
 type Status = "Draft" | "Approved" | "Published";
 type Action = "approve" | "publish" | "unpublish";
-type LessonRow = { id: string; title: string; status: string; version: number; is_ai_generated: boolean; order_index: number };
+type LessonRow = { id: string; title: string; status: string; version: number; is_ai_generated: boolean; order_index: number; validation: { lesson_version: number; status: "passed" | "failed"; errors: LessonValidationIssue[]; warnings: LessonValidationIssue[]; created_at: string } | null };
 type ChapterRow = { id: string; title: string; status: string; order_index: number; lessons: LessonRow[] };
 type CourseRow = { id: string; title: string; slug: string; status: string; chapters: ChapterRow[] };
 type Target = { type: "course" | "chapter" | "lesson"; id: string; title: string; status: Status; version?: number; action: Action };
@@ -107,6 +107,18 @@ export default function ReviewQueuePage() {
     setActionError(null);
     try {
       if (selected.type === "lesson") {
+        if (selected.action === "approve") {
+          const validation = await courseApi.validateLesson(selected.id, selected.version ?? 1);
+          if (!validation.valid) {
+            setActionError(validation.errors.map((issue) => issue.message).join(" "));
+            await refresh();
+            return;
+          }
+          if (validation.warnings.length > 0 && !window.confirm(`Nội dung còn ${validation.warnings.length} cảnh báo. Bạn vẫn muốn duyệt?`)) {
+            await refresh();
+            return;
+          }
+        }
         await courseApi.reviewAction(selected.id, { action: selected.action, version: selected.version ?? 1, reason: reason.trim() });
       } else if (selected.type === "chapter") {
         await courseApi.reviewChapterAction(selected.id, selected.action);
@@ -182,7 +194,7 @@ export default function ReviewQueuePage() {
                   {chapter.visibleLessons.map((lesson) => {
                     const lessonStatus = toStatus(lesson.status);
                     return <div key={lesson.id} className="grid grid-cols-1 gap-2 rounded-xl px-4 py-2.5 hover:bg-[#f8fbf9] md:grid-cols-[minmax(0,1fr)_130px_130px_180px] md:items-center md:gap-4 sm:px-5">
-                      <div className="flex min-w-0 items-center gap-3 md:pl-14"><span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${lesson.is_ai_generated ? "bg-[#e6f7f8] text-[#14919B]" : "bg-[#fff1f0] text-[#F7444E]"}`}>{lesson.is_ai_generated ? <Sparkles className="h-4 w-4" /> : <FileText className="h-4 w-4" />}</span><div className="min-w-0 flex-1"><Link href={`/content-manager/learning-content/lessons/${lesson.id}/preview`} title={lesson.title} className="block text-sm font-semibold text-[#002C3E] hover:text-[#F7444E] hover:underline"><FadeText>{lesson.title}</FadeText></Link><span className="text-[11px] text-[#637981]">Lesson · v{lesson.version}</span></div></div>
+                      <div className="flex min-w-0 items-center gap-3 md:pl-14"><span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${lesson.is_ai_generated ? "bg-[#e6f7f8] text-[#14919B]" : "bg-[#fff1f0] text-[#F7444E]"}`}>{lesson.is_ai_generated ? <Sparkles className="h-4 w-4" /> : <FileText className="h-4 w-4" />}</span><div className="min-w-0 flex-1"><Link href={`/content-manager/learning-content/lessons/${lesson.id}/preview`} title={lesson.title} className="block text-sm font-semibold text-[#002C3E] hover:text-[#F7444E] hover:underline"><FadeText>{lesson.title}</FadeText></Link><span className="text-[11px] text-[#637981]">Lesson · v{lesson.version}</span>{lesson.validation?.lesson_version === lesson.version && <span className={`ml-2 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${lesson.validation.status === "passed" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>{lesson.validation.status === "passed" ? `Đã kiểm tra${lesson.validation.warnings.length ? ` · ${lesson.validation.warnings.length} cảnh báo` : ""}` : `${lesson.validation.errors.length} lỗi`}</span>}</div></div>
                       <div><span className="text-[10px] font-semibold uppercase text-[#829397] md:hidden">Nguồn </span><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${lesson.is_ai_generated ? "border-cyan-200 bg-cyan-50 text-cyan-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>{lesson.is_ai_generated ? <Sparkles className="h-3 w-3" /> : <FileText className="h-3 w-3" />}{lesson.is_ai_generated ? "Tạo tự động" : "Tự soạn"}</span></div>
                       <div><span className="text-[10px] font-semibold uppercase text-[#829397] md:hidden">Trạng thái </span><StatusBadge status={lessonStatus} /></div>
                       <div className="flex items-center gap-2 md:justify-end"><button type="button" onClick={() => openAction("lesson", lesson.id, lesson.title, lesson.status, lesson.version)} className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold ${lessonStatus === "Published" ? "border border-[#dfe6df] bg-white text-[#526f78] hover:bg-[#f8fbf9]" : lessonStatus === "Approved" ? "bg-[#14919B] text-white hover:bg-[#117b83]" : "bg-[#F7444E] text-white hover:bg-[#df3540]"}`}>

@@ -110,6 +110,31 @@ html {
   overflow-y: scroll;
 }
 
+.discussion-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 55, 65, 0.28) transparent;
+}
+
+.discussion-scrollbar::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.discussion-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.discussion-scrollbar::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+  background-color: rgba(120, 188, 196, 0.6);
+}
+
+.discussion-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(15, 55, 65, 0.55);
+}
+
 .sidebar-font {
   font-family:
     var(--font-plus-jakarta-sans), ui-sans-serif, system-ui, sans-serif;
