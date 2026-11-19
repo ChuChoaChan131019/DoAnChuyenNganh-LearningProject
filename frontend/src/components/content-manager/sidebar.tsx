@@ -129,6 +129,11 @@ const MENU_DATA: NavGroup[] = [
         icon: FlaskConical,
       },
       {
+        label: "Phòng thực hành C#",
+        href: "/content-manager/code-exercises",
+        icon: Hammer,
+      },
+      {
         label: "Kết quả",
         href: "/content-manager/testsandpractice/results",
         icon: BarChart2,
@@ -171,13 +176,16 @@ const MENU_DATA: NavGroup[] = [
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const sidebarState = isCollapsed ? "collapsed" : "expanded";
-  const [pendingReviewCount, setPendingReviewCount] = useState<number | null>(null);
+  const [pendingReviewCount, setPendingReviewCount] = useState<number | null>(
+    null,
+  );
 
   useEffect(() => {
     let isActive = true;
 
     const refreshPendingReviewCount = () => {
-      void questionApi.pendingReviewCount()
+      void questionApi
+        .pendingReviewCount()
         .then(({ count }) => {
           if (isActive) setPendingReviewCount(count);
         })
@@ -191,13 +199,22 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     };
 
     refreshPendingReviewCount();
-    window.addEventListener(QUESTION_REVIEW_COUNT_CHANGED_EVENT, refreshPendingReviewCount);
+    window.addEventListener(
+      QUESTION_REVIEW_COUNT_CHANGED_EVENT,
+      refreshPendingReviewCount,
+    );
     document.addEventListener("visibilitychange", refreshWhenVisible);
-    const refreshInterval = window.setInterval(refreshPendingReviewCount, 30_000);
+    const refreshInterval = window.setInterval(
+      refreshPendingReviewCount,
+      30_000,
+    );
 
     return () => {
       isActive = false;
-      window.removeEventListener(QUESTION_REVIEW_COUNT_CHANGED_EVENT, refreshPendingReviewCount);
+      window.removeEventListener(
+        QUESTION_REVIEW_COUNT_CHANGED_EVENT,
+        refreshPendingReviewCount,
+      );
       document.removeEventListener("visibilitychange", refreshWhenVisible);
       window.clearInterval(refreshInterval);
     };
@@ -233,9 +250,10 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                 const isActive = pathname.startsWith(item.href);
                 const Icon = item.icon;
                 const itemState = isActive ? "active" : "inactive";
-                const badge = item.href === "/content-manager/questions/review"
-                  ? pendingReviewCount
-                  : item.badge;
+                const badge =
+                  item.href === "/content-manager/questions/review"
+                    ? pendingReviewCount
+                    : item.badge;
 
                 return (
                   <Link

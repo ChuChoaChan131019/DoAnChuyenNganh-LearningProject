@@ -1252,3 +1252,79 @@ export const contentManagerDashboardApi = {
       "/api/v1/content-manager/dashboard",
     ),
 };
+
+export const authorCodeExerciseApi = {
+  list: (search = "") =>
+    request<import("../types/code-exercise-authoring").CodeExerciseListItem[]>(
+      `/api/v1/code-exercises${
+        search ? `?search=${encodeURIComponent(search)}` : ""
+      }`,
+    ),
+
+  detail: (id: string) =>
+    request<import("../types/code-exercise-authoring").CodeExerciseDetail>(
+      `/api/v1/code-exercises/${encodeURIComponent(id)}`,
+    ),
+
+  create: (
+    payload: import("../types/code-exercise-authoring").CodeExercisePayload,
+  ) =>
+    request<import("../types/code-exercise-authoring").SaveCodeExerciseResult>(
+      "/api/v1/code-exercises",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
+
+  update: (
+    id: string,
+    payload: import("../types/code-exercise-authoring").CodeExercisePayload,
+    editVersion: number,
+  ) =>
+    request<import("../types/code-exercise-authoring").SaveCodeExerciseResult>(
+      `/api/v1/code-exercises/${encodeURIComponent(id)}/draft`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          ...payload,
+          edit_version: editVersion,
+        }),
+      },
+    ),
+
+  copy: (id: string) =>
+    request<import("../types/code-exercise-authoring").SaveCodeExerciseResult>(
+      `/api/v1/code-exercises/${encodeURIComponent(id)}/copy`,
+      {
+        method: "POST",
+      },
+    ),
+
+  archive: (id: string) =>
+    request<{ id: string; archived: boolean }>(
+      `/api/v1/code-exercises/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+    ),
+
+  validate: (id: string, editVersion: number) =>
+    request<import("../types/code-exercise-authoring").CodeExerciseCheckResult>(
+      `/api/v1/code-exercises/${encodeURIComponent(id)}/validate`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          edit_version: editVersion,
+        }),
+      },
+    ),
+
+  publish: (id: string, editVersion: number) =>
+    request<
+      import("../types/code-exercise-authoring").PublishCodeExerciseResult
+    >(`/api/v1/code-exercises/${encodeURIComponent(id)}/publish`, {
+      method: "POST",
+      body: JSON.stringify({
+        edit_version: editVersion,
+      }),
+    }),
+};
