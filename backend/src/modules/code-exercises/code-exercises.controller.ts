@@ -21,6 +21,8 @@ import {
   SaveCodeExerciseDto,
   UpdateCodeExerciseDto,
 } from './dto/save-code-exercise.dto.js';
+import { CheckCodeExerciseDto } from './dto/check-code-exercise.dto.js';
+import { CodeExercisePublishService } from './code-exercise-publish.service.js';
 
 @Controller('api/v1/code-exercises')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -28,6 +30,7 @@ import {
 export class CodeExercisesController {
   constructor(
     private readonly service: CodeExercisesService,
+    private readonly publishService: CodeExercisePublishService,
   ) {}
 
   // GET /api/v1/code-exercises
@@ -37,28 +40,18 @@ export class CodeExercisesController {
     @Query('lesson_id') lessonId?: string,
     @Query('search') search?: string,
   ) {
-    return this.service.findAll(
-      req.user,
-      lessonId,
-      search,
-    );
+    return this.service.findAll(req.user, lessonId, search);
   }
 
   // GET /api/v1/code-exercises/:id
   @Get(':id')
-  findOne(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: any,
-  ) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.service.findOne(id, req.user);
   }
 
   // POST /api/v1/code-exercises
   @Post()
-  create(
-    @Body() dto: SaveCodeExerciseDto,
-    @Req() req: any,
-  ) {
+  create(@Body() dto: SaveCodeExerciseDto, @Req() req: any) {
     return this.service.create(dto, req.user);
   }
 
@@ -69,29 +62,37 @@ export class CodeExercisesController {
     @Body() dto: UpdateCodeExerciseDto,
     @Req() req: any,
   ) {
-    return this.service.updateDraft(
-      id,
-      dto,
-      req.user,
-    );
+    return this.service.updateDraft(id, dto, req.user);
   }
 
   // POST /api/v1/code-exercises/:id/copy
   @Post(':id/copy')
-  copy(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: any,
-  ) {
+  copy(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.service.copy(id, req.user);
   }
 
   // DELETE /api/v1/code-exercises/:id
   // Thực tế là soft delete (archive)
   @Delete(':id')
-  archive(
+  archive(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.service.archive(id, req.user);
+  }
+
+  @Post(':id/validate')
+  validateDraft(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CheckCodeExerciseDto,
     @Req() req: any,
   ) {
-    return this.service.archive(id, req.user);
+    return this.publishService.validate(id, req.user, dto.edit_version);
+  }
+
+  @Post(':id/publish')
+  publishDraft(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CheckCodeExerciseDto,
+    @Req() req: any,
+  ) {
+    return this.publishService.publish(id, req.user, dto.edit_version);
   }
 }
