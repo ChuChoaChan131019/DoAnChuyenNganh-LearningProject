@@ -1346,3 +1346,19 @@ export const authorCodeExerciseApi = {
       }),
     }),
 };
+
+export const learnerOverviewApi = {
+  get: () =>
+    request<import("../types/learner-overview").LearnerOverview>(
+      "/api/v1/learner/overview",
+    ),
+
+  recordLesson: (lessonId: string, action: "view" | "complete") =>
+    request<import("../types/learner-overview").LessonActivityResponse>(
+      `/api/v1/learner/overview/lessons/${encodeURIComponent(lessonId)}/activity`,
+      {
+        method: "POST",
+        body: JSON.stringify({ action }),
+      },
+    ),
+};
