@@ -418,7 +418,15 @@ export class CsharpRunnerService {
             break;
 
           default:
-            status = 'runtime_error';
+            // Lỗi chương trình đã được script ánh xạ sang mã 22.
+            // Các mã ngoài giao thức (ví dụ Docker mất kết nối trả 1)
+            // là lỗi hạ tầng, không phải kết quả chấm bài làm.
+            reject(
+              new ServiceUnavailableException(
+                'Dịch vụ chạy C# không khả dụng.',
+              ),
+            );
+            return;
         }
 
         // CLR có thể chặn cấp phát và abort trước khi kernel OOM-kill.

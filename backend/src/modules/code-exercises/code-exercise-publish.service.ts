@@ -9,6 +9,7 @@ import {
 import { SupabaseService } from '../../config/supabase.service.js';
 import { CodeExercisesService } from './code-exercises.service.js';
 import { CsharpRunnerService } from './csharp-runner.service.js';
+import { codeOutputMatches } from './code-exercise-output.js';
 
 type Actor = {
   id: string;
@@ -29,20 +30,6 @@ type CaseResult = {
   actual_output: string;
   stderr: string;
 };
-
-// Quy tắc so kết quả trong tài liệu thiết kế:
-// - CRLF/CR => LF
-// - Bỏ dấu cách và tab cuối từng dòng
-// - Bỏ dòng trống ở cuối kết quả
-// - Giữ nguyên chữ hoa/thường và khoảng trắng giữa dòng
-function normalizeOutput(value: string): string {
-  return value
-    .replace(/\r\n?/g, '\n')
-    .split('\n')
-    .map((line) => line.replace(/[ \t]+$/g, ''))
-    .join('\n')
-    .replace(/\n+$/g, '');
-}
 
 @Injectable()
 export class CodeExercisePublishService {
@@ -207,8 +194,7 @@ export class CodeExercisePublishService {
 
       const passed =
         execution.status === 'success' &&
-        normalizeOutput(execution.stdout) ===
-          normalizeOutput(test.expected_output);
+        codeOutputMatches(execution.stdout, test.expected_output);
 
       results.push({
         index: index + 1,

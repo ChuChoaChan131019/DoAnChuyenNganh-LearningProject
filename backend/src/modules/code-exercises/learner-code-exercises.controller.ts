@@ -19,6 +19,8 @@ import { SaveLearnerCodeDto } from './dto/save-learner-code.dto.js';
 import { LearnerCodeExercisesService } from './learner-code-exercises.service.js';
 import { RunCsharpDto } from './dto/run-csharp.dto.js';
 import { CsharpRunnerService } from './csharp-runner.service.js';
+import { GradeCodeExerciseDto } from './dto/grade-code-exercise.dto.js';
+import { CodeExerciseGradingService } from './code-exercise-grading.service.js';
 
 @Controller('api/v1/learner/code-exercises')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -27,6 +29,7 @@ export class LearnerCodeExercisesController {
   constructor(
     private readonly service: LearnerCodeExercisesService,
     private readonly runner: CsharpRunnerService,
+    private readonly grading: CodeExerciseGradingService,
   ) {}
 
   @Get()
@@ -50,6 +53,7 @@ export class LearnerCodeExercisesController {
   ) {
     return this.service.saveCode(exerciseId, dto, req.user.id);
   }
+
   @Post(':exerciseId/run')
   async runCode(
     @Param('exerciseId', ParseUUIDPipe) exerciseId: string,
@@ -63,5 +67,38 @@ export class LearnerCodeExercisesController {
     // Chỉ gửi mã và stdin tới sandbox.
     // Không truy xuất test case ẩn.
     return this.runner.run(dto.code, dto.stdin ?? '');
+  }
+
+  // C05: Chạy thử các bộ kiểm tra công khai
+  @Post(':exerciseId/check-public')
+  checkPublicTests(
+    @Param('exerciseId', ParseUUIDPipe) exerciseId: string,
+    @Body() dto: GradeCodeExerciseDto,
+    @Req() req: any,
+  ) {
+    return this.grading.grade(
+      exerciseId,
+      req.user.id,
+      dto.code,
+      'public',
+      dto.revision_id,
+    );
+  }
+
+  // C05: Chấm tất cả bộ kiểm tra, kể cả test ẩn.
+  // Chưa phải thao tác lưu lần nộp chính thức C07.
+  @Post(':exerciseId/grade')
+  gradeAllTests(
+    @Param('exerciseId', ParseUUIDPipe) exerciseId: string,
+    @Body() dto: GradeCodeExerciseDto,
+    @Req() req: any,
+  ) {
+    return this.grading.grade(
+      exerciseId,
+      req.user.id,
+      dto.code,
+      'all',
+      dto.revision_id,
+    );
   }
 }

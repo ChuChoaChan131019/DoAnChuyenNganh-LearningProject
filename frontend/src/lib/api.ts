@@ -1244,6 +1244,24 @@ export const codeExerciseApi = {
         }),
       },
     ),
+
+  checkPublic: (exerciseId: string, code: string, revisionId: string) =>
+    request<import("../types/code-exercise").CodeGradeResponse>(
+      `/api/v1/learner/code-exercises/${encodeURIComponent(exerciseId)}/check-public`,
+      {
+        method: "POST",
+        body: JSON.stringify({ code, revision_id: revisionId }),
+      },
+    ),
+
+  gradeAll: (exerciseId: string, code: string, revisionId: string) =>
+    request<import("../types/code-exercise").CodeGradeResponse>(
+      `/api/v1/learner/code-exercises/${encodeURIComponent(exerciseId)}/grade`,
+      {
+        method: "POST",
+        body: JSON.stringify({ code, revision_id: revisionId }),
+      },
+    ),
 };
 
 export const contentManagerDashboardApi = {
