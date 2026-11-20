@@ -10,6 +10,7 @@ import { LearnerCodeExercisesController } from './learner-code-exercises.control
 import { LearnerCodeExercisesService } from './learner-code-exercises.service.js';
 import { CsharpRunnerService } from './csharp-runner.service.js';
 import { CodeExercisePublishService } from './code-exercise-publish.service.js';
+import { CodeExerciseGradingService } from './code-exercise-grading.service.js';
 
 @Module({
   imports: [SupabaseModule],
@@ -21,6 +22,7 @@ import { CodeExercisePublishService } from './code-exercise-publish.service.js';
     JwtAuthGuard,
     RolesGuard,
     CodeExercisePublishService,
+    CodeExerciseGradingService,
   ],
 })
 export class CodeExercisesModule {}

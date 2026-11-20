@@ -88,3 +88,38 @@ export type CsharpRunResponse = {
   exit_code: number | null;
   elapsed_ms: number;
 };
+
+export type CodeGradeMode = "public" | "all";
+
+export type CodeGradeStatus =
+  | "passed"
+  | "wrong_answer"
+  | "compile_error"
+  | "runtime_error"
+  | "time_limit"
+  | "resource_limit"
+  | "output_limit"
+  | "not_run";
+
+export type CodeGradeCase = {
+  index: number;
+  is_public: boolean;
+  status: CodeGradeStatus;
+  message: string;
+
+  // Test ẩn không có các trường bên dưới.
+  input?: string;
+  expected_output?: string;
+  actual_output?: string;
+  stderr?: string;
+};
+
+export type CodeGradeResponse = {
+  exercise_id: string;
+  revision_id: string;
+  mode: CodeGradeMode;
+  total_cases: number;
+  passed_cases: number;
+  all_passed: boolean;
+  cases: CodeGradeCase[];
+};

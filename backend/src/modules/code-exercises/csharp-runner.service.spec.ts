@@ -170,14 +170,13 @@ describe('CsharpRunnerService', () => {
     [24, 'time_limit'],
     [25, 'resource_limit'],
     [137, 'resource_limit'],
-    [17, 'runtime_error'],
   ] as const)('maps wrapper exit %i to %s', async (code, status) => {
     const { result, child } = await started(new CsharpRunnerService());
     child.close(code);
     await expect(result).resolves.toMatchObject({ status, exit_code: code });
   });
 
-  it.each([125, 126, 127, null])(
+  it.each([1, 2, 17, 125, 126, 127, null])(
     'reports Docker startup failure %s as infrastructure failure',
     async (code) => {
       const { result, child } = await started(new CsharpRunnerService());
@@ -186,6 +185,23 @@ describe('CsharpRunnerService', () => {
       expect(mocks.rm).toHaveBeenCalledOnce();
     },
   );
+
+  it('recovers execution slots after Docker connection failures', async () => {
+    const service = new CsharpRunnerService();
+    for (let i = 0; i < 3; i++) {
+      const { result, child } = await started(service);
+      child.stderr.write('failed to connect to Docker API');
+      child.close(1);
+      await expect(result).rejects.toMatchObject({ status: 503 });
+    }
+    const { result, child } = await started(service);
+    child.stdout.write('1\n');
+    child.close(0);
+    await expect(result).resolves.toMatchObject({
+      status: 'success',
+      stdout: '1\n',
+    });
+  });
 
   it.each([
     [

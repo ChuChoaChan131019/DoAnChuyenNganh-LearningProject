@@ -21,7 +21,11 @@ import {
 } from "@/components/learner/code-exercises/save-status";
 import { ApiClientError, codeExerciseApi } from "@/lib/api";
 import type { LearnerCodeExerciseDetail } from "@/types/code-exercise";
-import type { CsharpRunResponse } from "@/types/code-exercise";
+import type {
+  CsharpRunResponse,
+  CodeGradeMode,
+  CodeGradeResponse,
+} from "@/types/code-exercise";
 
 const difficultyLabel = {
   easy: "Dễ",
@@ -46,6 +50,11 @@ export default function CodeExerciseDetailPage() {
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState<CsharpRunResponse | null>(null);
   const [runError, setRunError] = useState("");
+  const [grading, setGrading] = useState(false);
+  const [gradeResult, setGradeResult] = useState<CodeGradeResponse | null>(
+    null,
+  );
+  const [gradeError, setGradeError] = useState("");
   const codeRef = useRef("");
   const savedCodeRef = useRef("");
   const versionRef = useRef(0);
@@ -155,8 +164,14 @@ export default function CodeExerciseDetailPage() {
   const changeCode = (nextCode: string) => {
     setCode(nextCode);
     codeRef.current = nextCode;
-    if (saveState !== "conflict")
+
+    // Mã thay đổi thì kết quả chấm cũ hết hiệu lực.
+    setGradeResult(null);
+    setGradeError("");
+
+    if (saveState !== "conflict") {
       setSaveState(nextCode === savedCodeRef.current ? "saved" : "dirty");
+    }
   };
 
   const handleRunCode = async () => {
@@ -180,6 +195,61 @@ export default function CodeExerciseDetailPage() {
       );
     } finally {
       setRunning(false);
+    }
+  };
+
+  // C05: Chấm theo bộ kiểm tra đã lưu trong database.
+  const handleGrade = async (mode: CodeGradeMode) => {
+    if (
+      !exerciseId ||
+      !exercise ||
+      grading ||
+      running ||
+      !code.trim() ||
+      saveState === "conflict"
+    ) {
+      return;
+    }
+
+    setGrading(true);
+    setGradeError("");
+    setGradeResult(null);
+
+    const revisionId = exercise.published_revision.id;
+
+    try {
+      const result =
+        mode === "public"
+          ? await codeExerciseApi.checkPublic(exerciseId, code, revisionId)
+          : await codeExerciseApi.gradeAll(exerciseId, code, revisionId);
+
+      if (result.exercise_id !== exerciseId || result.revision_id !== revisionId) {
+        throw new Error('Đề bài đã thay đổi. Hãy tải lại đề trước khi chấm mã.');
+      }
+
+      setGradeResult(result);
+    } catch (requestError) {
+      if (
+        requestError instanceof ApiClientError &&
+        requestError.status === 503
+      ) {
+        setGradeError(
+          "Dịch vụ chạy C# đang tạm ngừng. Vui lòng thử lại sau.",
+        );
+      } else if (
+        requestError instanceof ApiClientError &&
+        requestError.status === 429
+      ) {
+        setGradeError("Hệ thống đang xử lý nhiều lượt chạy. Hãy thử lại sau.");
+      } else {
+        setGradeError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Không thể chấm bài thực hành.",
+        );
+      }
+    } finally {
+      setGrading(false);
     }
   };
 
@@ -311,7 +381,7 @@ export default function CodeExerciseDetailPage() {
           <CodeEditor
             value={code}
             onChange={changeCode}
-            disabled={saveState === "conflict"}
+            disabled={saveState === "conflict" || grading || running}
           />
 
           {/* Khu vực nhập dữ liệu */}
@@ -343,7 +413,9 @@ export default function CodeExerciseDetailPage() {
               <button
                 type="button"
                 onClick={() => void handleRunCode()}
-                disabled={running || !code.trim() || saveState === "conflict"}
+                disabled={
+                  running || grading || !code.trim() || saveState === "conflict"
+                }
                 className="inline-flex items-center gap-2 rounded-xl bg-[#f7444e] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#e33b45] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {running ? (
@@ -397,7 +469,9 @@ export default function CodeExerciseDetailPage() {
               )}
 
               {!running && !runResult && !runError && (
-                <p className="text-slate-400">Nhấn &quot;Chạy mã&quot; để xem kết quả.</p>
+                <p className="text-slate-400">
+                  Nhấn &quot;Chạy mã&quot; để xem kết quả.
+                </p>
               )}
 
               {runResult?.stdout && (
@@ -438,6 +512,169 @@ export default function CodeExerciseDetailPage() {
                 </p>
               )}
             </div>
+          </section>
+
+          {/* C05: CHẠY THỬ VÀ CHẤM BỘ KIỂM TRA */}
+          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div>
+              <h2 className="text-base font-black text-[#0f3741]">
+                Kiểm tra và chấm mã C#
+              </h2>
+
+              <p className="mt-1 text-xs text-slate-500">
+                Chạy thử chỉ sử dụng bộ kiểm tra công khai. Chấm toàn bộ sử dụng
+                cả test ẩn nhưng không tiết lộ dữ liệu ẩn.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => void handleGrade("public")}
+                disabled={
+                  grading || running || !code.trim() || saveState === "conflict"
+                }
+                className="rounded-xl border border-[#78bcc4] bg-[#f1f8f8] px-4 py-2.5 text-sm font-bold text-[#145a68] disabled:opacity-50"
+              >
+                Chạy thử test công khai
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleGrade("all")}
+                disabled={
+                  grading || running || !code.trim() || saveState === "conflict"
+                }
+                className="rounded-xl bg-[#145a68] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              >
+                Chấm toàn bộ test
+              </button>
+            </div>
+
+            {grading && (
+              <p
+                role="status"
+                className="flex items-center gap-2 text-sm text-amber-700"
+              >
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Đang biên dịch và chấm từng bộ kiểm tra...
+              </p>
+            )}
+
+            {gradeError && (
+              <p
+                role="alert"
+                className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700"
+              >
+                {gradeError}
+              </p>
+            )}
+
+            {gradeResult && (
+              <div className="space-y-4">
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-sm font-bold text-[#0f3741]">
+                    {gradeResult.mode === "public"
+                      ? "Kết quả chạy thử"
+                      : "Kết quả chấm toàn bộ"}
+                  </p>
+
+                  <p
+                    className={`mt-1 text-lg font-black ${
+                      gradeResult.all_passed
+                        ? "text-emerald-700"
+                        : "text-rose-700"
+                    }`}
+                  >
+                    {gradeResult.passed_cases}/{gradeResult.total_cases} test
+                    đạt
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    {gradeResult.all_passed
+                      ? "Các bộ kiểm tra trong lượt này đều đạt."
+                      : "Một hoặc nhiều bộ kiểm tra chưa đạt."}
+                  </p>
+                </div>
+
+                {gradeResult.cases.map((test) => (
+                  <div
+                    key={test.index}
+                    className="rounded-xl border border-slate-200 p-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-bold text-[#0f3741]">
+                        Test {test.index}
+                        {" · "}
+                        {test.is_public ? "Công khai" : "Ẩn"}
+                      </p>
+
+                      <span
+                        className={`rounded-lg px-2 py-1 text-xs font-bold ${
+                          test.status === "passed"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : test.status === "not_run"
+                              ? "bg-slate-100 text-slate-600"
+                              : "bg-rose-50 text-rose-700"
+                        }`}
+                      >
+                        {test.message}
+                      </span>
+                    </div>
+
+                    {/* KHÔNG hiển thị input/output của test ẩn */}
+                    {test.is_public && (
+                      <div className="mt-3 grid gap-3 md:grid-cols-3">
+                        <div>
+                          <p className="mb-1 text-xs font-bold text-slate-500">
+                            Input
+                          </p>
+                          <pre className="min-h-20 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-100 p-3 text-xs">
+                            {test.input ?? ""}
+                          </pre>
+                        </div>
+
+                        <div>
+                          <p className="mb-1 text-xs font-bold text-slate-500">
+                            Expected output
+                          </p>
+                          <pre className="min-h-20 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-100 p-3 text-xs">
+                            {test.expected_output ?? ""}
+                          </pre>
+                        </div>
+
+                        <div>
+                          <p className="mb-1 text-xs font-bold text-slate-500">
+                            Actual output
+                          </p>
+                          <pre className="min-h-20 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-100 p-3 text-xs">
+                            {test.actual_output ?? ""}
+                          </pre>
+                        </div>
+
+                        {test.stderr && (
+                          <pre className="whitespace-pre-wrap break-words rounded-lg bg-rose-50 p-3 text-xs text-rose-700 md:col-span-3">
+                            {test.stderr}
+                          </pre>
+                        )}
+                      </div>
+                    )}
+
+                    {!test.is_public && (
+                      <p className="mt-2 text-xs text-slate-500">
+                        Đây là bộ kiểm tra ẩn. Hệ thống chỉ hiển thị trạng thái,
+                        không cung cấp dữ liệu đầu vào hoặc đáp án.
+                      </p>
+                    )}
+                  </div>
+                ))}
+
+                <p className="text-xs text-amber-700">
+                  Kết quả C05 hiện chưa được ghi nhận là một lần nộp bài và chưa
+                  cập nhật trạng thái hoàn thành.
+                </p>
+              </div>
+            )}
           </section>
 
           <p className="text-xs leading-5 text-slate-500">
