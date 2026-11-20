@@ -13,6 +13,7 @@ import { CodeExercisesModule } from './modules/code-exercises/code-exercises.mod
 import { DiscussionModule } from './modules/discussion/discussion.module.js';
 import { StatisticsModule } from './modules/statistics/statistics.module.js';
 import { AdminAccountsModule } from './modules/admin-accounts/admin-accounts.module.js';
+import { LearnerOverviewModule } from './modules/learner-overview/learner-overview.module.js';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { AdminAccountsModule } from './modules/admin-accounts/admin-accounts.mod
     DiscussionModule,
     StatisticsModule,
     AdminAccountsModule,
+    LearnerOverviewModule,
   ],
 
   controllers: [AppController],

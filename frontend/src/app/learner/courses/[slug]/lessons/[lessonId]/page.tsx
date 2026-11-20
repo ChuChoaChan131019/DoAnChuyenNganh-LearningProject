@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { courseApi, practiceApi, quizApi } from "@/lib/api";
+import { courseApi, practiceApi, quizApi, learnerOverviewApi } from "@/lib/api";
 import LearnerLessonMaterials from "@/components/learner/lesson-materials";
 import { DiscussionSection } from "@/components/learner/discussion/discussion-section";
 import { LessonCodeExercises } from "@/components/learner/code-exercises/lesson-code-exercises";
@@ -28,6 +28,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useTutorContext } from "@/contexts/tutor-context";
+import type { LessonActivityResponse } from "@/types/learner-overview";
 
 // DỮ LIỆU ĐỒNG BỘ TRỰC TIẾP TỪ PAGE_7.TSX
 const COURSE_MAP: Record<string, any> = {
@@ -830,6 +831,70 @@ export default function LearnerLessonPage() {
     ?.flatMap((chapter) => chapter.lessons)
     .find((lesson) => lesson.id === activeLessonId);
   const tutorLessonId = databaseLesson?.id;
+  const [lessonActivity, setLessonActivity] =
+    useState<LessonActivityResponse | null>(null);
+
+  const [savingLessonCompletion, setSavingLessonCompletion] = useState(false);
+
+  const [lessonProgressError, setLessonProgressError] = useState("");
+
+  useEffect(() => {
+    if (!tutorLessonId) return;
+
+    let active = true;
+
+    void learnerOverviewApi.recordLesson(tutorLessonId, "view").then(
+      (result) => {
+        if (active) {
+          setLessonActivity(result);
+          setLessonProgressError("");
+        }
+      },
+      (requestError: unknown) => {
+        if (active) {
+          setLessonProgressError(
+            requestError instanceof Error
+              ? requestError.message
+              : "Không thể ghi nhận tiến độ bài học.",
+          );
+        }
+      },
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [tutorLessonId]);
+
+  const lessonCompleted =
+    lessonActivity?.lesson_id === tutorLessonId &&
+    lessonActivity?.completed === true;
+
+  const handleCompleteLesson = async () => {
+    if (!tutorLessonId || savingLessonCompletion || lessonCompleted) {
+      return;
+    }
+
+    setSavingLessonCompletion(true);
+    setLessonProgressError("");
+
+    try {
+      const result = await learnerOverviewApi.recordLesson(
+        tutorLessonId,
+        "complete",
+      );
+
+      setLessonActivity(result);
+    } catch (requestError) {
+      setLessonProgressError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Không thể đánh dấu hoàn thành bài học.",
+      );
+    } finally {
+      setSavingLessonCompletion(false);
+    }
+  };
 
   useEffect(() => {
     if (!tutorLessonId) {
@@ -1274,9 +1339,18 @@ export default function LearnerLessonPage() {
                 </div>
               </div>
 
-              {databaseLesson
-                ? <LessonMarkdown content={databaseLesson.content?.trim() || 'Bài học chưa có nội dung.'} />
-                : <div className="whitespace-pre-wrap break-words text-[15px] leading-7 text-slate-600">{currentLesson.description}</div>}
+              {databaseLesson ? (
+                <LessonMarkdown
+                  content={
+                    databaseLesson.content?.trim() ||
+                    "Bài học chưa có nội dung."
+                  }
+                />
+              ) : (
+                <div className="whitespace-pre-wrap break-words text-[15px] leading-7 text-slate-600">
+                  {currentLesson.description}
+                </div>
+              )}
 
               {/* Bảng dữ liệu */}
               {!databaseLesson && (
@@ -1500,6 +1574,12 @@ export default function LearnerLessonPage() {
           </section>
         )}
 
+        {lessonProgressError && (
+          <p role="alert" className="text-sm text-rose-600">
+            {lessonProgressError}
+          </p>
+        )}
+
         {/* FOOTER ĐIỀU HƯỚNG BÀI TRƯỚC / TIẾP THEO */}
         <footer className="py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1519,6 +1599,29 @@ export default function LearnerLessonPage() {
             )}
 
             <div className="flex items-center gap-3">
+              {databaseLesson && (
+                <button
+                  type="button"
+                  onClick={() => void handleCompleteLesson()}
+                  disabled={
+                    savingLessonCompletion ||
+                    lessonCompleted ||
+                    lessonActivity?.lesson_id !== databaseLesson.id
+                  }
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition disabled:cursor-not-allowed ${
+                    lessonCompleted
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-[#145a68] text-white hover:bg-[#0f3741] disabled:opacity-50"
+                  }`}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {lessonCompleted
+                    ? "Đã học xong"
+                    : savingLessonCompletion
+                      ? "Đang lưu..."
+                      : "Đánh dấu đã học xong"}
+                </button>
+              )}
               <Link
                 href={courseHref}
                 className="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
