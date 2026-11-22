@@ -5,10 +5,13 @@ import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   BookOpen,
+  CheckCircle2,
+  Lightbulb,
   Loader2,
   Play,
   RefreshCw,
   Save,
+  Send,
   ShieldAlert,
   Terminal,
 } from "lucide-react";
@@ -23,8 +26,8 @@ import { ApiClientError, codeExerciseApi } from "@/lib/api";
 import type { LearnerCodeExerciseDetail } from "@/types/code-exercise";
 import type {
   CsharpRunResponse,
-  CodeGradeMode,
   CodeGradeResponse,
+  SubmitCodeResponse,
 } from "@/types/code-exercise";
 
 const difficultyLabel = {
@@ -55,6 +58,11 @@ export default function CodeExerciseDetailPage() {
     null,
   );
   const [gradeError, setGradeError] = useState("");
+  const [submitResult, setSubmitResult] = useState<SubmitCodeResponse | null>(
+    null,
+  );
+  const [hintLoading, setHintLoading] = useState(false);
+  const [hintError, setHintError] = useState("");
   const codeRef = useRef("");
   const savedCodeRef = useRef("");
   const versionRef = useRef(0);
@@ -74,6 +82,8 @@ export default function CodeExerciseDetailPage() {
       setStdin(detail.public_examples[0]?.input ?? "");
       setRunResult(null);
       setRunError("");
+      setGradeResult(null);
+      setSubmitResult(null);
       setExercise(detail);
       setCode(initialCode);
       codeRef.current = initialCode;
@@ -167,11 +177,36 @@ export default function CodeExerciseDetailPage() {
 
     // Mã thay đổi thì kết quả chấm cũ hết hiệu lực.
     setGradeResult(null);
+    setSubmitResult(null);
     setGradeError("");
 
     if (saveState !== "conflict") {
       setSaveState(nextCode === savedCodeRef.current ? "saved" : "dirty");
     }
+  };
+
+  // Máy chủ đã đếm lượt chạy; cập nhật số hiển thị trên giao diện.
+  const bumpRunCount = () =>
+    setExercise((current) =>
+      current
+        ? {
+            ...current,
+            progress: {
+              ...current.progress,
+              run_count: current.progress.run_count + 1,
+            },
+          }
+        : current,
+    );
+
+  const gradeErrorMessage = (requestError: unknown, fallback: string) => {
+    if (requestError instanceof ApiClientError && requestError.status === 503) {
+      return "Dịch vụ chạy C# đang tạm ngừng. Vui lòng thử lại sau.";
+    }
+    if (requestError instanceof ApiClientError && requestError.status === 429) {
+      return "Hệ thống đang xử lý nhiều lượt chạy. Hãy thử lại sau.";
+    }
+    return requestError instanceof Error ? requestError.message : fallback;
   };
 
   const handleRunCode = async () => {
@@ -187,6 +222,7 @@ export default function CodeExerciseDetailPage() {
       const result = await codeExerciseApi.runCode(exerciseId, code, stdin);
 
       setRunResult(result);
+      bumpRunCount();
     } catch (requestError) {
       setRunError(
         requestError instanceof Error
@@ -198,60 +234,142 @@ export default function CodeExerciseDetailPage() {
     }
   };
 
-  // C05: Chấm theo bộ kiểm tra đã lưu trong database.
-  const handleGrade = async (mode: CodeGradeMode) => {
-    if (
-      !exerciseId ||
-      !exercise ||
-      grading ||
-      running ||
-      !code.trim() ||
-      saveState === "conflict"
-    ) {
-      return;
-    }
+  const canGrade = () =>
+    Boolean(
+      exerciseId &&
+        exercise &&
+        !grading &&
+        !running &&
+        code.trim() &&
+        saveState !== "conflict",
+    );
 
+  // C05: chạy thử bộ kiểm tra công khai (không ghi nhận hoàn thành).
+  const handleCheckPublic = async () => {
+    if (!canGrade() || !exercise) return;
     setGrading(true);
     setGradeError("");
     setGradeResult(null);
-
+    setSubmitResult(null);
     const revisionId = exercise.published_revision.id;
 
     try {
-      const result =
-        mode === "public"
-          ? await codeExerciseApi.checkPublic(exerciseId, code, revisionId)
-          : await codeExerciseApi.gradeAll(exerciseId, code, revisionId);
-
-      if (result.exercise_id !== exerciseId || result.revision_id !== revisionId) {
-        throw new Error('Đề bài đã thay đổi. Hãy tải lại đề trước khi chấm mã.');
-      }
-
-      setGradeResult(result);
-    } catch (requestError) {
+      const result = await codeExerciseApi.checkPublic(
+        exerciseId,
+        code,
+        revisionId,
+      );
       if (
-        requestError instanceof ApiClientError &&
-        requestError.status === 503
+        result.exercise_id !== exerciseId ||
+        result.revision_id !== revisionId
       ) {
-        setGradeError(
-          "Dịch vụ chạy C# đang tạm ngừng. Vui lòng thử lại sau.",
-        );
-      } else if (
-        requestError instanceof ApiClientError &&
-        requestError.status === 429
-      ) {
-        setGradeError("Hệ thống đang xử lý nhiều lượt chạy. Hãy thử lại sau.");
-      } else {
-        setGradeError(
-          requestError instanceof Error
-            ? requestError.message
-            : "Không thể chấm bài thực hành.",
-        );
+        throw new Error("Đề bài đã thay đổi. Hãy tải lại đề trước khi chấm mã.");
       }
+      setGradeResult(result);
+      bumpRunCount();
+    } catch (requestError) {
+      setGradeError(
+        gradeErrorMessage(requestError, "Không thể chấm bài thực hành."),
+      );
     } finally {
       setGrading(false);
     }
   };
+
+  // C07: nộp bài, chấm cả test ẩn, lưu lần nộp và trạng thái hoàn thành.
+  const handleSubmit = async () => {
+    if (!canGrade() || !exercise) return;
+    setGrading(true);
+    setGradeError("");
+    setGradeResult(null);
+    setSubmitResult(null);
+    const revisionId = exercise.published_revision.id;
+
+    try {
+      // Lưu mã mới nhất trước để lần nộp và mã đã lưu luôn trùng nhau.
+      await persistRef.current();
+      const result = await codeExerciseApi.submit(exerciseId, code, revisionId);
+      if (
+        result.exercise_id !== exerciseId ||
+        result.revision_id !== revisionId
+      ) {
+        throw new Error("Đề bài đã thay đổi. Hãy tải lại đề trước khi nộp.");
+      }
+      setSubmitResult(result);
+      setExercise((current) =>
+        current
+          ? {
+              ...current,
+              progress: {
+                ...current.progress,
+                status:
+                  result.submission.status === "completed"
+                    ? "completed"
+                    : current.progress.status,
+                requires_resubmission:
+                  result.submission.status === "completed"
+                    ? false
+                    : current.progress.requires_resubmission,
+              },
+              last_submission: {
+                id: result.submission.submission_id,
+                revision_id: result.revision_id,
+                total_cases: result.total_cases,
+                passed_cases: result.passed_cases,
+                all_passed: result.all_passed,
+                submitted_at: result.submission.submitted_at,
+              },
+            }
+          : current,
+      );
+    } catch (requestError) {
+      setGradeError(gradeErrorMessage(requestError, "Không thể nộp bài."));
+    } finally {
+      setGrading(false);
+    }
+  };
+
+  // C07: mở gợi ý kế tiếp; máy chủ ghi nhớ mức cao nhất theo học sinh.
+  const handleOpenHint = async () => {
+    if (!exercise || hintLoading) return;
+    const level = exercise.hints.opened.length + 1;
+    if (level > exercise.hints.total) return;
+    setHintLoading(true);
+    setHintError("");
+    try {
+      const result = await codeExerciseApi.openHint(exerciseId, level);
+      setExercise((current) =>
+        current
+          ? {
+              ...current,
+              progress: {
+                ...current.progress,
+                highest_hint_level: result.highest_hint_level,
+              },
+              hints: {
+                ...current.hints,
+                opened: [
+                  ...current.hints.opened.filter(
+                    (item) => item.level !== result.level,
+                  ),
+                  { level: result.level, hint: result.hint },
+                ].sort((a, b) => a.level - b.level),
+              },
+            }
+          : current,
+      );
+    } catch (requestError) {
+      setHintError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Không thể mở gợi ý.",
+      );
+    } finally {
+      setHintLoading(false);
+    }
+  };
+
+  const shown = submitResult ?? gradeResult;
 
   if (loading)
     return (
@@ -300,6 +418,11 @@ export default function CodeExerciseDetailPage() {
             <span className="rounded-full bg-[#eef6f5] px-2.5 py-1 text-[#145a68]">
               {difficultyLabel[exercise.difficulty]}
             </span>
+            {exercise.progress.status === "completed" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Đã hoàn thành
+              </span>
+            )}
             {exercise.progress.requires_resubmission && (
               <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-800">
                 Có phiên bản đề mới
@@ -375,6 +498,50 @@ export default function CodeExerciseDetailPage() {
             )}
           </section>
           <PublicExamples examples={exercise.public_examples} />
+
+          {/* C07: gợi ý mở lần lượt */}
+          <section className="rounded-[18px] border border-[#dfe6df] bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="inline-flex items-center gap-2 text-sm font-bold text-[#145a68]">
+                <Lightbulb className="h-4 w-4" /> Gợi ý
+              </h2>
+              <span className="text-xs text-slate-500">
+                Đã mở {exercise.hints.opened.length}/{exercise.hints.total}
+              </span>
+            </div>
+            <ol className="mt-4 space-y-3">
+              {exercise.hints.opened.map((item) => (
+                <li
+                  key={item.level}
+                  className="rounded-xl bg-[#f4f8f6] p-3 text-sm leading-6 text-slate-700"
+                >
+                  <p className="text-xs font-bold text-[#145a68]">
+                    Gợi ý mức {item.level}
+                  </p>
+                  <p className="mt-1 whitespace-pre-line">{item.hint}</p>
+                </li>
+              ))}
+            </ol>
+            {exercise.hints.opened.length < exercise.hints.total && (
+              <button
+                type="button"
+                onClick={() => void handleOpenHint()}
+                disabled={hintLoading}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#78bcc4] bg-[#f1f8f8] px-4 py-2 text-sm font-bold text-[#145a68] disabled:opacity-50"
+              >
+                {hintLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Mở gợi ý mức {exercise.hints.opened.length + 1}
+              </button>
+            )}
+            {hintError && (
+              <p role="alert" className="mt-3 text-sm text-rose-700">
+                {hintError}
+              </p>
+            )}
+            <p className="mt-3 text-xs text-slate-500">
+              Gợi ý mở lần lượt từ mức 1 và được nhớ theo tài khoản của bạn.
+            </p>
+          </section>
         </aside>
         <main className="min-w-0 space-y-4">
           {/* Trình soạn thảo C# hiện có */}
@@ -522,18 +689,17 @@ export default function CodeExerciseDetailPage() {
               </h2>
 
               <p className="mt-1 text-xs text-slate-500">
-                Chạy thử chỉ sử dụng bộ kiểm tra công khai. Chấm toàn bộ sử dụng
-                cả test ẩn nhưng không tiết lộ dữ liệu ẩn.
+                Chạy thử chỉ dùng bộ kiểm tra công khai và không tính hoàn thành.
+                Nộp bài chấm cả test ẩn (không tiết lộ dữ liệu ẩn); bài chỉ hoàn
+                thành khi mọi bộ kiểm tra đều đạt.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => void handleGrade("public")}
-                disabled={
-                  grading || running || !code.trim() || saveState === "conflict"
-                }
+                onClick={() => void handleCheckPublic()}
+                disabled={!canGrade()}
                 className="rounded-xl border border-[#78bcc4] bg-[#f1f8f8] px-4 py-2.5 text-sm font-bold text-[#145a68] disabled:opacity-50"
               >
                 Chạy thử test công khai
@@ -541,13 +707,11 @@ export default function CodeExerciseDetailPage() {
 
               <button
                 type="button"
-                onClick={() => void handleGrade("all")}
-                disabled={
-                  grading || running || !code.trim() || saveState === "conflict"
-                }
-                className="rounded-xl bg-[#145a68] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                onClick={() => void handleSubmit()}
+                disabled={!canGrade()}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#145a68] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
               >
-                Chấm toàn bộ test
+                <Send className="h-4 w-4" /> Nộp bài
               </button>
             </div>
 
@@ -570,34 +734,32 @@ export default function CodeExerciseDetailPage() {
               </p>
             )}
 
-            {gradeResult && (
+            {shown && (
               <div className="space-y-4">
                 <div className="rounded-xl bg-slate-50 p-4">
                   <p className="text-sm font-bold text-[#0f3741]">
-                    {gradeResult.mode === "public"
-                      ? "Kết quả chạy thử"
-                      : "Kết quả chấm toàn bộ"}
+                    {submitResult ? "Kết quả nộp bài" : "Kết quả chạy thử"}
                   </p>
 
                   <p
                     className={`mt-1 text-lg font-black ${
-                      gradeResult.all_passed
+                      shown.all_passed
                         ? "text-emerald-700"
                         : "text-rose-700"
                     }`}
                   >
-                    {gradeResult.passed_cases}/{gradeResult.total_cases} test
+                    {shown.passed_cases}/{shown.total_cases} test
                     đạt
                   </p>
 
                   <p className="mt-1 text-xs text-slate-500">
-                    {gradeResult.all_passed
+                    {shown.all_passed
                       ? "Các bộ kiểm tra trong lượt này đều đạt."
                       : "Một hoặc nhiều bộ kiểm tra chưa đạt."}
                   </p>
                 </div>
 
-                {gradeResult.cases.map((test) => (
+                {shown.cases.map((test) => (
                   <div
                     key={test.index}
                     className="rounded-xl border border-slate-200 p-4"
@@ -669,17 +831,26 @@ export default function CodeExerciseDetailPage() {
                   </div>
                 ))}
 
-                <p className="text-xs text-amber-700">
-                  Kết quả C05 hiện chưa được ghi nhận là một lần nộp bài và chưa
-                  cập nhật trạng thái hoàn thành.
+                <p
+                  className={`text-xs ${submitResult ? "text-emerald-700" : "text-amber-700"}`}
+                >
+                  {submitResult
+                    ? submitResult.submission.status === "completed"
+                      ? "Lần nộp đã được lưu và bài thực hành được ghi nhận hoàn thành."
+                      : "Lần nộp đã được lưu nhưng bài chưa hoàn thành. Hãy sửa mã và nộp lại."
+                    : "Chạy thử chưa được ghi nhận là lần nộp và chưa cập nhật trạng thái hoàn thành."}
                 </p>
               </div>
             )}
           </section>
 
           <p className="text-xs leading-5 text-slate-500">
-            Mã được tự động lưu sau khi ngừng nhập. Chạy mã chỉ giúp kiểm tra
-            kết quả, chưa chấm điểm bài thực hành.
+            Mã được tự động lưu sau khi ngừng nhập. Chạy mã và chạy thử chỉ giúp
+            kiểm tra kết quả; bài chỉ hoàn thành khi nộp bài đạt mọi bộ kiểm tra.
+            Đã chạy {exercise.progress.run_count} lần
+            {exercise.last_submission
+              ? ` · Lần nộp gần nhất: ${exercise.last_submission.passed_cases}/${exercise.last_submission.total_cases} test đạt`
+              : ""}.
           </p>
         </main>
       </div>

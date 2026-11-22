@@ -256,7 +256,9 @@ export class CsharpRunnerService {
         '--mount',
         `type=bind,source=${sourceDir},target=/source,readonly`,
 
-        '--workdir=/workspace',
+        // Không dùng --workdir: Docker 20.10 đặt lại quyền tmpfs /workspace
+        // về 755 root khi tạo workdir, user 65534 sẽ không ghi được.
+        // RUN_SCRIPT tự `cd /workspace` ngay đầu script.
 
         '-e',
         'HOME=/tmp',

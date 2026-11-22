@@ -41,6 +41,7 @@ function setup() {
   };
 
   const findOne = vi.fn(async () => detail);
+  const recordSubmission = vi.fn(async () => ({ status: 'completed' }));
 
   const query = {
     select: vi.fn().mockReturnThis(),
@@ -57,7 +58,7 @@ function setup() {
 
   const service = new CodeExerciseGradingService(
     { getClient: () => ({ from }) } as never,
-    { findOne } as never,
+    { findOne, recordSubmission } as never,
     { run } as never,
   );
 
@@ -66,6 +67,7 @@ function setup() {
     run,
     findOne,
     from,
+    recordSubmission,
   };
 }
 
@@ -252,5 +254,44 @@ describe('C05 - Chấm bài thực hành C#', () => {
     ).rejects.toThrow('Access denied');
     expect(from).not.toHaveBeenCalled();
     expect(run).not.toHaveBeenCalled();
+  });
+
+  it('C07: nộp bài chấm toàn bộ test và lưu kết quả không lộ test ẩn', async () => {
+    const { service, run, recordSubmission } = setup();
+    run
+      .mockResolvedValueOnce(execution('5\n'))
+      .mockResolvedValueOnce(execution('SAI_KET_QUA'));
+
+    const result = await service.submit(
+      exerciseId,
+      learnerId,
+      'Console.WriteLine(5);',
+      'revision-1',
+    );
+
+    expect(run).toHaveBeenCalledTimes(2);
+    expect(result.all_passed).toBe(false);
+    expect(result.submission).toEqual({ status: 'completed' });
+    expect(recordSubmission).toHaveBeenCalledWith(
+      exerciseId,
+      learnerId,
+      expect.objectContaining({
+        revisionId: 'revision-1',
+        totalCases: 2,
+        passedCases: 1,
+      }),
+    );
+    expect(JSON.stringify(recordSubmission.mock.calls)).not.toMatch(
+      /HIDDEN_INPUT|HIDDEN_EXPECTED|SAI_KET_QUA/,
+    );
+  });
+
+  it('C07: không lưu lần nộp khi chấm bị từ chối', async () => {
+    const { service, findOne, recordSubmission } = setup();
+    findOne.mockRejectedValueOnce(new Error('Access denied'));
+    await expect(
+      service.submit(exerciseId, learnerId, 'code', 'revision-1'),
+    ).rejects.toThrow('Access denied');
+    expect(recordSubmission).not.toHaveBeenCalled();
   });
 });
