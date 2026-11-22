@@ -64,6 +64,36 @@ export type LearnerCodeExerciseDetail = {
     last_seen_revision_id: string | null;
     requires_resubmission: boolean;
     updated_at: string | null;
+    run_count: number;
+    highest_hint_level: number;
+  };
+  hints: { total: number; opened: OpenedCodeHint[] };
+  last_submission: CodeSubmissionSummary | null;
+};
+
+export type OpenedCodeHint = { level: number; hint: string };
+
+export type CodeSubmissionSummary = {
+  id: string;
+  revision_id: string;
+  total_cases: number;
+  passed_cases: number;
+  all_passed: boolean;
+  submitted_at: string;
+};
+
+export type OpenCodeHintResponse = {
+  exercise_id: string;
+  level: number;
+  hint: string;
+  highest_hint_level: number;
+};
+
+export type SubmitCodeResponse = CodeGradeResponse & {
+  submission: {
+    submission_id: string;
+    submitted_at: string;
+    status: "in_progress" | "completed";
   };
 };
 

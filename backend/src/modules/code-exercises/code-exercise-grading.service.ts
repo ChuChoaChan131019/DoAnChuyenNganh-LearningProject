@@ -225,6 +225,39 @@ export class CodeExerciseGradingService {
   }
 
   /**
+   * C07: nộp bài. Chấm toàn bộ test (kể cả test ẩn) rồi lưu lần nộp và
+   * trạng thái hoàn thành. Kết quả lưu/trả về đã loại dữ liệu test ẩn.
+   */
+  async submit(
+    exerciseId: string,
+    learnerId: string,
+    code: string,
+    expectedRevisionId: string,
+  ) {
+    const graded = await this.grade(
+      exerciseId,
+      learnerId,
+      code,
+      'all',
+      expectedRevisionId,
+    );
+
+    const saved = await this.learnerExercises.recordSubmission(
+      exerciseId,
+      learnerId,
+      {
+        revisionId: graded.revision_id,
+        code,
+        totalCases: graded.total_cases,
+        passedCases: graded.passed_cases,
+        results: graded.cases,
+      },
+    );
+
+    return { ...graded, submission: saved };
+  }
+
+  /**
    * Chỉ test công khai được kèm dữ liệu.
    *
    * Test ẩn không trả:

@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Put,
   Query,
@@ -66,27 +67,56 @@ export class LearnerCodeExercisesController {
 
     // Chỉ gửi mã và stdin tới sandbox.
     // Không truy xuất test case ẩn.
-    return this.runner.run(dto.code, dto.stdin ?? '');
+    const result = await this.runner.run(dto.code, dto.stdin ?? '');
+    await this.service.recordRun(exerciseId, req.user.id);
+    return result;
   }
 
-  // C05: Chạy thử các bộ kiểm tra công khai
-  @Post(':exerciseId/check-public')
-  checkPublicTests(
+  // C07: mở gợi ý mức 1, 2, 3 lần lượt.
+  @Post(':exerciseId/hints/:level')
+  openHint(
+    @Param('exerciseId', ParseUUIDPipe) exerciseId: string,
+    @Param('level', ParseIntPipe) level: number,
+    @Req() req: any,
+  ) {
+    return this.service.openHint(exerciseId, level, req.user.id);
+  }
+
+  // C07: nộp bài, chấm toàn bộ test và lưu trạng thái hoàn thành.
+  @Post(':exerciseId/submit')
+  submit(
     @Param('exerciseId', ParseUUIDPipe) exerciseId: string,
     @Body() dto: GradeCodeExerciseDto,
     @Req() req: any,
   ) {
-    return this.grading.grade(
+    return this.grading.submit(
+      exerciseId,
+      req.user.id,
+      dto.code,
+      dto.revision_id,
+    );
+  }
+
+  // C05: Chạy thử các bộ kiểm tra công khai
+  @Post(':exerciseId/check-public')
+  async checkPublicTests(
+    @Param('exerciseId', ParseUUIDPipe) exerciseId: string,
+    @Body() dto: GradeCodeExerciseDto,
+    @Req() req: any,
+  ) {
+    const result = await this.grading.grade(
       exerciseId,
       req.user.id,
       dto.code,
       'public',
       dto.revision_id,
     );
+    await this.service.recordRun(exerciseId, req.user.id);
+    return result;
   }
 
   // C05: Chấm tất cả bộ kiểm tra, kể cả test ẩn.
-  // Chưa phải thao tác lưu lần nộp chính thức C07.
+  // Không lưu kết quả; lần nộp chính thức dùng POST :exerciseId/submit (C07).
   @Post(':exerciseId/grade')
   gradeAllTests(
     @Param('exerciseId', ParseUUIDPipe) exerciseId: string,

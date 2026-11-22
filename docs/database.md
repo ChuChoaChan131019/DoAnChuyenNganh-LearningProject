@@ -402,7 +402,7 @@ Test D03 dùng chính các migration D01/D02/D03 trên PGlite và service thật
 
 ## Những phần chưa có bảng riêng
 
-- C06 đã có bảng **tiến độ và mã gần nhất của bài viết code** ở mục 7. Chưa có bảng lịch sử **bài nộp code**; `practice_attempts` vẫn chỉ lưu luyện câu hỏi.
+- C06 đã có bảng **tiến độ và mã gần nhất của bài viết code** ở mục 7. C07 bổ sung `code_exercise_submissions` (lịch sử **bài nộp code**, xem [C07](c07-nop-bai-goi-y-api.md)); `practice_attempts` vẫn chỉ lưu luyện câu hỏi.
 - D01/D02/D03 đã có bảng **bài đăng, bình luận và lượt hữu ích** ở mục 8–10; chưa có bảng báo cáo nội dung.
 - Chưa có bảng tiến độ đọc bài học riêng trong 17 bảng `public` đang tồn tại. Không suy ra học sinh đã học xong bài chỉ từ bảng `lessons`.
 

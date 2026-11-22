@@ -149,7 +149,10 @@ export class LearnerCodeExercisesService {
         difficulty,
         input_format,
         output_format,
-        starter_code
+        starter_code,
+        hint_1,
+        hint_2,
+        hint_3
       `)
       .eq('id', exercise.published_revision_id)
       .eq('exercise_id', exercise.id)
@@ -188,7 +191,7 @@ export class LearnerCodeExercisesService {
     if (courseError) this.databaseError(courseError);
     if (!course) throw new NotFoundException('Khóa học không còn khả dụng');
 
-    const [examplesResult, progressResult] = await Promise.all([
+    const [examplesResult, progressResult, submissionResult] = await Promise.all([
       supabase
         .from('code_test_cases')
         .select('id, input_text, expected_output, order_index')
@@ -201,6 +204,8 @@ export class LearnerCodeExercisesService {
           saved_code,
           save_version,
           status,
+          run_count,
+          highest_hint_level,
           last_seen_revision_id,
           completed_revision_id,
           updated_at
@@ -208,12 +213,27 @@ export class LearnerCodeExercisesService {
         .eq('learner_id', learnerId)
         .eq('exercise_id', exercise.id)
         .maybeSingle(),
+      supabase
+        .from('code_exercise_submissions')
+        .select('id, revision_id, total_cases, passed_cases, all_passed, created_at')
+        .eq('learner_id', learnerId)
+        .eq('exercise_id', exercise.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
 
     if (examplesResult.error) this.databaseError(examplesResult.error);
     if (progressResult.error) this.databaseError(progressResult.error);
+    if (submissionResult?.error) this.databaseError(submissionResult.error);
 
     const progress = progressResult.data;
+    const lastSubmission = submissionResult?.data ?? null;
+    // Chỉ trả những gợi ý học sinh đã tự mở, đúng thứ tự.
+    const hintTexts = [revision.hint_1, revision.hint_2, revision.hint_3];
+    const openedHints = hintTexts
+      .slice(0, progress?.highest_hint_level ?? 0)
+      .map((hint, index) => ({ level: index + 1, hint }));
     const progressStatus = !progress
       ? 'not_started'
       : progress.completed_revision_id === revision.id
@@ -253,7 +273,20 @@ export class LearnerCodeExercisesService {
           && progress.completed_revision_id !== revision.id,
         ),
         updated_at: progress?.updated_at ?? null,
+        run_count: progress?.run_count ?? 0,
+        highest_hint_level: progress?.highest_hint_level ?? 0,
       },
+      hints: { total: 3, opened: openedHints },
+      last_submission: lastSubmission
+        ? {
+          id: lastSubmission.id,
+          revision_id: lastSubmission.revision_id,
+          total_cases: lastSubmission.total_cases,
+          passed_cases: lastSubmission.passed_cases,
+          all_passed: lastSubmission.all_passed,
+          submitted_at: lastSubmission.created_at,
+        }
+        : null,
     };
   }
 
@@ -273,6 +306,74 @@ export class LearnerCodeExercisesService {
     );
 
     if (error) this.databaseError(error);
+    return data;
+  }
+
+  // C07: đếm một lượt chạy (đầu vào tự nhập hoặc chạy thử test công khai).
+  // Lỗi ghi bộ đếm không được làm mất kết quả chạy đã có của học sinh.
+  async recordRun(exerciseId: string, learnerId: string) {
+    const { error } = await this.supabaseService.getClient().rpc(
+      'record_code_exercise_run',
+      { p_actor_id: learnerId, p_exercise_id: exerciseId },
+    );
+    if (error) {
+      this.logger.warn(
+        `Không thể ghi số lần chạy (${error.code || 'UNKNOWN'}): ${error.message || ''}`,
+      );
+    }
+  }
+
+  // C07: mở gợi ý theo thứ tự 1 -> 2 -> 3 và nhớ mức cao nhất theo học sinh.
+  async openHint(exerciseId: string, level: number, learnerId: string) {
+    const { data, error } = await this.supabaseService.getClient().rpc(
+      'open_code_exercise_hint',
+      {
+        p_actor_id: learnerId,
+        p_exercise_id: exerciseId,
+        p_level: level,
+      },
+    );
+    if (error) {
+      if (error.code === 'PT409') {
+        throw new ConflictException('Hãy mở các gợi ý theo thứ tự từ mức 1.');
+      }
+      this.databaseError(error);
+    }
+    return data;
+  }
+
+  // C07: lưu lần nộp và trạng thái hoàn thành.
+  async recordSubmission(
+    exerciseId: string,
+    learnerId: string,
+    submission: {
+      revisionId: string;
+      code: string;
+      totalCases: number;
+      passedCases: number;
+      results: unknown;
+    },
+  ) {
+    const { data, error } = await this.supabaseService.getClient().rpc(
+      'submit_code_exercise',
+      {
+        p_actor_id: learnerId,
+        p_exercise_id: exerciseId,
+        p_revision_id: submission.revisionId,
+        p_code: submission.code,
+        p_total_cases: submission.totalCases,
+        p_passed_cases: submission.passedCases,
+        p_results: submission.results,
+      },
+    );
+    if (error) {
+      if (error.code === 'PT409') {
+        throw new ConflictException(
+          'Đề bài đã có phiên bản mới. Hãy tải lại đề trước khi nộp.',
+        );
+      }
+      this.databaseError(error);
+    }
     return data;
   }
 }

@@ -1254,6 +1254,21 @@ export const codeExerciseApi = {
       },
     ),
 
+  openHint: (exerciseId: string, level: number) =>
+    request<import("../types/code-exercise").OpenCodeHintResponse>(
+      `/api/v1/learner/code-exercises/${encodeURIComponent(exerciseId)}/hints/${level}`,
+      { method: "POST" },
+    ),
+
+  submit: (exerciseId: string, code: string, revisionId: string) =>
+    request<import("../types/code-exercise").SubmitCodeResponse>(
+      `/api/v1/learner/code-exercises/${encodeURIComponent(exerciseId)}/submit`,
+      {
+        method: "POST",
+        body: JSON.stringify({ code, revision_id: revisionId }),
+      },
+    ),
+
   gradeAll: (exerciseId: string, code: string, revisionId: string) =>
     request<import("../types/code-exercise").CodeGradeResponse>(
       `/api/v1/learner/code-exercises/${encodeURIComponent(exerciseId)}/grade`,
