@@ -122,6 +122,9 @@ export class QuestionsService {
     if (current.status !== QuestionStatus.DRAFT) {
       throw new ConflictException('Only draft questions can be reviewed');
     }
+    if (!current.submitted_for_review_at) {
+      throw new BadRequestException('Question must be submitted for review first');
+    }
     if (status === QuestionStatus.APPROVED) {
       const question = await this.getById(id);
       this.validateQuestion({
@@ -137,23 +140,6 @@ export class QuestionsService {
       p_action: status === QuestionStatus.APPROVED ? 'approve' : 'reject',
       p_expected_version: expectedVersion ?? current.version,
       p_reason: reason?.trim() || null,
-    });
-    this.throwRpcError(error);
-    const result = Array.isArray(data) ? data[0] : data;
-    if (!result) throw new NotFoundException('Question not found');
-    return result;
-  }
-
-  async revokeApproval(id: string, actorId: string, reason: string, expectedVersion: number) {
-    if (!reason?.trim()) throw new BadRequestException('Cần nhập lý do gỡ duyệt.');
-    if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
-      throw new BadRequestException('Phiên bản câu hỏi không hợp lệ.');
-    }
-    const { data, error } = await this.supabaseService.getAdminClient().rpc('revoke_shared_question_approval', {
-      p_actor_id: actorId,
-      p_question_id: id,
-      p_expected_version: expectedVersion,
-      p_reason: reason.trim(),
     });
     this.throwRpcError(error);
     const result = Array.isArray(data) ? data[0] : data;

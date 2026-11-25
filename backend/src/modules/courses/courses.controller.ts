@@ -26,13 +26,11 @@ export class CoursesController {
   }
 
   @Post()
-  @Roles('content_manager')
   create(@Body() createCourseDto: CreateCourseDto, @Req() request: any) {
     return this.coursesService.create(createCourseDto, request.user.id);
   }
 
   @Post(':courseId/chapters')
-  @Roles('content_manager')
   createChapter(
     @Param('courseId') courseId: string,
     @Body() createChapterDto: CreateChapterDto,
@@ -53,7 +51,6 @@ export class CoursesController {
   }
 
   @Patch(':courseId/chapters/reorder')
-  @Roles('content_manager')
   reorderChapters(
     @Param('courseId') courseId: string,
     @Body() reorderChaptersDto: ReorderChaptersDto,
@@ -62,7 +59,6 @@ export class CoursesController {
   }
 
   @Patch(':courseId/chapters/:chapterId/lessons/reorder')
-  @Roles('content_manager')
   reorderLessons(
     @Param('courseId') courseId: string,
     @Param('chapterId') chapterId: string,
@@ -72,7 +68,6 @@ export class CoursesController {
   }
 
   @Post(':courseId/chapters/:chapterId/lessons')
-  @Roles('content_manager')
   createLesson(
     @Param('courseId') courseId: string,
     @Param('chapterId') chapterId: string,
@@ -127,7 +122,6 @@ export class CoursesController {
   }
 
   @Post('lessons/:lessonId/versions/:version/restore')
-  @Roles('content_manager')
   restoreLessonVersion(
     @Param('lessonId') lessonId: string,
     @Param('version') version: string,
@@ -147,7 +141,6 @@ export class CoursesController {
   }
 
   @Patch(':courseId/chapters/:chapterId')
-  @Roles('content_manager')
   updateChapter(
     @Param('courseId') courseId: string,
     @Param('chapterId') chapterId: string,
@@ -157,7 +150,6 @@ export class CoursesController {
   }
 
   @Delete(':courseId/chapters/:chapterId')
-  @Roles('content_manager')
   removeChapter(
     @Param('courseId') courseId: string,
     @Param('chapterId') chapterId: string,
@@ -171,7 +163,6 @@ export class CoursesController {
   }
 
   @Patch('lessons/:lessonId')
-  @Roles('content_manager')
   updateLesson(
     @Param('lessonId') lessonId: string,
     @Body() updateLessonDto: UpdateLessonDto,
@@ -181,7 +172,6 @@ export class CoursesController {
   }
 
   @Delete('lessons/:lessonId')
-  @Roles('content_manager')
   removeLesson(@Param('lessonId') lessonId: string) {
     return this.coursesService.removeLesson(lessonId);
   }
@@ -192,13 +182,11 @@ export class CoursesController {
   }
 
   @Patch(':id')
-  @Roles('content_manager')
   update(@Param('id') id: string, @Body() updateCourseDto: UpdateCourseDto) {
     return this.coursesService.update(id, updateCourseDto);
   }
 
   @Delete(':id')
-  @Roles('content_manager')
   remove(@Param('id') id: string) {
     return this.coursesService.remove(id);
   }

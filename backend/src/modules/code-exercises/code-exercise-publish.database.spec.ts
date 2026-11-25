@@ -94,12 +94,6 @@ describe('C04 publication transaction (PostgreSQL)', () => {
         'utf8',
       ),
     );
-    await db.exec(
-      readFileSync(
-        '../database/migrations/20261125120000_allow_managers_to_publish_code_exercises.sql',
-        'utf8',
-      ),
-    );
   }, 30_000);
   afterAll(async () => {
     await db?.close();
@@ -270,12 +264,8 @@ describe('C04 publication transaction (PostgreSQL)', () => {
     await rejectedPublication(saved, '22023');
   });
 
-  it('lets another content manager publish an author\'s valid draft', async () => {
-    const saved = await save();
-    await expect(publish(saved, otherAuthor)).resolves.toMatchObject({
-      revision_id: saved.revision_id,
-      status: 'published',
-    });
+  it('requires ownership even for another content manager', async () => {
+    await rejectedPublication(await save(), '42501', otherAuthor);
   });
 
   it('only grants the backend permission to call the publication RPC', async () => {

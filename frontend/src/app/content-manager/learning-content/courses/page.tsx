@@ -25,8 +25,10 @@ import { vietnameseCourseLevel } from "@/lib/ui-labels";
 const statusStyles: Record<ContentStatus, string> = {
   Published: "border-emerald-200 bg-emerald-50 text-emerald-700",
   Draft: "border-slate-200 bg-slate-100 text-slate-600",
+  Approved: "border-cyan-200 bg-cyan-50 text-cyan-700",
+  "In review": "border-amber-200 bg-amber-50 text-amber-700",
 };
-const statusLabels: Record<ContentStatus, string> = { Published: "Đã xuất bản", Draft: "Bản nháp" };
+const statusLabels: Record<ContentStatus, string> = { Published: "Đã xuất bản", Approved: "Đã duyệt", "In review": "Đang chờ duyệt", Draft: "Bản nháp" };
 const levelStyles: Record<CourseLevel, string> = {
   Beginner: "bg-rose-50 text-rose-600",
   Intermediate: "bg-cyan-50 text-cyan-700",
@@ -518,6 +520,8 @@ export default function CoursesPage() {
           options={[
             "Tất cả trạng thái",
             "Published",
+            "Approved",
+            "In review",
             "Draft",
           ]}
           onChange={setStatus}

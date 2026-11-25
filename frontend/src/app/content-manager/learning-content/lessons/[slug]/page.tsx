@@ -104,22 +104,22 @@ export default function LessonEditorPage() {
     }
   };
 
-  const changeStatus = async (action: "publish" | "unpublish") => {
+  const changeStatus = async (action: "approve" | "publish" | "unpublish") => {
     if (!selectedSlug) return;
     if (hasUnsavedChanges) {
       setLoadError("Hãy lưu thay đổi trước khi cập nhật trạng thái bài học.");
       return;
     }
     let reason: string | undefined;
-    if (action === "publish") {
+    if (action === "approve") {
       const result = validation?.lesson_version === version ? validation : await validateCurrent();
       if (!result || !result.valid) return;
-      if (result.warnings.length > 0 && !window.confirm(`Nội dung còn ${result.warnings.length} cảnh báo. Bạn vẫn muốn xuất bản?`)) return;
+      if (result.warnings.length > 0 && !window.confirm(`Nội dung còn ${result.warnings.length} cảnh báo. Bạn vẫn muốn duyệt?`)) return;
     }
     if (action === "unpublish") {
       reason = window.prompt("Nhập lý do gỡ xuất bản:")?.trim();
       if (!reason) return;
-    } else if (!window.confirm("Xuất bản bài học này?")) return;
+    } else if (!window.confirm(action === "approve" ? "Duyệt nội dung này?" : "Xuất bản bài học này?")) return;
 
     setIsSaving(true);
     setLoadError(null);
@@ -127,9 +127,9 @@ export default function LessonEditorPage() {
     try {
       const updated = await courseApi.reviewAction(selectedSlug, { action, version, reason });
       setVersion(updated.version);
-      setStatus(action === "unpublish" ? "Draft" : "Published");
+      setStatus(action === "approve" || action === "unpublish" ? "Approved" : "Published");
       setValidation(null);
-      setSaveMessage(action === "publish" ? "Bài học đã được xuất bản." : "Bài học đã được gỡ xuất bản và chuyển về bản nháp.");
+      setSaveMessage(action === "approve" ? "Nội dung đã được duyệt." : action === "publish" ? "Bài học đã được xuất bản." : "Bài học đã được gỡ xuất bản.");
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Không thể thay đổi trạng thái bài học.");
     } finally {
@@ -188,7 +188,13 @@ export default function LessonEditorPage() {
           .catch(() => {
             if (isActive) setLessons([]);
           });
-        setStatus(lesson.status === "published" ? "Published" : "Draft");
+        setStatus(
+          lesson.status === "published"
+            ? "Published"
+            : lesson.status === "approved"
+              ? "Approved"
+              : "Draft",
+        );
         setIsLoading(false);
         void courseApi.latestLessonValidation(lesson.id).then((result) => {
           if (isActive && result?.lesson_version === lesson.version) setValidation(result);
@@ -241,7 +247,8 @@ export default function LessonEditorPage() {
             <WandSparkles className="h-4 w-4" />
             Tạo bằng trí tuệ nhân tạo
           </button>
-          {status === "Draft" && <button type="button" onClick={() => void changeStatus("publish")} disabled={isLoading || isSaving} className="inline-flex items-center gap-2 rounded-xl bg-[#14919B] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50"><Globe2 className="h-4 w-4" />Xuất bản</button>}
+          {status === "Draft" && <button type="button" onClick={() => void changeStatus("approve")} disabled={isLoading || isSaving} className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50"><Check className="h-4 w-4" />Duyệt</button>}
+          {status === "Approved" && <button type="button" onClick={() => void changeStatus("publish")} disabled={isLoading || isSaving} className="inline-flex items-center gap-2 rounded-xl bg-[#14919B] px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-50"><Globe2 className="h-4 w-4" />Xuất bản</button>}
           {status === "Published" && <button type="button" onClick={() => void changeStatus("unpublish")} disabled={isLoading || isSaving} className="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 disabled:opacity-50">Gỡ xuất bản</button>}
         </div>
       </div>

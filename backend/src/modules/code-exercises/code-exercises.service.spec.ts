@@ -58,7 +58,7 @@ const payload: SaveCodeExerciseDto = {
   difficulty: CodeDifficulty.EASY,
 };
 
-// Queue actual query results; keep builders inspectable to verify query filters.
+// Queue actual query results; keep builders inspectable to verify ownership filters.
 function setup(results: Array<{ data: unknown; error?: unknown }> = []) {
   const builders: Array<Record<string, ReturnType<typeof vi.fn>>> = [];
   const from = vi.fn(() => {
@@ -88,7 +88,7 @@ function setup(results: Array<{ data: unknown; error?: unknown }> = []) {
 }
 
 describe('CodeExercisesService', () => {
-  it('lists active exercises and searches the draft title', async () => {
+  it('lists only the author’s active exercises and searches the draft title', async () => {
     const { service, builders } = setup([
       { data: [exercise] },
       { data: [draft, published] },
@@ -101,10 +101,9 @@ describe('CodeExercisesService', () => {
         status: 'draft',
         has_draft: true,
         is_published: true,
-        can_edit: true,
       },
     ]);
-    expect(builders[0].eq).not.toHaveBeenCalledWith('created_by', author.id);
+    expect(builders[0].eq).toHaveBeenCalledWith('created_by', author.id);
     expect(builders[0].eq).toHaveBeenCalledWith(
       'lesson_id',
       exercise.lesson_id,
@@ -132,17 +131,14 @@ describe('CodeExercisesService', () => {
     expect(from).toHaveBeenCalledTimes(1);
   });
 
-  it('lets another manager inspect the draft before publishing without edit rights', async () => {
+  it('rejects reading another author’s hidden tests and solution before loading revisions', async () => {
     const { service, from } = setup([
       { data: { ...exercise, created_by: 'another-author' } },
-      { data: [draft, published] },
-      { data: testCases },
     ]);
-    await expect(service.findOne(exercise.id, author)).resolves.toMatchObject({
-      can_edit: false,
-      revision: { id: draft.id, solution_code: draft.solution_code },
+    await expect(service.findOne(exercise.id, author)).rejects.toMatchObject({
+      status: 403,
     });
-    expect(from).toHaveBeenCalledTimes(3);
+    expect(from).toHaveBeenCalledTimes(1);
   });
 
   it('reports a missing exercise', async () => {
@@ -286,26 +282,6 @@ describe('CodeExercisesService', () => {
       updated_at: expect.any(String),
     });
     expect(builders[3].eq).toHaveBeenCalledWith('id', exercise.id);
-  });
-
-  it('does not let a manager archive another author’s exercise', async () => {
-    const { service, from } = setup([
-      { data: { ...exercise, created_by: 'another-author' } },
-      { data: [draft] },
-      { data: [] },
-    ]);
-    await expect(service.archive(exercise.id, author)).rejects.toMatchObject({ status: 403 });
-    expect(from).toHaveBeenCalledTimes(3);
-  });
-
-  it('does not let a manager copy another author’s exercise', async () => {
-    const { service, from } = setup([
-      { data: { ...exercise, created_by: 'another-author' } },
-      { data: [draft] },
-      { data: testCases },
-    ]);
-    await expect(service.copy(exercise.id, author)).rejects.toMatchObject({ status: 403 });
-    expect(from).toHaveBeenCalledTimes(3);
   });
 
   it('rejects archiving an already archived exercise', async () => {

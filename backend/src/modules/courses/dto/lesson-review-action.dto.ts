@@ -1,8 +1,8 @@
 import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class LessonReviewActionDto {
-  @IsIn(['approve', 'publish', 'unpublish', 'request_changes'])
-  action!: 'approve' | 'publish' | 'unpublish' | 'request_changes';
+  @IsIn(['approve', 'publish', 'unpublish'])
+  action!: 'approve' | 'publish' | 'unpublish';
 
   @IsInt()
   @Min(1)

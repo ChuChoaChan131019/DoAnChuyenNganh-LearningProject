@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import {
   Flag,
   FileCheck2,
-  ListChecks,
   Menu,
   PanelLeftClose,
   ShieldCheck,
@@ -14,13 +13,11 @@ import {
   X,
 } from "lucide-react";
 import { UserMenu } from "@/components/auth/user-menu";
-import { UserNotificationBell } from "@/components/notifications/user-notification-bell";
 
 const navigation = [
   { href: "/admin/discussion-reports", label: "Báo cáo thảo luận", icon: Flag },
   { href: "/admin/accounts", label: "Tài khoản", icon: Users },
   { href: "/admin/content-review", label: "Duyệt nội dung", icon: FileCheck2 },
-  { href: "/admin/questions/review", label: "Duyệt câu hỏi", icon: ListChecks },
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {
@@ -125,10 +122,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <UserNotificationBell />
-            <UserMenu />
-          </div>
+          <UserMenu />
         </header>
         <main className="mx-auto w-full max-w-[1500px] px-4 py-7 sm:px-7 lg:px-9 lg:py-9">
           {children}

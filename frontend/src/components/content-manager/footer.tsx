@@ -49,6 +49,7 @@ export function Footer() {
             >
               Khóa học
             </a>
+            <a className="mt-2 block text-white/75 hover:text-white" href="/content-manager/testsandpractice/practicesets">Luyện tập</a>
             <a className="mt-2 block text-white/75 hover:text-white" href="/content-manager">Thống kê</a>
             <a className="mt-2 block text-white/75 hover:text-white" href="/content-manager">Trợ giảng trí tuệ nhân tạo</a>
           </div>

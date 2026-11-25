@@ -49,7 +49,7 @@ export interface QuestionHistoryItem {
   id: string;
   question_id: string;
   version: number;
-  action: 'created' | 'updated' | 'submitted' | 'approved' | 'rejected' | 'unapproved';
+  action: 'created' | 'updated' | 'submitted' | 'approved' | 'rejected';
   from_status?: QuestionStatus | null;
   to_status?: QuestionStatus | null;
   actor_id: string;

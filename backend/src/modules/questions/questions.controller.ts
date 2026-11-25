@@ -4,7 +4,6 @@ import { Roles } from '../../common/decorators/roles.decorator.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import {
   QuestionDto,
-  RevokeQuestionApprovalDto,
   SubmitQuestionDto,
 } from './dto/question.dto.js';
 import { SaveAiDraftBatchDto } from './dto/ai-draft.dto.js';
@@ -46,19 +45,16 @@ export class QuestionsController {
   }
 
   @Post('questions')
-  @Roles('content_manager')
   create(@Body() dto: QuestionDto, @Req() request: any) {
     return this.questionsService.create(dto, request.user.id);
   }
 
   @Post('questions/ai-drafts')
-  @Roles('content_manager')
   saveAiDrafts(@Body() dto: SaveAiDraftBatchDto, @Req() request: any) {
     return this.questionsService.saveAiDrafts(dto, request.user.id);
   }
 
   @Put('questions/:id')
-  @Roles('content_manager')
   update(@Param('id') id: string, @Body() dto: QuestionDto, @Req() request: any) {
     return this.questionsService.update(id, dto, request.user.id);
   }
@@ -68,19 +64,12 @@ export class QuestionsController {
     return this.questionsService.updateStatus(id, body.status, request.user.id, body.reason, body.expected_version);
   }
 
-  @Post('questions/:id/revoke-approval')
-  revokeApproval(@Param('id') id: string, @Body() body: RevokeQuestionApprovalDto, @Req() request: any) {
-    return this.questionsService.revokeApproval(id, request.user.id, body.reason, body.expected_version);
-  }
-
   @Post('questions/:id/submit-review')
-  @Roles('content_manager')
   submitForReview(@Param('id') id: string, @Body() body: SubmitQuestionDto, @Req() request: any) {
     return this.questionsService.submitForReview(id, request.user.id, request.user.role, body.expected_version);
   }
 
   @Delete('questions/:id')
-  @Roles('content_manager')
   remove(@Param('id') id: string, @Req() request: any) {
     return this.questionsService.remove(id, request.user.id);
   }

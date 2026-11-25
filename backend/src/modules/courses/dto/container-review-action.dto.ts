@@ -1,6 +1,6 @@
 import { IsIn } from 'class-validator';
 
 export class ContainerReviewActionDto {
-  @IsIn(['publish', 'unpublish'])
-  action!: 'publish' | 'unpublish';
+  @IsIn(['approve', 'publish', 'unpublish'])
+  action!: 'approve' | 'publish' | 'unpublish';
 }

@@ -16,13 +16,13 @@ import { UpdateLessonDto } from './dto/update-lesson.dto.js';
 import { LessonReviewActionDto } from './dto/lesson-review-action.dto.js';
 import { validateLessonContent, type LessonValidationResult } from './lesson-validation.js';
 
-type ContentStatusLabel = 'Draft' | 'Published';
+type ContentStatusLabel = 'Draft' | 'In review' | 'Approved' | 'Published';
 
 const statusLabels: Record<string, ContentStatusLabel> = {
   draft: 'Draft',
-  approved: 'Draft',
+  approved: 'Approved',
   published: 'Published',
-  in_review: 'Draft',
+  in_review: 'In review',
 };
 
 @Injectable()
@@ -250,16 +250,7 @@ export class CoursesService {
   }
 
   async reviewAction(lessonId: string, actorId: string, body: LessonReviewActionDto) {
-    if (body.action === 'request_changes') {
-      if (!body.reason?.trim()) throw new BadRequestException('Cần nhập lý do yêu cầu chỉnh sửa.');
-      const { data, error } = await this.supabaseService.getClient().rpc('request_lesson_changes', {
-        p_lesson_id: lessonId, p_actor_id: actorId, p_version: body.version,
-        p_reason: body.reason.trim(),
-      });
-      if (error) this.reviewError(error);
-      return { ...data, status: statusLabels[data.status] ?? 'Draft' };
-    }
-    if (body.action === 'publish' || body.action === 'approve') {
+    if (body.action === 'approve') {
       const existing = await this.latestValidationForVersion(lessonId, body.version);
       if (!existing || existing.status !== 'passed') {
         const validation = await this.validateLesson(lessonId, actorId, body.version);
@@ -271,10 +262,9 @@ export class CoursesService {
         }
       }
     }
-    const rpcAction = body.action === 'approve' ? 'publish' : body.action;
     const { data, error } = await this.supabaseService.getClient().rpc('apply_lesson_review_action', {
       p_lesson_id: lessonId, p_actor_id: actorId, p_version: body.version,
-      p_action: rpcAction, p_reason: body.reason ?? null,
+      p_action: body.action, p_reason: body.reason ?? null,
     });
     if (error) this.reviewError(error);
     return { ...data, status: statusLabels[data.status] ?? 'Draft' };
@@ -378,14 +368,15 @@ export class CoursesService {
     return { ...data, status: statusLabels[data.status] ?? 'Draft' };
   }
 
-  private nextContainerStatus(status: string, action: 'publish' | 'unpublish') {
-    const nextStatus = ['draft', 'approved'].includes(status) && action === 'publish' ? 'published'
-      : status === 'published' && action === 'unpublish' ? 'draft' : null;
-    if (!nextStatus) throw new ConflictException('Trạng thái nội dung đã thay đổi. Hãy tải lại trang.');
+  private nextContainerStatus(status: string, action: 'approve' | 'publish' | 'unpublish') {
+    const nextStatus = status === 'draft' && action === 'approve' ? 'approved'
+      : status === 'approved' && action === 'publish' ? 'published'
+        : status === 'published' && action === 'unpublish' ? 'approved' : null;
+    if (!nextStatus) throw new ConflictException('Invalid status transition. Use Draft → Approved → Published.');
     return nextStatus;
   }
 
-  async reviewChapterAction(chapterId: string, action: 'publish' | 'unpublish') {
+  async reviewChapterAction(chapterId: string, action: 'approve' | 'publish' | 'unpublish') {
     const supabase = this.supabaseService.getClient();
     const { data: chapter, error: chapterError } = await supabase.from('chapters')
       .select('id, status').eq('id', chapterId).maybeSingle();
@@ -396,8 +387,8 @@ export class CoursesService {
     if (action === 'publish') {
       const { data: lessons, error } = await supabase.from('lessons').select('status').eq('chapter_id', chapterId);
       if (error) throw new InternalServerErrorException('Unable to verify chapter lessons');
-      if (!lessons?.length || lessons.some((lesson) => lesson.status !== 'published')) {
-        throw new ConflictException('Hãy xuất bản tất cả bài học trong chương trước.');
+      if (!lessons?.length || lessons.some((lesson) => !['approved', 'published'].includes(lesson.status))) {
+        throw new ConflictException('Approve every lesson in this chapter before publishing it.');
       }
     }
 
@@ -408,7 +399,7 @@ export class CoursesService {
     return data;
   }
 
-  async reviewCourseAction(courseId: string, action: 'publish' | 'unpublish') {
+  async reviewCourseAction(courseId: string, action: 'approve' | 'publish' | 'unpublish') {
     const supabase = this.supabaseService.getClient();
     const { data: course, error: courseError } = await supabase.from('courses')
       .select('id, status').eq('id', courseId).maybeSingle();
@@ -419,13 +410,13 @@ export class CoursesService {
     if (action === 'publish') {
       const { data: chapters, error } = await supabase.from('chapters').select('id, status').eq('course_id', courseId);
       if (error) throw new InternalServerErrorException('Unable to verify course chapters');
-      if (!chapters?.length || chapters.some((chapter) => chapter.status !== 'published')) {
-        throw new ConflictException('Hãy xuất bản tất cả chương trước khi xuất bản khóa học.');
+      if (!chapters?.length || chapters.some((chapter) => !['approved', 'published'].includes(chapter.status))) {
+        throw new ConflictException('Approve every chapter before publishing this course.');
       }
       const { data: lessons, error: lessonsError } = await supabase.from('lessons').select('status').in('chapter_id', chapters.map((chapter) => chapter.id));
       if (lessonsError) throw new InternalServerErrorException('Unable to verify course lessons');
-      if (lessons?.some((lesson) => lesson.status !== 'published')) {
-        throw new ConflictException('Hãy xuất bản tất cả bài học trước khi xuất bản khóa học.');
+      if (lessons?.some((lesson) => !['approved', 'published'].includes(lesson.status))) {
+        throw new ConflictException('Approve every lesson before publishing this course.');
       }
     }
 
@@ -652,8 +643,8 @@ export class CoursesService {
 
     const statusLabels: Record<string, string> = {
       draft: 'Draft',
-      in_review: 'Draft',
-      approved: 'Draft',
+      in_review: 'In review',
+      approved: 'Approved',
       published: 'Published',
     };
 
@@ -748,8 +739,8 @@ export class CoursesService {
 
     const statusLabels: Record<string, string> = {
       draft: 'Draft',
-      in_review: 'Draft',
-      approved: 'Draft',
+      in_review: 'In review',
+      approved: 'Approved',
       published: 'Published',
     };
     const levelLabels: Record<string, string> = {

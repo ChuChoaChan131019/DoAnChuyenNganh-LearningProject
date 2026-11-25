@@ -27,14 +27,14 @@ export class AiController {
 
   @Post('content/generate')
   @UseGuards(RolesGuard)
-  @Roles('content_manager')
+  @Roles('content_manager', 'admin')
   generateLesson(@Body() body: GenerateLessonDto) {
     return this.aiService.generateLessonDraft(body);
   }
 
   @Post('questions/generate')
   @UseGuards(RolesGuard)
-  @Roles('content_manager')
+  @Roles('content_manager', 'admin')
   generateQuestions(@Body() body: GenerateAiQuestionsDto, @Req() request: any) {
     return this.aiService.generateAuthoringQuestions(body, request.user.id);
   }

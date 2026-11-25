@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { QUESTION_REVIEW_COUNT_CHANGED_EVENT, questionApi } from "@/lib/api";
 import {
   LayoutDashboard,
   BookOpen,
@@ -13,6 +14,8 @@ import {
   CheckSquare,
   ListChecks,
   Hammer,
+  FlaskConical,
+  BarChart2,
   Wand2,
   Sparkles,
   Inbox,
@@ -52,6 +55,7 @@ interface NavGroup {
     label: string;
     href: string;
     icon: React.ElementType;
+    badge?: number | string;
   }[];
 }
 
@@ -99,6 +103,11 @@ const MENU_DATA: NavGroup[] = [
         href: "/content-manager/questions/editor",
         icon: Edit3,
       },
+      {
+        label: "Duyệt câu hỏi",
+        href: "/content-manager/questions/review",
+        icon: CheckSquare,
+      },
     ],
   },
   {
@@ -115,9 +124,19 @@ const MENU_DATA: NavGroup[] = [
         icon: Hammer,
       },
       {
+        label: "Bộ bài luyện tập",
+        href: "/content-manager/testsandpractice/practicesets",
+        icon: FlaskConical,
+      },
+      {
         label: "Phòng thực hành C#",
         href: "/content-manager/code-exercises",
         icon: Hammer,
+      },
+      {
+        label: "Kết quả",
+        href: "/content-manager/testsandpractice/results",
+        icon: BarChart2,
       },
     ],
   },
@@ -144,11 +163,6 @@ const MENU_DATA: NavGroup[] = [
         href: "/content-manager/ai/review-queue",
         icon: Inbox,
       },
-      {
-        label: "Duyệt câu hỏi",
-        href: "/content-manager/questions/review",
-        icon: CheckSquare,
-      },
     ],
   },
   {
@@ -162,6 +176,49 @@ const MENU_DATA: NavGroup[] = [
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const sidebarState = isCollapsed ? "collapsed" : "expanded";
+  const [pendingReviewCount, setPendingReviewCount] = useState<number | null>(
+    null,
+  );
+
+  useEffect(() => {
+    let isActive = true;
+
+    const refreshPendingReviewCount = () => {
+      void questionApi
+        .pendingReviewCount()
+        .then(({ count }) => {
+          if (isActive) setPendingReviewCount(count);
+        })
+        .catch(() => {
+          // Keep the last successful count instead of displaying an incorrect value.
+        });
+    };
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refreshPendingReviewCount();
+    };
+
+    refreshPendingReviewCount();
+    window.addEventListener(
+      QUESTION_REVIEW_COUNT_CHANGED_EVENT,
+      refreshPendingReviewCount,
+    );
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    const refreshInterval = window.setInterval(
+      refreshPendingReviewCount,
+      30_000,
+    );
+
+    return () => {
+      isActive = false;
+      window.removeEventListener(
+        QUESTION_REVIEW_COUNT_CHANGED_EVENT,
+        refreshPendingReviewCount,
+      );
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.clearInterval(refreshInterval);
+    };
+  }, [pathname]);
 
   return (
     <aside
@@ -193,6 +250,11 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                 const isActive = pathname.startsWith(item.href);
                 const Icon = item.icon;
                 const itemState = isActive ? "active" : "inactive";
+                const badge =
+                  item.href === "/content-manager/questions/review"
+                    ? pendingReviewCount
+                    : item.badge;
+
                 return (
                   <Link
                     key={item.href}
@@ -212,6 +274,11 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                       )}
                     </div>
 
+                    {!isCollapsed && badge !== undefined && badge !== null && (
+                      <span className="rounded-full bg-teal-500/20 px-2 py-0.5 text-xs font-semibold text-teal-300">
+                        {badge}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

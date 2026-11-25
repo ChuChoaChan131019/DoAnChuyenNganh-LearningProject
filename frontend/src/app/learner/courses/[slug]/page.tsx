@@ -8,12 +8,10 @@ import {
   Clock3,
   MessagesSquare,
   ArrowRight,
-  Bell,
-  BellOff,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ApiClientError, courseApi, quizApi, learnerOverviewApi, userNotificationApi } from "@/lib/api";
+import { courseApi, quizApi, learnerOverviewApi } from "@/lib/api";
 
 import type { LearnerCourseOverview } from "@/types/learner-overview";
 
@@ -322,35 +320,6 @@ export default function LearnerCourseDetailPage() {
     total_questions: number;
     quiz_type: string;
   }> | null>(null);
-  const [following, setFollowing] = useState(false);
-  const [followSaving, setFollowSaving] = useState(false);
-  const [followMessage, setFollowMessage] = useState('');
-
-  useEffect(() => {
-    if (!databaseCourse?.id) return;
-    let active = true;
-    void userNotificationApi.following(databaseCourse.id).then(({ following: value }) => {
-      if (active) setFollowing(value);
-    }).catch(() => {
-      if (active) setFollowMessage('Không thể kiểm tra trạng thái theo dõi.');
-    });
-    return () => { active = false; };
-  }, [databaseCourse?.id]);
-
-  async function toggleCourseFollow() {
-    if (!databaseCourse || followSaving) return;
-    setFollowSaving(true);
-    setFollowMessage('');
-    try {
-      const result = following
-        ? await userNotificationApi.unfollow(databaseCourse.id)
-        : await userNotificationApi.follow(databaseCourse.id);
-      setFollowing(result.following);
-      setFollowMessage(result.following ? 'Đã theo dõi khóa học.' : 'Đã bỏ theo dõi khóa học.');
-    } catch (cause) {
-      setFollowMessage(cause instanceof ApiClientError ? cause.message : 'Không thể cập nhật theo dõi.');
-    } finally { setFollowSaving(false); }
-  }
 
   useEffect(() => {
     if (!slug) return;
@@ -589,13 +558,6 @@ export default function LearnerCourseDetailPage() {
 
             <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-[#e1e6e3] pt-4">
               {databaseCourse && (
-                <button type="button" disabled={followSaving} onClick={() => void toggleCourseFollow()}
-                  className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#78bcc4]/60 bg-white px-4 py-3 text-sm font-bold text-[#145a68] transition hover:bg-[#eef7f7] disabled:opacity-50">
-                  {following ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-                  {followSaving ? 'Đang lưu...' : following ? 'Bỏ theo dõi' : 'Theo dõi khóa học'}
-                </button>
-              )}
-              {databaseCourse && (
                 <Link
                   href={`/learner/courses/${slug}/discussion`}
                   className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#78bcc4]/60 bg-[#eef7f7] px-4 py-3 text-sm font-bold text-[#145a68] transition hover:bg-[#e2f1f1]"
@@ -612,7 +574,6 @@ export default function LearnerCourseDetailPage() {
                 Câu hỏi luyện tập
               </Link>
             </div>
-            {!!followMessage && <p role="status" className="mt-2 text-right text-xs text-[#637981]">{followMessage}</p>}
           </div>
         </div>
 

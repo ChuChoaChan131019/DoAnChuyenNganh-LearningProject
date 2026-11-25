@@ -88,7 +88,8 @@ export class CodeExercisePublishService {
   }
 
   async validate(id: string, actor: Actor, expectedVersion: number) {
-    // Mọi content manager và admin đều có thể kiểm tra bài đã tạo.
+    // findOne đã kiểm tra quyền content manager
+    // chỉ được đọc bài của chính mình.
     const detail = await this.exercises.findOne(id, actor);
 
     return this.validateSnapshot(detail, expectedVersion);
