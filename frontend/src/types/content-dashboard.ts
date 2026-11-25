@@ -10,7 +10,6 @@ export interface ContentDashboardData {
 
   status: {
     draft: number;
-    approved: number;
     published: number;
   };
 

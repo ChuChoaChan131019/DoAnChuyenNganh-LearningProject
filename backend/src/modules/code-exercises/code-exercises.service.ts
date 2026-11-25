@@ -56,7 +56,7 @@ export class CodeExercisesService {
     }
   }
 
-  // 1. Danh sách bài của người biên soạn
+  // 1. Danh sách bài thực hành mà người quản lý có thể kiểm tra và xuất bản
   async findAll(
     actor: Actor,
     lessonId?: string,
@@ -77,12 +77,6 @@ export class CodeExercisesService {
       `)
       .is('archived_at', null)
       .order('updated_at', { ascending: false });
-
-    // Content manager chỉ quản lý bài của mình
-    // Admin được xem tất cả
-    if (actor.role !== 'admin') {
-      query = query.eq('created_by', actor.id);
-    }
 
     if (lessonId) {
       query = query.eq('lesson_id', lessonId);
@@ -133,6 +127,7 @@ export class CodeExercisesService {
 
         return {
           ...exercise,
+          can_edit: actor.role === 'admin' || exercise.created_by === actor.id,
           title: current?.title ?? '',
           difficulty: current?.difficulty ?? 'easy',
           status: current?.status ?? 'draft',
@@ -168,16 +163,6 @@ export class CodeExercisesService {
     if (!exercise) {
       throw new NotFoundException(
         'Không tìm thấy bài thực hành',
-      );
-    }
-
-    // Không cho content manager đọc bài của người khác
-    if (
-      actor.role !== 'admin' &&
-      exercise.created_by !== actor.id
-    ) {
-      throw new ForbiddenException(
-        'Bạn không có quyền xem bài này',
       );
     }
 
@@ -225,6 +210,7 @@ export class CodeExercisesService {
 
     return {
       ...exercise,
+      can_edit: actor.role === 'admin' || exercise.created_by === actor.id,
       revision: {
         ...activeRevision,
         test_cases: (testCases ?? []).map((t) => ({
@@ -290,6 +276,9 @@ export class CodeExercisesService {
   // 5. Sao chép một bài thành nháp mới
   async copy(id: string, actor: Actor) {
     const original = await this.findOne(id, actor);
+    if (!original.can_edit) {
+      throw new ForbiddenException('Bạn không có quyền sao chép bài này');
+    }
     const r = original.revision;
 
     const payload: SaveCodeExerciseDto = {
@@ -323,6 +312,10 @@ export class CodeExercisesService {
   // 6. Lưu trữ bài thay vì xóa hẳn
   async archive(id: string, actor: Actor) {
     const exercise = await this.findOne(id, actor);
+
+    if (!exercise.can_edit) {
+      throw new ForbiddenException('Bạn không có quyền lưu trữ bài này');
+    }
 
     if (exercise.archived_at) {
       throw new ConflictException(

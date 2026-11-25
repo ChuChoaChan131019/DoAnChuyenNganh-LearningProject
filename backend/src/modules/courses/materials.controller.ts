@@ -24,11 +24,13 @@ export class MaterialsController {
   }
 
   @Patch(':id')
+  @Roles('content_manager')
   rename(@Param('id') id: string, @Body() body: UpdateMaterialDto) {
     return this.materials.rename(id, body.title);
   }
 
   @Delete(':id')
+  @Roles('content_manager')
   remove(@Param('id') id: string) { return this.materials.remove(id); }
 }
 
@@ -42,6 +44,7 @@ export class LessonMaterialsController {
   list(@Param('lessonId') lessonId: string) { return this.materials.listForLesson(lessonId); }
 
   @Post()
+  @Roles('content_manager')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 6 * 1024 * 1024 } }))
   upload(
     @Param('lessonId') lessonId: string,

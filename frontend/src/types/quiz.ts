@@ -54,6 +54,7 @@ export interface QuizItem {
   pass_score: number;
   total_score: number;
   total_questions: number;
+  is_active: boolean;
   visibility: QuizVisibility;
   status: QuizStatus;
   shuffle_questions: boolean;

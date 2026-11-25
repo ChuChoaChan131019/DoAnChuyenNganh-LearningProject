@@ -22,18 +22,43 @@ export class QuizzesService {
   async list(filters: { course_id?: string; status?: string; visibility?: string }) {
     let query = this.supabaseService.getClient().from('quizzes').select('*').order('created_at', { ascending: false });
     if (filters.course_id) query = query.eq('course_id', filters.course_id);
-    if (filters.status === 'published') query = query.eq('is_active', true);
-    if (filters.status === 'archived') query = query.eq('is_active', false);
-    if (filters.visibility === 'public') query = query.eq('is_active', true);
-    if (filters.visibility === 'private') query = query.eq('is_active', false);
     const { data, error } = await query;
     this.throwQueryError(error);
-    return data ?? [];
+    let quizzes = data ?? [];
+    const quizIds = quizzes.map((quiz) => quiz.id);
+    const eligibleIds = new Set<string>();
+    if (quizIds.length) {
+      const { data: eligibleLinks, error: eligibilityError } = await this.supabaseService.getClient()
+        .from('quiz_questions')
+        .select('quiz_id,questions!inner(status)')
+        .in('quiz_id', quizIds)
+        .eq('questions.status', 'approved');
+      this.throwQueryError(eligibilityError);
+      for (const link of eligibleLinks ?? []) eligibleIds.add(link.quiz_id);
+    }
+
+    // Legacy active quizzes without an approved question are treated as drafts
+    // in manager responses too, until the cleanup migration has been applied.
+    quizzes = quizzes.map((quiz) => ({
+      ...quiz,
+      is_active: Boolean(quiz.is_active && eligibleIds.has(quiz.id)),
+    }));
+    if (filters.status === 'published' || filters.visibility === 'public') {
+      quizzes = quizzes.filter((quiz) => quiz.is_active);
+    }
+    if (filters.status === 'draft' || filters.status === 'archived') quizzes = quizzes.filter((quiz) => !quiz.is_active);
+    if (filters.visibility === 'private') quizzes = quizzes.filter((quiz) => !quiz.is_active);
+    return quizzes.map((quiz) => this.presentQuiz(quiz));
   }
 
   async getById(id: string, role?: string) {
     const quiz = await this.requireQuiz(id, role);
-    return { ...quiz, ...(await this.getTotals(id)) };
+    const isEligibleForPublication = await this.hasApprovedQuestion(id);
+    return this.presentQuiz({
+      ...quiz,
+      is_active: Boolean(quiz.is_active && isEligibleForPublication),
+      ...(await this.getTotals(id)),
+    });
   }
 
   async create(dto: CreateQuizDto, actorId: string) {
@@ -46,7 +71,8 @@ export class QuizzesService {
       quiz_type: dto.quiz_type ?? 'exam',
       shuffle_questions: dto.shuffle_questions ?? true,
       shuffle_options: dto.shuffle_options ?? true,
-      is_active: (dto as any).is_active ?? true,
+      // A quiz is private until the explicit publish action succeeds.
+      is_active: false,
       is_required: (dto as any).is_required ?? true,
       counts_toward_progress: (dto as any).counts_toward_progress ?? true,
     };
@@ -60,11 +86,13 @@ export class QuizzesService {
 
     this.throwMutationError(error);
     if (!data) throw new BadRequestException('Unable to create quiz');
-    return data;
+    return this.presentQuiz(data);
   }
 
   async update(id: string, dto: UpdateQuizDto) {
-    const updatePayload: Record<string, any> = {};
+    // Saving edits always returns the quiz to draft. Publication can only be
+    // changed through setStatus(), which validates the assigned questions.
+    const updatePayload: Record<string, any> = { is_active: false };
     if (dto.title !== undefined) updatePayload.title = dto.title;
     if (dto.course_id !== undefined) updatePayload.course_id = dto.course_id;
     if (dto.chapter_id !== undefined) updatePayload.chapter_id = dto.chapter_id ?? null;
@@ -73,8 +101,6 @@ export class QuizzesService {
     if (dto.shuffle_questions !== undefined) updatePayload.shuffle_questions = dto.shuffle_questions;
     if (dto.shuffle_options !== undefined) updatePayload.shuffle_options = dto.shuffle_options;
     if (dto.pass_score !== undefined) updatePayload.pass_percentage = dto.pass_score;
-    if (dto.visibility !== undefined) updatePayload.is_active = dto.visibility === 'public';
-
     const { data, error } = await this.supabaseService
       .getClient()
       .from('quizzes')
@@ -85,21 +111,22 @@ export class QuizzesService {
 
     this.throwMutationError(error);
     if (!data) throw new NotFoundException('Quiz not found');
-    return data;
+    return this.presentQuiz(data);
   }
 
   async setStatus(id: string, status: 'published' | 'archived') {
-    if (status === 'published' && !(await this.getTotals(id)).total_questions) {
-      throw new BadRequestException('A quiz must contain at least one question');
+    if (status === 'published' && !(await this.hasApprovedQuestion(id))) {
+      throw new BadRequestException('Thêm ít nhất một câu hỏi đã duyệt trước khi xuất bản.');
     }
     const { data, error } = await this.supabaseService.getClient().from('quizzes').update({ is_active: status === 'published' }).eq('id', id).select('*').single();
     this.throwMutationError(error);
     if (!data) throw new NotFoundException('Quiz not found');
-    return data;
+    return this.presentQuiz(data);
   }
 
   async configureQuestions(quizId: string, dto: ConfigureQuizQuestionsDto) {
-    await this.requireQuiz(quizId);
+    const quiz = await this.requireQuiz(quizId);
+    if (quiz.is_active) await this.setStatus(quizId, 'archived');
     const ids = dto.questions.map((question) => question.question_id);
     if (new Set(ids).size !== ids.length) {
       throw new BadRequestException('Question ids must be unique');
@@ -146,6 +173,7 @@ export class QuizzesService {
     const quiz = await this.requireQuiz(quizId, 'learner');
     if (!quiz.is_active) throw new BadRequestException('Only published quizzes can be attempted');
     const questions = await this.getScoringQuestions(quizId);
+    if (!questions.length) throw new BadRequestException('Bài kiểm tra hiện không có câu hỏi đã duyệt.');
     const supabase = this.supabaseService.getClient();
 
     // 1. Kiểm tra xem học viên có attempt nào đang làm dở dang (chưa submit) hay không
@@ -339,6 +367,9 @@ export class QuizzesService {
     if (role === 'learner' && !data.is_active) {
       throw new ForbiddenException('This quiz is not available to learners');
     }
+    if (role === 'learner' && !(await this.hasApprovedQuestion(id))) {
+      throw new ForbiddenException('Bài kiểm tra hiện không khả dụng với người học.');
+    }
     return data;
   }
 
@@ -354,6 +385,23 @@ export class QuizzesService {
     const { data, error } = await this.supabaseService.getClient().from('quiz_questions').select('score_weight').eq('quiz_id', quizId);
     this.throwQueryError(error);
     return { quiz_id: quizId, total_questions: data?.length ?? 0, total_score: this.totalScore((data ?? []) as Array<{ score_weight: number }>) };
+  }
+
+  private async hasApprovedQuestion(quizId: string) {
+    const { data, error } = await this.supabaseService.getClient().from('quiz_questions')
+      .select('question_id,questions(status)')
+      .eq('quiz_id', quizId);
+    this.throwQueryError(error);
+    return (data ?? []).some((item) => this.questionRecord(item as QuizQuestionRow)?.status === 'approved');
+  }
+
+  private presentQuiz<T extends { is_active?: boolean }>(quiz: T) {
+    const isPublished = Boolean(quiz.is_active);
+    return {
+      ...quiz,
+      status: isPublished ? 'published' : 'draft',
+      visibility: isPublished ? 'public' : 'private',
+    };
   }
 
   private totalScore(rows: Array<{ score_weight: number }>) { return rows.reduce((total, row) => total + Number(row.score_weight ?? 0), 0); }

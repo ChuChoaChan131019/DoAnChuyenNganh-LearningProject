@@ -14,6 +14,8 @@ import { DiscussionModule } from './modules/discussion/discussion.module.js';
 import { StatisticsModule } from './modules/statistics/statistics.module.js';
 import { AdminAccountsModule } from './modules/admin-accounts/admin-accounts.module.js';
 import { LearnerOverviewModule } from './modules/learner-overview/learner-overview.module.js';
+import { AuthoringNotificationsModule } from './modules/authoring-notifications/authoring-notifications.module.js';
+import { UserNotificationsModule } from './modules/user-notifications/user-notifications.module.js';
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { LearnerOverviewModule } from './modules/learner-overview/learner-overvi
     StatisticsModule,
     AdminAccountsModule,
     LearnerOverviewModule,
+    AuthoringNotificationsModule,
+    UserNotificationsModule,
   ],
 
   controllers: [AppController],

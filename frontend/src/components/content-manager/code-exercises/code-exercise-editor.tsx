@@ -96,6 +96,7 @@ export function CodeExerciseEditor({ exerciseId }: { exerciseId?: string }) {
 
   const [editVersion, setEditVersion] = useState(0);
   const [hasDraft, setHasDraft] = useState(false);
+  const [canEdit, setCanEdit] = useState(!exerciseId);
   const [dirty, setDirty] = useState(!exerciseId);
 
   const [preview, setPreview] = useState(false);
@@ -136,6 +137,7 @@ export function CodeExerciseEditor({ exerciseId }: { exerciseId?: string }) {
         );
 
         if (detail) {
+          setCanEdit(detail.can_edit);
           const revision = detail.revision;
 
           // Tìm khóa học/chương từ bài học.
@@ -276,6 +278,7 @@ export function CodeExerciseEditor({ exerciseId }: { exerciseId?: string }) {
 
   // 4. Lưu nháp: tận dụng API C02.
   const saveDraft = async () => {
+    if (!canEdit) return;
     if (saving || checking || publishing) return;
 
     if (!form.lesson_id || form.title.trim().length < 3) {
@@ -405,7 +408,7 @@ export function CodeExerciseEditor({ exerciseId }: { exerciseId?: string }) {
           </h1>
 
           <p className="mt-1 text-sm text-slate-500">
-            {hasDraft
+            {!canEdit ? 'Có thể kiểm tra và xuất bản bản nháp này.' : hasDraft
               ? `Bản nháp · edit_version ${editVersion}`
               : id
                 ? "Lưu để tạo bản nháp mới từ phiên bản đã xuất bản."
@@ -423,7 +426,7 @@ export function CodeExerciseEditor({ exerciseId }: { exerciseId?: string }) {
             {preview ? "Quay lại soạn thảo" : "Xem trước"}
           </button>
 
-          <button
+          {canEdit && <button
             type="button"
             onClick={() => void saveDraft()}
             disabled={saving || checking || publishing}
@@ -431,7 +434,7 @@ export function CodeExerciseEditor({ exerciseId }: { exerciseId?: string }) {
           >
             <Save className="h-4 w-4" />
             {saving ? "Đang lưu..." : "Lưu nháp"}
-          </button>
+          </button>}
 
           <button
             type="button"
@@ -556,7 +559,7 @@ export function CodeExerciseEditor({ exerciseId }: { exerciseId?: string }) {
       ) : (
         // BIÊN SOẠN
         <fieldset
-          disabled={saving || publishing}
+          disabled={!canEdit || saving || publishing}
           className="min-w-0 space-y-5 disabled:opacity-70"
         >
           <Section title="1. Chọn bài học liên quan">

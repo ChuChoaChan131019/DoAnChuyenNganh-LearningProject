@@ -4,7 +4,6 @@ import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Save,
-  SendHorizontal,
   GripVertical,
   Plus,
   Trash2,
@@ -17,6 +16,15 @@ import {
 } from 'lucide-react';
 import { ApiClientError, questionApi } from '@/lib/api';
 import { ChapterOption, CourseOption, LessonOption, QuestionHistoryItem, QuestionPayload, QuestionStatus } from '@/types/question';
+
+const HISTORY_ACTION_LABELS: Record<QuestionHistoryItem['action'], string> = {
+  created: 'Tạo câu hỏi',
+  updated: 'Cập nhật',
+  submitted: 'Gửi duyệt',
+  approved: 'Công bố',
+  rejected: 'Từ chối',
+  unapproved: 'Gỡ công bố',
+};
 
 // ==========================================
 // CENTRALIZED STYLES
@@ -457,7 +465,7 @@ function QuestionEditorContent() {
     }
   };
 
-  const handleSubmitForReview = async () => {
+  const handlePublish = async () => {
     if (mutationInFlight.current || isLoadingEditor || !validateForm()) return;
     mutationInFlight.current = true;
     setIsSubmitting(true);
@@ -466,11 +474,11 @@ function QuestionEditorContent() {
       const saved = existingId
         ? await questionApi.update(existingId, buildPayload('draft'))
         : await questionApi.create(buildPayload('draft'));
-      // The save may commit even if submission fails; retain its new id/version for retry.
+      // Lưu phiên bản trước để việc công bố luôn dùng đúng nội dung mới nhất.
       rememberSavedQuestion(saved);
-      const submitted = await questionApi.submitForReview(saved.id, saved.version ?? savedVersion.current ?? formData.version);
-      rememberSavedQuestion(submitted);
-      alert('Đã gửi câu hỏi vào hàng chờ duyệt.');
+      const published = await questionApi.updateStatus(saved.id, 'approved', undefined, saved.version ?? savedVersion.current ?? formData.version);
+      rememberSavedQuestion(published);
+      alert('Đã công bố câu hỏi.');
       router.push('/content-manager/questions/review');
     } catch (error: unknown) {
       alert(getApiErrorMessage(error));
@@ -523,12 +531,12 @@ function QuestionEditorContent() {
           </button>
           <button
             type="button"
-            onClick={() => void handleSubmitForReview()}
+            onClick={() => void handlePublish()}
             disabled={isMutating || isLoadingEditor}
             className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#c93f3a] disabled:opacity-60"
           >
-            <SendHorizontal className="h-4 w-4" />
-            <span>{isSubmitting ? 'Đang gửi...' : 'Gửi duyệt'}</span>
+            <Check className="h-4 w-4" />
+            <span>{isSubmitting ? 'Đang công bố...' : 'Công bố'}</span>
           </button>
         </div>
       </div>
@@ -854,7 +862,7 @@ function QuestionEditorContent() {
                   {history.map((entry) => (
                     <div key={entry.id} className="rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs text-gray-600">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-gray-800">v{entry.version} · {entry.action}</span>
+                        <span className="font-semibold text-gray-800">v{entry.version} · {HISTORY_ACTION_LABELS[entry.action] ?? entry.action}</span>
                         <span>{new Date(entry.created_at).toLocaleString('vi-VN')}</span>
                       </div>
                       <p className="mt-1 text-gray-500">Người thao tác: {entry.actor_id}</p>

@@ -1,4 +1,4 @@
-export type ContentStatus = "Published" | "Draft" | "Approved" | "In review";
+export type ContentStatus = "Published" | "Draft";
 
 export type CourseLevel = "Beginner" | "Intermediate" | "Advanced";
 

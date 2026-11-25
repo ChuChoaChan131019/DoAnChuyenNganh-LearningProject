@@ -105,7 +105,7 @@ describe('Content Manager statistics (isolated PostgreSQL)', () => {
       aiLessons: 0,
       aiQuestions: 0,
     });
-    expect(result.status).toEqual({ draft: 0, approved: 0, published: 0 });
+    expect(result.status).toEqual({ draft: 0, published: 0 });
     expect(result.questionDifficulty).toEqual({ easy: 0, medium: 0, hard: 0 });
     expect(result.courseLevels).toEqual({
       beginner: 0,
@@ -189,7 +189,7 @@ describe('Content Manager statistics (isolated PostgreSQL)', () => {
       insert into lessons(status,is_ai_generated) values ('draft',true);
       insert into questions(status,is_ai_generated) values ('draft',true);`);
     const result = await service.getContentManagerDashboard();
-    expect(result.status).toEqual({ draft: 2, approved: 1, published: 1 });
+    expect(result.status).toEqual({ draft: 3, published: 1 });
     expect(result.overview).toMatchObject({
       aiLessons: 1,
       aiQuestions: 1,
