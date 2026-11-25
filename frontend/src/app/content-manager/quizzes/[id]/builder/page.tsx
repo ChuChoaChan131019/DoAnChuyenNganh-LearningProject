@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { ArrowDown, ArrowUp, BookOpen, Check, Layers, Plus, Save, Trash2 } from 'lucide-react';
 import { ApiClientError, questionApi, quizApi } from '@/lib/api';
 import type { ChapterOption, CourseOption, LessonOption, QuestionItem, QuestionType } from '@/types/question';
-import type { QuizItem, QuizStatus, QuizType, QuizVisibility } from '@/types/quiz';
+import type { QuizItem, QuizType } from '@/types/quiz';
 import { vietnameseDifficulty } from '@/lib/ui-labels';
 
 
@@ -26,11 +26,8 @@ type SettingsState = {
   quiz_type: QuizType;
   duration_minutes: number | null;
   pass_percentage: number;
-  visibility: QuizVisibility;
-  status: QuizStatus;
   shuffle_questions: boolean;
   shuffle_options: boolean;
-  is_active: boolean;
   is_required: boolean;
   counts_toward_progress: boolean;
 };
@@ -65,18 +62,14 @@ function settingsFromQuiz(quiz: any): SettingsState {
     quiz_type: quiz?.quiz_type || 'exam',
     duration_minutes: quiz?.duration_minutes !== undefined ? quiz.duration_minutes : 15,
     pass_percentage: Number(quiz?.pass_percentage ?? quiz?.pass_score ?? 50),
-    visibility: quiz?.visibility || 'private',
-    status: quiz?.status || 'draft',
     shuffle_questions: quiz?.shuffle_questions !== undefined ? Boolean(quiz.shuffle_questions) : true,
     shuffle_options: quiz?.shuffle_options !== undefined ? Boolean(quiz.shuffle_options) : true,
-    is_active: quiz?.is_active !== undefined ? Boolean(quiz.is_active) : true,
     is_required: quiz?.is_required !== undefined ? Boolean(quiz.is_required) : true,
     counts_toward_progress: quiz?.counts_toward_progress !== undefined ? Boolean(quiz.counts_toward_progress) : true,
   };
 }
 
 export default function QuizBuilderPage() {
-  const router = useRouter();
   const params = useParams<{ id: string }>();
   const quizId = String(params?.id ?? '');
 
@@ -89,11 +82,8 @@ export default function QuizBuilderPage() {
     quiz_type: 'exam',
     duration_minutes: 15,
     pass_percentage: 50,
-    visibility: 'private',
-    status: 'draft',
     shuffle_questions: true,
     shuffle_options: true,
-    is_active: true,
     is_required: true,
     counts_toward_progress: true,
   });
@@ -281,7 +271,7 @@ export default function QuizBuilderPage() {
     });
   };
 
-  const save = async () => {
+  const save = async (publishAfterSave = false) => {
     setError(null);
     setSaveMessage(null);
 
@@ -317,9 +307,7 @@ export default function QuizBuilderPage() {
         quiz_type: settings.quiz_type,
         shuffle_questions: settings.shuffle_questions,
         shuffle_options: settings.shuffle_options,
-        status: settings.status,
-        visibility: settings.visibility,
-        };
+      };
 
       let saved = await quizApi.update(quizId, payload);
 
@@ -331,18 +319,30 @@ export default function QuizBuilderPage() {
         }))
       );
 
-      if (settings.status === 'published') saved = await quizApi.publish(quizId);
-      if (settings.status === 'archived') saved = await quizApi.archive(quizId);
+      if (publishAfterSave) saved = await quizApi.publish(quizId);
 
       setQuiz(saved);
       setSettings(settingsFromQuiz(saved));
       setError(null);
-      setSaveMessage('Lưu cấu hình và câu hỏi thành công!');  
-      setTimeout(() => {
-        router.push(`/content-manager/testsandpractice/builder?quizId=${quizId}`);
-      }, 1000);
+      setSaveMessage(publishAfterSave ? 'Đã lưu và xuất bản bài kiểm tra.' : 'Đã lưu bài kiểm tra ở dạng bản nháp.');
     } catch (saveError) {
       setError(getErrorMessage(saveError));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const withdraw = async () => {
+    setError(null);
+    setSaveMessage(null);
+    setIsSaving(true);
+    try {
+      const saved = await quizApi.archive(quizId);
+      setQuiz(saved);
+      setSettings(settingsFromQuiz(saved));
+      setSaveMessage('Đã thu hồi bài kiểm tra. Người học không thể bắt đầu lượt làm mới.');
+    } catch (withdrawError) {
+      setError(getErrorMessage(withdrawError));
     } finally {
       setIsSaving(false);
     }
@@ -368,15 +368,39 @@ export default function QuizBuilderPage() {
               Thiết lập thông tin, cách tổ chức và câu hỏi đã duyệt.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void save()}
-            disabled={isSaving}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#d93e47] disabled:opacity-50"
-          >
-            <Save className="h-4 w-4" />
-            {isSaving ? 'Đang lưu...' : 'Save quiz'}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${quiz?.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+              {quiz?.is_active ? 'Đã xuất bản' : 'Chưa xuất bản'}
+            </span>
+            {quiz?.is_active && (
+              <button
+                type="button"
+                onClick={() => void withdraw()}
+                disabled={isSaving}
+                className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Thu hồi
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => void save(false)}
+              disabled={isSaving}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              <Save className="h-4 w-4" />
+              {isSaving ? 'Đang lưu...' : 'Lưu bản nháp'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void save(true)}
+              disabled={isSaving}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#d93e47] disabled:opacity-50"
+            >
+              <Check className="h-4 w-4" />
+              {isSaving ? 'Đang xử lý...' : 'Lưu và xuất bản'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -457,18 +481,6 @@ export default function QuizBuilderPage() {
             </select>
           </label>
           <label>
-            <span className="label">Trạng thái</span>
-            <select
-              className={inputClass}
-              value={settings.status}
-              onChange={(e) => updateSettings('status', e.target.value as QuizStatus)}
-            >
-              <option value="draft">Bản nháp</option>
-              <option value="published">Đã xuất bản</option>
-              <option value="archived">Đã lưu trữ</option>
-            </select>
-          </label>
-          <label>
             <span className="label">Thời lượng (phút)</span>
             <div className="flex gap-2">
               <input
@@ -505,17 +517,6 @@ export default function QuizBuilderPage() {
               onChange={(e) => updateSettings('pass_percentage', Number(e.target.value))}
             />
           </label>
-          <label>
-            <span className="label">Chế độ hiển thị</span>
-            <select
-              className={inputClass}
-              value={settings.visibility}
-              onChange={(e) => updateSettings('visibility', e.target.value as QuizVisibility)}
-            >
-              <option value="private">Riêng tư</option>
-              <option value="public">Công khai</option>
-            </select>
-          </label>
         </div>
 
         <div className="mt-5 flex flex-wrap gap-5 border-t border-gray-100 pt-4 text-sm text-gray-700">
@@ -536,15 +537,6 @@ export default function QuizBuilderPage() {
               onChange={(e) => updateSettings('shuffle_options', e.target.checked)}
             />
             Xáo trộn phương án
-          </label>
-          <label className="inline-flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              className="accent-[#F7444E]"
-              checked={settings.is_active}
-              onChange={(e) => updateSettings('is_active', e.target.checked)}
-            />
-            Đang hoạt động
           </label>
           <label className="inline-flex items-center gap-2 cursor-pointer">
             <input

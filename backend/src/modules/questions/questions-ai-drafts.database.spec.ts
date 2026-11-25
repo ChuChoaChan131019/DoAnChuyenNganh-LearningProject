@@ -24,8 +24,16 @@ const atomicMigration = readFileSync(
   ),
   'utf8',
 );
+const directApprovalMigration = readFileSync(
+  new URL(
+    '../../../../database/migrations/20261125130000_allow_direct_question_approval.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 
 const actor = '00000000-0000-4000-8000-000000000001';
+const otherManager = '00000000-0000-4000-8000-000000000002';
 const course = '00000000-0000-4000-8000-000000000010';
 const chapter = '00000000-0000-4000-8000-000000000011';
 const lesson = '00000000-0000-4000-8000-000000000012';
@@ -70,7 +78,7 @@ describe('shared AI question draft migration', () => {
         id uuid primary key default gen_random_uuid(), question_id uuid not null references public.questions(id),
         option_text text not null, is_correct boolean default false, order_index integer default 0
       );
-      insert into public.profiles values ('${actor}', 'content_manager');
+      insert into public.profiles values ('${actor}', 'content_manager'), ('${otherManager}', 'content_manager');
       insert into public.courses values ('${course}', 'C#', 'draft');
       insert into public.chapters values ('${chapter}', '${course}', 'Biến');
       insert into public.lessons values ('${lesson}', '${chapter}', 'Kiểu dữ liệu', 'Nội dung', 'draft');
@@ -81,6 +89,7 @@ describe('shared AI question draft migration', () => {
     await db.exec(historyMigration);
     await db.exec(atomicMigration);
     await db.exec(atomicMigration);
+    await db.exec(directApprovalMigration);
   }, 30_000);
 
   afterAll(async () => {
@@ -341,5 +350,17 @@ describe('shared AI question draft migration', () => {
       'submitted',
       'approved',
     ]);
+  });
+
+  it('allows another manager to approve a saved draft without submitting it', async () => {
+    const saved = await db.query<{ id: string; version: number }>(
+      'select * from public.create_shared_question_with_history($1::uuid,$2::jsonb)',
+      [actor, JSON.stringify(question('direct-approval', 'Câu hỏi chưa gửi duyệt'))],
+    );
+    const approved = await db.query<{ version: number; status: string }>(
+      'select * from public.transition_shared_question_with_history($1::uuid,$2::uuid,$3,$4,$5)',
+      [otherManager, saved.rows[0].id, 'approve', saved.rows[0].version, null],
+    );
+    expect(approved.rows[0]).toMatchObject({ version: 2, status: 'approved' });
   });
 });

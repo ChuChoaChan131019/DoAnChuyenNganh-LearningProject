@@ -84,8 +84,7 @@ export class StatisticsService {
     );
 
     return {
-      draft: counts[0],
-      approved: counts[1],
+      draft: counts[0] + counts[1],
       published: counts[2],
     };
   }

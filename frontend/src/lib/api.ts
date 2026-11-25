@@ -685,7 +685,7 @@ export const courseApi = {
   reviewAction: (
     lessonId: string,
     payload: {
-      action: "approve" | "publish" | "unpublish";
+      action: "approve" | "publish" | "unpublish" | "request_changes";
       version: number;
       reason?: string;
     },
@@ -989,13 +989,24 @@ export const questionApi = {
     expected_version?: number,
   ) =>
     questionMutation(
-      request<{ id: string; status: string }>(
+      request<{ id: string; status: string; version: number }>(
         `/api/v1/questions/${id}/status`,
         {
           method: "PATCH",
           body: JSON.stringify({ status, reason, expected_version }),
         },
       ),
+    ),
+  revokeApproval: (id: string, reason: string, expected_version: number) =>
+    questionMutation(
+      request<{
+        id: string;
+        status: import("../types/question").QuestionStatus;
+        version: number;
+      }>(`/api/v1/questions/${encodeURIComponent(id)}/revoke-approval`, {
+        method: "POST",
+        body: JSON.stringify({ reason, expected_version }),
+      }),
     ),
   submitForReview: (id: string, expected_version?: number) =>
     questionMutation(
@@ -1376,4 +1387,61 @@ export const learnerOverviewApi = {
         body: JSON.stringify({ action }),
       },
     ),
+};
+export type AuthoringNotification = {
+  id: string;
+  target_type: 'lesson' | 'question';
+  target_id: string;
+  title: string;
+  reason: string;
+  created_at: string;
+  read_at: string | null;
+};
+
+export const authoringNotificationApi = {
+  list: (offset = 0) => request<{ items: AuthoringNotification[]; has_more: boolean }>(`/api/v1/authoring-notifications?offset=${offset}`),
+  unreadCount: () => request<{ count: number }>('/api/v1/authoring-notifications/unread-count'),
+  markRead: (id: string) => request<{ id: string; read_at: string }>(
+    `/api/v1/authoring-notifications/${encodeURIComponent(id)}/read`,
+    { method: 'PATCH' },
+  ),
+};
+
+export type UserNotification = {
+  id: string;
+  event_type: 'discussion_reply' | 'discussion_moderation' | 'report_resolved' | 'authoring_change' | 'content_published' | 'discussion_report';
+  target_type: 'post' | 'comment' | 'report' | 'lesson' | 'question' | 'quiz' | 'code_exercise' | 'course';
+  target_id: string;
+  title: string;
+  body: string;
+  href: string;
+  created_at: string;
+  read_at: string | null;
+  metadata: Record<string, unknown>;
+};
+
+export type UserNotificationPage = {
+  items: UserNotification[];
+  total: number;
+  unread: number;
+  offset: number;
+  limit: number;
+};
+
+export const userNotificationApi = {
+  list: (offset = 0, unreadOnly = false) =>
+    request<UserNotificationPage>('/api/v1/user-notifications?offset=' + offset + '&unread_only=' + unreadOnly),
+  unreadCount: () => request<{ count: number }>('/api/v1/user-notifications/unread-count'),
+  markRead: (id: string) => request<{ id: string; read_at: string }>(
+    '/api/v1/user-notifications/' + encodeURIComponent(id) + '/read', { method: 'PATCH' },
+  ),
+  following: (courseId: string) => request<{ following: boolean }>(
+    '/api/v1/user-notifications/follows/' + encodeURIComponent(courseId),
+  ),
+  follow: (courseId: string) => request<{ following: boolean }>(
+    '/api/v1/user-notifications/follows/' + encodeURIComponent(courseId), { method: 'PUT' },
+  ),
+  unfollow: (courseId: string) => request<{ following: boolean }>(
+    '/api/v1/user-notifications/follows/' + encodeURIComponent(courseId), { method: 'DELETE' },
+  ),
 };

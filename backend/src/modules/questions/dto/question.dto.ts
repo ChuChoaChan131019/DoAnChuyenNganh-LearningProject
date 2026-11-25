@@ -104,6 +104,17 @@ export class SubmitQuestionDto {
   expected_version?: number;
 }
 
+export class RevokeQuestionApprovalDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  reason!: string;
+
+  @IsInt()
+  @Min(1)
+  expected_version!: number;
+}
+
 export class QuizQuestionItemDto {
   @IsUUID()
   question_id!: string;
