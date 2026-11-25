@@ -1,30 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, BookOpen, Check, ChevronDown, ChevronRight, FileText, Globe2, Layers, RotateCcw, Search, Sparkles, X } from "lucide-react";
+import { ArrowUpRight, BookOpen, ChevronDown, ChevronRight, FileText, Globe2, Layers, RotateCcw, Search, Sparkles, X } from "lucide-react";
 import { courseApi, type LessonValidationIssue } from "@/lib/api";
 
-type Status = "Draft" | "Approved" | "Published";
-type Action = "approve" | "publish" | "unpublish";
+type Status = "Draft" | "Published";
+type Action = "publish" | "unpublish";
 type LessonRow = { id: string; title: string; status: string; version: number; is_ai_generated: boolean; order_index: number; validation: { lesson_version: number; status: "passed" | "failed"; errors: LessonValidationIssue[]; warnings: LessonValidationIssue[]; created_at: string } | null };
 type ChapterRow = { id: string; title: string; status: string; order_index: number; lessons: LessonRow[] };
 type CourseRow = { id: string; title: string; slug: string; status: string; chapters: ChapterRow[] };
 type Target = { type: "course" | "chapter" | "lesson"; id: string; title: string; status: Status; version?: number; action: Action };
 
-const label: Record<Status, string> = { Draft: "Bản nháp", Approved: "Đã duyệt", Published: "Đã xuất bản" };
+const label: Record<Status, string> = { Draft: "Bản nháp", Published: "Đã xuất bản" };
 const statusStyle: Record<Status, string> = {
   Draft: "border-slate-200 bg-slate-100 text-slate-600",
-  Approved: "border-cyan-200 bg-cyan-50 text-cyan-700",
   Published: "border-emerald-200 bg-emerald-50 text-emerald-700",
 };
 const actionText: Record<Action, { title: string; button: string; progress: string; description: string }> = {
-  approve: { title: "Bạn muốn duyệt nội dung này?", button: "Duyệt", progress: "Đang duyệt...", description: "Chuyển từ bản nháp sang đã duyệt." },
-  publish: { title: "Bạn muốn xuất bản nội dung này?", button: "Xuất bản", progress: "Đang xuất bản...", description: "Chuyển từ đã duyệt sang đã xuất bản." },
-  unpublish: { title: "Bạn muốn gỡ xuất bản nội dung này?", button: "Gỡ xuất bản", progress: "Đang gỡ xuất bản...", description: "Chuyển về trạng thái đã duyệt để học viên không còn truy cập được." },
+  publish: { title: "Bạn muốn xuất bản nội dung này?", button: "Xuất bản", progress: "Đang xuất bản...", description: "Người học sẽ xem được nội dung này." },
+  unpublish: { title: "Bạn muốn gỡ xuất bản nội dung này?", button: "Gỡ xuất bản", progress: "Đang gỡ xuất bản...", description: "Nội dung sẽ trở về bản nháp và người học không còn truy cập được." },
 };
-function toStatus(status: string): Status { return status === "published" ? "Published" : status === "approved" ? "Approved" : "Draft"; }
-function nextAction(status: Status): Action { return status === "Draft" ? "approve" : status === "Approved" ? "publish" : "unpublish"; }
+function toStatus(status: string): Status { return status === "published" ? "Published" : "Draft"; }
+function nextAction(status: Status): Action { return status === "Draft" ? "publish" : "unpublish"; }
 
 function StatusBadge({ status }: { status: Status }) {
   return <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusStyle[status]}`}><span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />{label[status]}</span>;
@@ -36,6 +35,10 @@ function FadeText({ children, className = "" }: { children: string; className?: 
 }
 
 export default function ReviewQueuePage() {
+  const isAdmin = usePathname().startsWith('/admin/');
+  const previewHref = (id: string) => isAdmin
+    ? `/admin/content-review/lessons/${encodeURIComponent(id)}/preview`
+    : `/content-manager/learning-content/lessons/${encodeURIComponent(id)}/preview`;
   const [courses, setCourses] = useState<CourseRow[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
@@ -52,7 +55,7 @@ export default function ReviewQueuePage() {
     try {
       const rows = await courseApi.reviewTree() as CourseRow[];
       setCourses(rows);
-      setExpanded((current) => current.size ? current : new Set(rows.flatMap((course) => [course.id, ...course.chapters.map((chapter) => chapter.id)])));
+      setExpanded(new Set());
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Không thể tải danh sách nội dung cần duyệt.");
     } finally { setLoading(false); }
@@ -64,7 +67,7 @@ export default function ReviewQueuePage() {
       if (!active) return;
       const tree = rows as CourseRow[];
       setCourses(tree);
-      setExpanded((current) => current.size ? current : new Set(tree.flatMap((course) => [course.id, ...course.chapters.map((chapter) => chapter.id)])));
+      setExpanded(new Set());
     }).catch((error: unknown) => {
       if (active) setLoadError(error instanceof Error ? error.message : "Không thể tải danh sách nội dung cần duyệt.");
     }).finally(() => {
@@ -107,23 +110,23 @@ export default function ReviewQueuePage() {
     setActionError(null);
     try {
       if (selected.type === "lesson") {
-        if (selected.action === "approve") {
+        if (selected.action === "publish") {
           const validation = await courseApi.validateLesson(selected.id, selected.version ?? 1);
           if (!validation.valid) {
             setActionError(validation.errors.map((issue) => issue.message).join(" "));
             await refresh();
             return;
           }
-          if (validation.warnings.length > 0 && !window.confirm(`Nội dung còn ${validation.warnings.length} cảnh báo. Bạn vẫn muốn duyệt?`)) {
+          if (validation.warnings.length > 0 && !window.confirm(`Nội dung còn ${validation.warnings.length} cảnh báo. Bạn vẫn muốn xuất bản?`)) {
             await refresh();
             return;
           }
         }
         await courseApi.reviewAction(selected.id, { action: selected.action, version: selected.version ?? 1, reason: reason.trim() });
       } else if (selected.type === "chapter") {
-        await courseApi.reviewChapterAction(selected.id, selected.action);
+        await courseApi.reviewChapterAction(selected.id, nextAction(selected.status));
       } else {
-        await courseApi.reviewCourseAction(selected.id, selected.action);
+        await courseApi.reviewCourseAction(selected.id, nextAction(selected.status));
       }
       setSelected(null);
       setReason("");
@@ -144,7 +147,7 @@ export default function ReviewQueuePage() {
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-[#002C3E]">Duyệt nội dung</h1>
-        <p className="mt-2 text-sm text-[#637981]">Xem và duyệt toàn bộ cấu trúc khóa học, chương và bài học.</p>
+        <p className="mt-2 text-sm text-[#637981]">Quản lý trạng thái bản nháp và xuất bản của khóa học, chương và bài học.</p>
       </div>
       <div className="flex flex-wrap gap-2 text-sm">
         <span className="rounded-xl border border-[#dfe6df] bg-white px-3 py-2 text-[#637981]"><b className="text-[#002C3E]">{totals.courses}</b> khóa học</span>
@@ -173,8 +176,8 @@ export default function ReviewQueuePage() {
             <div className="flex min-w-0 items-center gap-3"><button type="button" aria-label={`${expanded.has(course.id) ? "Thu gọn" : "Mở rộng"} ${course.title}`} onClick={() => toggle(course.id)} className="rounded-lg p-1 text-[#637981] hover:bg-[#e6f7f8]"><CourseChevron className="h-4 w-4" /></button><BookOpen className="h-5 w-5 text-[#F7444E]" /><div className="min-w-0 flex-1"><p className="font-bold text-[#002C3E]"><FadeText>{course.title}</FadeText></p><p className="text-xs text-[#637981]">Course · {course.visibleChapters.length} chapters</p></div></div>
             <span className="hidden md:block" />
             <div><span className="text-[10px] font-semibold uppercase text-[#829397] md:hidden">Trạng thái </span><StatusBadge status={courseStatus} /></div>
-            <div className="md:text-right"><button type="button" onClick={() => openAction("course", course.id, course.title, course.status)} className={`inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold ${courseStatus === "Published" ? "border border-[#dfe6df] bg-white text-[#526f78] hover:bg-[#f8fbf9]" : courseStatus === "Approved" ? "bg-[#14919B] text-white hover:bg-[#117b83]" : "bg-[#F7444E] text-white hover:bg-[#df3540]"}`}>
-              {courseStatus === "Draft" ? <Check className="h-3.5 w-3.5" /> : courseStatus === "Approved" ? <Globe2 className="h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}{actionText[nextAction(courseStatus)].button} course
+            <div className="md:text-right"><button type="button" onClick={() => openAction("course", course.id, course.title, course.status)} className={`inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold ${courseStatus === "Published" ? "border border-[#dfe6df] bg-white text-[#526f78] hover:bg-[#f8fbf9]" : "bg-[#14919B] text-white hover:bg-[#117b83]"}`}>
+              {courseStatus === "Draft" ? <Globe2 className="h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}{actionText[nextAction(courseStatus)].button} course
             </button></div>
           </div>
           {expanded.has(course.id) && <div className="pb-2">
@@ -186,21 +189,21 @@ export default function ReviewQueuePage() {
                   <div className="flex min-w-0 items-center gap-3 md:pl-7"><button type="button" aria-label={`${expanded.has(chapter.id) ? "Thu gọn" : "Mở rộng"} ${chapter.title}`} onClick={() => toggle(chapter.id)} className="rounded-lg p-1 text-[#637981] hover:bg-[#e6f7f8]"><ChapterChevron className="h-4 w-4" /></button><Layers className="h-4 w-4 text-[#14919B]" /><div className="min-w-0 flex-1"><p className="font-semibold text-[#16485a]"><FadeText>{chapter.title}</FadeText></p><p className="text-xs text-[#637981]">Chapter · {chapter.visibleLessons.length} lessons</p></div></div>
                   <span className="hidden md:block" />
                   <div><span className="text-[10px] font-semibold uppercase text-[#829397] md:hidden">Trạng thái </span><StatusBadge status={chapterStatus} /></div>
-                  <div className="md:text-right"><button type="button" onClick={() => openAction("chapter", chapter.id, chapter.title, chapter.status)} className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold ${chapterStatus === "Published" ? "border border-[#dfe6df] bg-white text-[#526f78] hover:bg-[#f8fbf9]" : chapterStatus === "Approved" ? "bg-[#14919B] text-white hover:bg-[#117b83]" : "bg-[#F7444E] text-white hover:bg-[#df3540]"}`}>
-                    {chapterStatus === "Draft" ? <Check className="h-3.5 w-3.5" /> : chapterStatus === "Approved" ? <Globe2 className="h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}{actionText[nextAction(chapterStatus)].button} chapter
+                  <div className="md:text-right"><button type="button" onClick={() => openAction("chapter", chapter.id, chapter.title, chapter.status)} className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold ${chapterStatus === "Published" ? "border border-[#dfe6df] bg-white text-[#526f78] hover:bg-[#f8fbf9]" : "bg-[#14919B] text-white hover:bg-[#117b83]"}`}>
+                    {chapterStatus === "Draft" ? <Globe2 className="h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}{actionText[nextAction(chapterStatus)].button} chapter
                   </button></div>
                 </div>
                 {expanded.has(chapter.id) && <div className="space-y-1 pb-2">
                   {chapter.visibleLessons.map((lesson) => {
                     const lessonStatus = toStatus(lesson.status);
                     return <div key={lesson.id} className="grid grid-cols-1 gap-2 rounded-xl px-4 py-2.5 hover:bg-[#f8fbf9] md:grid-cols-[minmax(0,1fr)_130px_130px_180px] md:items-center md:gap-4 sm:px-5">
-                      <div className="flex min-w-0 items-center gap-3 md:pl-14"><span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${lesson.is_ai_generated ? "bg-[#e6f7f8] text-[#14919B]" : "bg-[#fff1f0] text-[#F7444E]"}`}>{lesson.is_ai_generated ? <Sparkles className="h-4 w-4" /> : <FileText className="h-4 w-4" />}</span><div className="min-w-0 flex-1"><Link href={`/content-manager/learning-content/lessons/${lesson.id}/preview`} title={lesson.title} className="block text-sm font-semibold text-[#002C3E] hover:text-[#F7444E] hover:underline"><FadeText>{lesson.title}</FadeText></Link><span className="text-[11px] text-[#637981]">Lesson · v{lesson.version}</span>{lesson.validation?.lesson_version === lesson.version && <span className={`ml-2 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${lesson.validation.status === "passed" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>{lesson.validation.status === "passed" ? `Đã kiểm tra${lesson.validation.warnings.length ? ` · ${lesson.validation.warnings.length} cảnh báo` : ""}` : `${lesson.validation.errors.length} lỗi`}</span>}</div></div>
+                      <div className="flex min-w-0 items-center gap-3 md:pl-14"><span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${lesson.is_ai_generated ? "bg-[#e6f7f8] text-[#14919B]" : "bg-[#fff1f0] text-[#F7444E]"}`}>{lesson.is_ai_generated ? <Sparkles className="h-4 w-4" /> : <FileText className="h-4 w-4" />}</span><div className="min-w-0 flex-1"><Link href={previewHref(lesson.id)} title={lesson.title} className="block text-sm font-semibold text-[#002C3E] hover:text-[#F7444E] hover:underline"><FadeText>{lesson.title}</FadeText></Link><span className="text-[11px] text-[#637981]">Lesson · v{lesson.version}</span>{lesson.validation?.lesson_version === lesson.version && <span className={`ml-2 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${lesson.validation.status === "passed" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>{lesson.validation.status === "passed" ? `Đã kiểm tra${lesson.validation.warnings.length ? ` · ${lesson.validation.warnings.length} cảnh báo` : ""}` : `${lesson.validation.errors.length} lỗi`}</span>}</div></div>
                       <div><span className="text-[10px] font-semibold uppercase text-[#829397] md:hidden">Nguồn </span><span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${lesson.is_ai_generated ? "border-cyan-200 bg-cyan-50 text-cyan-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>{lesson.is_ai_generated ? <Sparkles className="h-3 w-3" /> : <FileText className="h-3 w-3" />}{lesson.is_ai_generated ? "Tạo tự động" : "Tự soạn"}</span></div>
                       <div><span className="text-[10px] font-semibold uppercase text-[#829397] md:hidden">Trạng thái </span><StatusBadge status={lessonStatus} /></div>
-                      <div className="flex items-center gap-2 md:justify-end"><button type="button" onClick={() => openAction("lesson", lesson.id, lesson.title, lesson.status, lesson.version)} className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold ${lessonStatus === "Published" ? "border border-[#dfe6df] bg-white text-[#526f78] hover:bg-[#f8fbf9]" : lessonStatus === "Approved" ? "bg-[#14919B] text-white hover:bg-[#117b83]" : "bg-[#F7444E] text-white hover:bg-[#df3540]"}`}>
-                        {lessonStatus === "Draft" ? <Check className="h-3.5 w-3.5" /> : lessonStatus === "Approved" ? <Globe2 className="h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}{actionText[nextAction(lessonStatus)].button}
+                      <div className="flex flex-wrap items-center gap-2 md:justify-end"><button type="button" onClick={() => openAction("lesson", lesson.id, lesson.title, lesson.status, lesson.version)} className={`inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-xs font-semibold ${lessonStatus === "Published" ? "border border-[#dfe6df] bg-white text-[#526f78] hover:bg-[#f8fbf9]" : "bg-[#14919B] text-white hover:bg-[#117b83]"}`}>
+                        {lessonStatus === "Draft" ? <Globe2 className="h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}{actionText[nextAction(lessonStatus)].button}
                       </button>
-                      <Link href={`/content-manager/learning-content/lessons/${lesson.id}/preview`} title={`Preview ${lesson.title}`} aria-label={`Preview ${lesson.title}`} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#dfe6df] text-[#526f78] hover:border-[#78BCC4] hover:text-[#002C3E]"><ArrowUpRight className="h-4 w-4" /></Link>
+                      <Link href={previewHref(lesson.id)} title={`Preview ${lesson.title}`} aria-label={`Preview ${lesson.title}`} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#dfe6df] text-[#526f78] hover:border-[#78BCC4] hover:text-[#002C3E]"><ArrowUpRight className="h-4 w-4" /></Link>
                       </div></div>;
                   })}
                   {chapter.visibleLessons.length === 0 && <p className="px-3 py-3 text-xs text-[#829397]">Chương này chưa có bài học.</p>}
@@ -214,10 +217,10 @@ export default function ReviewQueuePage() {
     </section>
 
     {selected && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#00151d]/75 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setSelected(null); }}><div role="alertdialog" aria-modal="true" aria-labelledby="review-title" aria-describedby="review-description" className="w-full max-w-md rounded-2xl border border-[#dfe6df] bg-[#fffefb] p-6 shadow-2xl">
-      <div className="flex items-start justify-between"><span className={`grid h-11 w-11 place-items-center rounded-xl ${selected.action === "publish" ? "bg-[#e6f7f8] text-[#14919B]" : "bg-[#fff1f0] text-[#F7444E]"}`}>{selected.action === "publish" ? <Globe2 className="h-5 w-5" /> : selected.action === "unpublish" ? <RotateCcw className="h-5 w-5" /> : <Check className="h-5 w-5" />}</span><button type="button" disabled={saving} onClick={() => setSelected(null)} aria-label="Đóng" className="rounded-lg p-1 text-[#526f78] hover:bg-[#f8fbf9]"><X className="h-5 w-5" /></button></div>
+      <div className="flex items-start justify-between"><span className={`grid h-11 w-11 place-items-center rounded-xl ${selected.action === "publish" ? "bg-[#e6f7f8] text-[#14919B]" : "bg-[#fff1f0] text-[#F7444E]"}`}>{selected.action === "publish" ? <Globe2 className="h-5 w-5" /> : <RotateCcw className="h-5 w-5" />}</span><button type="button" disabled={saving} onClick={() => setSelected(null)} aria-label="Đóng" className="rounded-lg p-1 text-[#526f78] hover:bg-[#f8fbf9]"><X className="h-5 w-5" /></button></div>
       <h2 id="review-title" className="mt-5 text-xl font-semibold text-[#002C3E]">{actionText[selected.action].title}</h2><p id="review-description" className="mt-2 text-sm leading-6 text-[#637981]"><strong className="text-[#002C3E]">{selected.title}</strong>: {actionText[selected.action].description}</p>
-      {selected.action === "publish" && selected.type !== "lesson" && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">To publish, all items inside this {selected.type} need to be Approved or Published first.</p>}
-      {selected.action === "unpublish" && selected.type === "lesson" && <label className="mt-4 block text-sm font-semibold text-[#002C3E]">Lý do<textarea required value={reason} onChange={(event) => setReason(event.target.value)} className="mt-2 min-h-24 w-full rounded-xl border border-[#dfe6df] p-3 text-sm" placeholder="Nêu lý do xử lý..." /></label>}
+      {selected.action === "publish" && selected.type !== "lesson" && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Cần xuất bản các nội dung bên trong trước khi xuất bản {selected.type === "course" ? "khóa học" : "chương"}.</p>}
+      {selected.action === "unpublish" && selected.type === "lesson" && <label className="mt-4 block text-sm font-semibold text-[#002C3E]">Lý do<textarea required maxLength={2000} value={reason} onChange={(event) => setReason(event.target.value)} className="mt-2 min-h-24 w-full rounded-xl border border-[#dfe6df] p-3 text-sm" placeholder="Nêu nội dung cần sửa..." /></label>}
       {actionError && <p role="alert" className="mt-4 rounded-xl border border-[#F7444E]/30 bg-[#fff1f0] p-3 text-sm text-[#F7444E]">{actionError}</p>}
       <div className="mt-6 flex justify-end gap-3"><button type="button" disabled={saving} onClick={() => setSelected(null)} className="h-10 rounded-xl border border-[#dfe6df] px-4 text-sm font-semibold text-[#002C3E]">Hủy</button><button type="button" disabled={saving || (selected.action === "unpublish" && selected.type === "lesson" && !reason.trim())} onClick={() => void changeStatus()} className={`h-10 rounded-xl px-4 text-sm font-semibold shadow-sm disabled:opacity-60 ${selected.action === "publish" ? "bg-[#14919B] text-white hover:bg-[#117b83]" : selected.action === "unpublish" ? "border border-[#dfe6df] bg-white text-[#526f78]" : "bg-[#F7444E] text-white hover:bg-[#df3540]"}`}>{saving ? actionText[selected.action].progress : `${actionText[selected.action].button} ${selected.type}`}</button></div>
     </div></div>}

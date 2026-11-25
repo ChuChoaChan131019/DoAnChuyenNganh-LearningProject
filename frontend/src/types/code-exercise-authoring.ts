@@ -25,6 +25,7 @@ export type CodeExercisePayload = {
 
 export type CodeExerciseListItem = {
   id: string;
+  can_edit: boolean;
   lesson_id: string;
   title: string;
   difficulty: CodeDifficulty;
@@ -38,6 +39,7 @@ export type CodeExerciseListItem = {
 
 export type CodeExerciseDetail = {
   id: string;
+  can_edit: boolean;
   lesson_id: string;
   archived_at: string | null;
   published_revision_id: string | null;

@@ -285,11 +285,6 @@ export default function ContentManagerPage() {
       fill: COLORS.green,
     },
     {
-      name: "Đã duyệt",
-      value: stats.status.approved,
-      fill: COLORS.teal,
-    },
-    {
       name: "Bản nháp",
       value: stats.status.draft,
       fill: COLORS.amber,

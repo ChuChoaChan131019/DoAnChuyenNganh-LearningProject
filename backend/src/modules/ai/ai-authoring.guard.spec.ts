@@ -45,11 +45,11 @@ describe('authoring endpoint access guards', () => {
       };
       if (!role)
         await expect(execute()).rejects.toBeInstanceOf(UnauthorizedException);
-      else if (role === 'learner')
+      else if (role !== 'content_manager')
         await expect(execute()).rejects.toBeInstanceOf(ForbiddenException);
       else await expect(execute()).resolves.toEqual({ questions: [] });
       expect(generateAuthoringQuestions).toHaveBeenCalledTimes(
-        ['content_manager', 'admin'].includes(role ?? '') ? 1 : 0,
+        role === 'content_manager' ? 1 : 0,
       );
     },
   );

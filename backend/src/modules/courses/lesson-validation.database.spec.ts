@@ -6,6 +6,10 @@ const migration = readFileSync(new URL(
   '../../../../database/migrations/20261118090000_lesson_validation_workflow.sql',
   import.meta.url,
 ), 'utf8');
+const publicationMigration = readFileSync(new URL(
+  '../../../../database/migrations/20261125160000_two_state_content_publication.sql',
+  import.meta.url,
+), 'utf8');
 const author = '00000000-0000-4000-8000-000000000001';
 const lessonId = '00000000-0000-4000-8000-000000000010';
 let db: PGlite;
@@ -71,6 +75,7 @@ describe('lesson validation workflow migration', () => {
       grant select, insert, update on public.profiles, public.lessons, public.lesson_review_events to service_role;
     `);
     await db.exec(migration);
+    await db.exec(publicationMigration);
   });
 
   afterAll(async () => db?.close());
@@ -84,48 +89,45 @@ describe('lesson validation workflow migration', () => {
     expect(events.rows).toEqual([{ action: 'validate', version: 1 }]);
   });
 
-  it('requires a passing validation before approval', async () => {
+  it('requires a passing validation before publication', async () => {
     await db.exec('savepoint missing_validation');
-    await expect(action('approve', 1)).rejects.toMatchObject({ code: '22023' });
+    await expect(action('publish', 1)).rejects.toMatchObject({ code: '22023' });
     await db.exec('rollback to savepoint missing_validation');
     await record([{ code: 'CONTENT_TOO_SHORT' }]);
     await db.exec('savepoint failed_validation');
-    await expect(action('approve', 1)).rejects.toMatchObject({ code: '22023' });
+    await expect(action('publish', 1)).rejects.toMatchObject({ code: '22023' });
     await db.exec('rollback to savepoint failed_validation');
   });
 
-  it('allows an author to self-approve after validation', async () => {
+  it('allows a manager to publish a validated draft directly', async () => {
     await record();
     const result = await db.query<{ status: string; version: number }>(
       'select status, version from public.apply_lesson_review_action($1,$2,1,$3,null)',
-      [lessonId, author, 'approve'],
+      [lessonId, author, 'publish'],
     );
-    expect(result.rows[0]).toEqual({ status: 'approved', version: 2 });
+    expect(result.rows[0]).toEqual({ status: 'published', version: 2 });
   });
 
   it('requires an unpublish reason and preserves the audit chain', async () => {
     await record();
-    await db.query('select public.apply_lesson_review_action($1,$2,1,$3,null)', [lessonId, author, 'approve']);
-    await db.query('select public.apply_lesson_review_action($1,$2,2,$3,null)', [lessonId, author, 'publish']);
+    await db.query('select public.apply_lesson_review_action($1,$2,1,$3,null)', [lessonId, author, 'publish']);
     await db.exec('savepoint missing_reason');
-    await expect(db.query('select public.apply_lesson_review_action($1,$2,3,$3,null)', [lessonId, author, 'unpublish']))
+     await expect(db.query('select public.apply_lesson_review_action($1,$2,2,$3,null)', [lessonId, author, 'unpublish']))
       .rejects.toMatchObject({ code: '22023' });
     await db.exec('rollback to savepoint missing_reason');
     const result = await db.query<{ status: string }>(
-      'select status from public.apply_lesson_review_action($1,$2,3,$3,$4)',
+      'select status from public.apply_lesson_review_action($1,$2,2,$3,$4)',
       [lessonId, author, 'unpublish', 'Cần cập nhật ví dụ'],
     );
-    expect(result.rows[0].status).toBe('approved');
+    expect(result.rows[0].status).toBe('draft');
   });
 
   it('restores an old snapshot as a new draft version', async () => {
-    await record();
-    await db.query('select public.apply_lesson_review_action($1,$2,1,$3,null)', [lessonId, author, 'approve']);
     const result = await db.query<{ title: string; status: string; version: number }>(
-      'select title,status,version from public.restore_lesson_version($1,$2,2,1)',
+      'select title,status,version from public.restore_lesson_version($1,$2,1,1)',
       [lessonId, author],
     );
-    expect(result.rows[0]).toEqual({ title: 'Vòng lặp', status: 'draft', version: 3 });
+    expect(result.rows[0]).toEqual({ title: 'Vòng lặp', status: 'draft', version: 2 });
   });
 
   it('enables RLS and blocks direct authenticated access', async () => {

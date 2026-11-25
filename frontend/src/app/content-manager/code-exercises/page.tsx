@@ -200,10 +200,10 @@ export default function CodeExercisesPage() {
                   className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700"
                 >
                   <FilePenLine className="h-4 w-4" />
-                  {item.has_draft ? "Sửa nháp" : "Xem / sửa"}
+                  {item.can_edit ? item.has_draft ? "Sửa nháp" : "Xem / sửa" : "Xem / xuất bản"}
                 </Link>
 
-                <button
+                {item.can_edit && <button
                   type="button"
                   disabled={busyId !== null}
                   onClick={() => void copyExercise(item.id)}
@@ -211,9 +211,9 @@ export default function CodeExercisesPage() {
                 >
                   <Copy className="h-4 w-4" />
                   Sao chép
-                </button>
+                </button>}
 
-                <button
+                {item.can_edit && <button
                   type="button"
                   disabled={busyId !== null}
                   onClick={() => void archiveExercise(item.id)}
@@ -221,7 +221,7 @@ export default function CodeExercisesPage() {
                 >
                   <Trash2 className="h-4 w-4" />
                   Lưu trữ
-                </button>
+                </button>}
               </div>
             </article>
           ))}
