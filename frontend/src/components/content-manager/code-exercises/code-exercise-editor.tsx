@@ -344,8 +344,8 @@ export function CodeExerciseEditor({ exerciseId }: { exerciseId?: string }) {
 
   // 6. Xuất bản: Backend tự kiểm tra lại.
   const publishDraft = async () => {
-    if (!id || !hasDraft || dirty || !validation?.can_publish) {
-      setError("Hãy lưu nháp và kiểm tra thành công trước khi xuất bản.");
+    if (!id || !hasDraft || dirty) {
+      setError("Hãy lưu bản nháp mới nhất trước khi xuất bản.");
       return;
     }
 
@@ -455,7 +455,6 @@ export function CodeExerciseEditor({ exerciseId }: { exerciseId?: string }) {
               !id ||
               !hasDraft ||
               dirty ||
-              !validation?.can_publish ||
               checking ||
               saving ||
               publishing
@@ -467,6 +466,14 @@ export function CodeExerciseEditor({ exerciseId }: { exerciseId?: string }) {
           </button>
         </div>
       </div>
+
+      <p className="text-sm text-slate-600">
+        {!id || !hasDraft
+          ? "Cần có bản nháp đã lưu để xuất bản."
+          : dirty
+            ? "Bạn vừa thay đổi bài. Hãy lưu nháp trước khi xuất bản."
+            : "Có thể xuất bản bản nháp này. Hệ thống sẽ tự kiểm tra lời giải và bộ test khi bạn xác nhận."}
+      </p>
 
       {error && (
         <div
