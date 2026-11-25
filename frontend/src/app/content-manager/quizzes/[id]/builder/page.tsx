@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { ArrowDown, ArrowUp, BookOpen, Check, Layers, Plus, Save, Trash2 } from 'lucide-react';
+import { quizPreviewDraftUrl, saveQuizPreviewDraft } from '@/lib/quiz-preview-draft';
+import { ArrowDown, ArrowUp, BookOpen, Check, Eye, Layers, Plus, Save, Trash2 } from 'lucide-react';
 import { ApiClientError, questionApi, quizApi } from '@/lib/api';
 import type { ChapterOption, CourseOption, LessonOption, QuestionItem, QuestionType } from '@/types/question';
 import type { QuizItem, QuizType } from '@/types/quiz';
@@ -369,6 +370,30 @@ export default function QuizBuilderPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+          {/* Xem trước cả thay đổi chưa lưu, mở tab mới để giữ nguyên trang đang chỉnh. */}
+          <button
+            type="button"
+            disabled={assignedQuestions.length === 0}
+            title={assignedQuestions.length ? 'Xem đề như học viên thấy, kể cả thay đổi chưa lưu' : 'Thêm ít nhất 1 câu hỏi để xem trước'}
+            onClick={() => {
+              saveQuizPreviewDraft({
+                quiz_id: quizId,
+                questions: assignedQuestions
+                  .filter((item) => item.question?.id)
+                  .map((item) => ({ question_id: item.question.id, score_weight: item.score_weight || 1.0 })),
+                meta: {
+                  title: settings.title,
+                  duration_minutes: settings.duration_minutes,
+                  pass_percentage: settings.pass_percentage,
+                },
+              });
+              window.open(quizPreviewDraftUrl(quizId), '_blank');
+            }}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Eye className="h-4 w-4" />
+            Xem trước
+          </button>
             <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${quiz?.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
               {quiz?.is_active ? 'Đã xuất bản' : 'Chưa xuất bản'}
             </span>
@@ -729,6 +754,11 @@ export default function QuizBuilderPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900">{item.question?.content || 'Untitled question'}</p>
                     {item.question && <QuestionMeta question={item.question} />}
+                    {item.question?.deleted_at && (
+                      <p className="mt-1 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                        Đã xóa khỏi ngân hàng câu hỏi — vẫn được giữ trong đề này cho đến khi bạn gỡ nó.
+                      </p>
+                    )}
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <button

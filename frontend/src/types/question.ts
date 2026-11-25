@@ -43,6 +43,8 @@ export interface QuestionItem {
   updated_by?: string | null;
   reviewed_by?: string | null;
   reviewed_at?: string | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
 }
 
 export interface QuestionHistoryItem {

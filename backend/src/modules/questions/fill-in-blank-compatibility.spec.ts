@@ -55,8 +55,17 @@ describe('standard fill-in-blank answer compatibility', () => {
     ['  console.writeline  ', 1],
     ['Console.ReadLine', 0],
   ])('quiz grades %s', async (answer, score) => {
+    // RPC submit_quiz_attempt lưu đúng phần điểm backend đã chấm.
+    const rpc = async (_name: string, args: { p_details: Array<{ earned_score: number }>; p_max_score: number }) => {
+      const total = args.p_details.reduce((sum, item) => sum + item.earned_score, 0);
+      return {
+        data: { status: 'submitted', attempt_id: 'attempt', quiz_id: 'quiz', end_reason: 'submitted', score: total, max_score: args.p_max_score, percentage: total * 100, pass_percentage: 50, passed: total > 0 },
+        error: null,
+      };
+    };
     const service = new QuizzesService({
       getClient: () => ({
+        rpc,
         from: (table: string) =>
           query(
             table === 'quiz_attempts'

@@ -85,4 +85,9 @@ export class QuestionsController {
     return this.questionsService.remove(id, request.user.id);
   }
 
+  @Patch('questions/:id/restore')
+  restore(@Param('id') id: string, @Req() request: any) {
+    return this.questionsService.restore(id, request.user.id);
+  }
+
 }

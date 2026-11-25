@@ -92,6 +92,59 @@ export interface QuizAttempt {
   percentage: number | null;
   started_at: string;
   completed_at: string | null;
+  /** Hạn nộp do máy chủ lưu; null khi đề không giới hạn thời gian. */
+  expires_at?: string | null;
+  /** Giờ máy chủ lúc trả phản hồi, dùng để bù lệch đồng hồ máy người học. */
+  server_now?: string;
+  duration_minutes?: number | null;
+}
+
+export type QuizAttemptEndReason = 'submitted' | 'expired';
+
+export interface QuizSubmitResult {
+  attempt_id: string;
+  quiz_id: string;
+  started_at: string;
+  completed_at: string | null;
+  end_reason: QuizAttemptEndReason;
+  already_submitted: boolean;
+  score: number;
+  max_score: number;
+  percentage: number;
+  pass_percentage: number;
+  passed: boolean;
+}
+
+export interface QuizReviewQuestion {
+  question_id: string;
+  content: string;
+  question_type: string;
+  difficulty: string | null;
+  explanation: string | null;
+  score_weight: number;
+  earned_score: number;
+  is_correct: boolean;
+  answered: boolean;
+  answer_text: string | null;
+  selected_option_ids: string[];
+  options: Array<{ id: string; option_text: string; is_correct: boolean }>;
+}
+
+export interface QuizAttemptReview {
+  attempt_id: string;
+  quiz_id: string;
+  started_at: string;
+  expires_at: string | null;
+  completed_at: string;
+  end_reason: QuizAttemptEndReason;
+  score: number;
+  max_score: number;
+  percentage: number;
+  pass_percentage: number;
+  passed: boolean;
+  correct_count: number;
+  total_questions: number;
+  questions: QuizReviewQuestion[];
 }
 
 export interface QuizAnswerSubmission {
@@ -111,6 +164,8 @@ export interface QuizResultResponse {
   score: number | null;
   max_score: number | null;
   percentage: number | null;
+  is_passed?: boolean | null;
+  end_reason?: QuizAttemptEndReason | null;
   completed_at: string | null;
 }
 
@@ -124,5 +179,6 @@ export interface QuizAttemptQuestion {
   question_id: string;
   content: string;
   question_type: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
   options: Array<{ id: string; option_text: string }>;
 }

@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { quizPreviewDraftUrl, saveQuizPreviewDraft } from '@/lib/quiz-preview-draft';
 import {
   Eye,
   Settings,
@@ -252,10 +253,19 @@ function TestBuilderContent() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Xem trước ngay các câu đang chọn (chưa cần lưu), mở ở tab mới để giữ nguyên trang đang chỉnh. */}
           <button
             type="button"
-            onClick={() => alert('Opening preview modal...')}
-            className={STYLES.secondaryBtn}
+            disabled={selectedQuestions.length === 0}
+            title={selectedQuestions.length ? 'Xem đề như học viên thấy, kể cả thay đổi chưa lưu' : 'Chọn ít nhất 1 câu hỏi để xem trước'}
+            onClick={() => {
+              saveQuizPreviewDraft({
+                quiz_id: quizId,
+                questions: selectedQuestions.map((q) => ({ question_id: q.id, score_weight: q.score_weight || 1.0 })),
+              });
+              window.open(quizPreviewDraftUrl(quizId), '_blank');
+            }}
+            className={`${STYLES.secondaryBtn} disabled:cursor-not-allowed disabled:opacity-50`}
           >
             <Eye className="h-4 w-4 text-gray-500" />
             <span>Xem trước bài kiểm tra</span>

@@ -34,7 +34,8 @@ export interface TestItem {
 
   // DTO mở rộng cho Table
   course_title: string;
-  questions_count: number;
+  /** null khi chưa tải được số câu hỏi của bài này. */
+  questions_count: number | null;
   difficulty: DifficultyLevel;
   attempts_count: number;
 }

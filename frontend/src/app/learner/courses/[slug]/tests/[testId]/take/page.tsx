@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Clock3, CheckCircle2, ArrowLeft, ArrowRight } from "lucide-react";
+import { Clock3, CheckCircle2, ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
 import { ApiClientError, quizApi } from "@/lib/api";
 import type {
   QuizAttempt,
   QuizAttemptQuestion,
   QuizAnswerSubmission,
+  QuizData,
 } from "@/types/quiz";
 import type { DifficultyLevel, QuestionType } from "@/types/question";
 import { vietnameseDifficulty } from "@/lib/ui-labels";
@@ -38,13 +39,37 @@ function DifficultyBadge({ difficulty }: { difficulty?: DifficultyLevel }) {
   );
 }
 
-function errorMessage(error: unknown) {
-  return error instanceof ApiClientError
-    ? error.message
-    : "Không thể khởi tạo bài trắc nghiệm.";
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof ApiClientError ? error.message : fallback;
 }
 
-const attemptPromises: Record<string, Promise<any>> = {};
+type StartedAttempt = QuizAttempt & { questions: QuizAttemptQuestion[] };
+
+const draftKey = (attemptId: string) => `quiz_draft_${attemptId}`;
+
+function readDraft(attemptId: string): Record<string, QuizAnswerSubmission> {
+  if (typeof window === "undefined") return {};
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(draftKey(attemptId)) ?? "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function clearDraft(attemptId: string) {
+  if (typeof window !== "undefined") sessionStorage.removeItem(draftKey(attemptId));
+}
+
+/** Số giây còn lại theo hạn nộp của máy chủ (đã bù lệch giờ máy người học). */
+function secondsUntil(deadlineMs: number | null, clockOffsetMs: number) {
+  if (deadlineMs === null) return null;
+  return Math.max(0, Math.ceil((deadlineMs - (Date.now() + clockOffsetMs)) / 1000));
+}
+
+// Dùng chung một yêu cầu bắt đầu khi React mount hai lần (strict mode).
+const attemptPromises: Record<string, Promise<StartedAttempt>> = {};
+
 export default function CourseTestTakePage() {
   const params = useParams<{ slug: string; testId: string }>();
   const slug = String(params?.slug ?? "");
@@ -53,21 +78,32 @@ export default function CourseTestTakePage() {
 
   const { setTutorContext } = useTutorContext();
 
-  const [attempt, setAttempt] = useState<
-    (QuizAttempt & { questions: QuizAttemptQuestion[] }) | null
-  >(null);
-  const [quizDetails, setQuizDetails] = useState<any>(null);
+  const [attempt, setAttempt] = useState<StartedAttempt | null>(null);
+  const [quizDetails, setQuizDetails] = useState<QuizData | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, QuizAnswerSubmission>>(
     {},
   );
+  const [deadline, setDeadline] = useState<{ deadlineMs: number | null; offsetMs: number }>({
+    deadlineMs: null,
+    offsetMs: 0,
+  });
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const submitted = useRef(false);
+  const submitting = useRef(false);
+  const autoSubmitted = useRef(false);
+  const answersRef = useRef(answers);
   const tutorQuestion = attempt?.questions[currentIndex];
+
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
 
   useEffect(() => {
     if (!slug || !tutorQuestion) {
@@ -92,76 +128,38 @@ export default function CourseTestTakePage() {
     };
   }, [slug, testId, tutorQuestion, quizDetails?.chapter_id, setTutorContext]);
 
-  // Giữ nguyên useEffect cũ bên dưới
+  // Chỉ bắt đầu làm bài khi máy chủ tạo (hoặc trả lại) được một lượt làm hợp lệ.
   useEffect(() => {
     if (!testId) return;
 
-    if (typeof window !== "undefined") {
-      localStorage.setItem(`quiz_start_time_${testId}`, String(Date.now()));
-    }
-
     let isMounted = true;
-    setIsLoading(true);
 
     async function initializeQuiz() {
       try {
         const quizData = await quizApi.getById(testId).catch(() => null);
-
-        let startedAttempt: any = null;
-        try {
-          // Nếu đã có request startAttempt đang chạy cho testId này, tái sử dụng luôn promise đó
-          if (!attemptPromises[testId]) {
-            attemptPromises[testId] = quizApi.startAttempt(testId);
-          }
-          startedAttempt = await attemptPromises[testId];
-        } catch (attemptErr: any) {
-          // Xóa cache nếu lỗi để lần sau có thể thử lại
-          delete attemptPromises[testId];
-          console.warn(
-            "Attempt start warning (falling back to direct questions):",
-            attemptErr,
-          );
-          const fallbackQuestions = await quizApi
-            .getQuestions(testId)
-            .catch(() => []);
-
-          startedAttempt = {
-            attempt_id: "current-attempt",
-            quiz_id: testId,
-            quiz_title: quizData?.title || "Quiz Assessment",
-            duration_minutes: quizData?.duration_minutes ?? 15,
-            questions: (fallbackQuestions || []).map((item: any) => {
-              const q = item.questions || item;
-              return {
-                question_id: String(item.question_id || q.id),
-                content: q.content || "Câu hỏi",
-                question_type: (q.question_type ||
-                  "single_choice") as QuestionType,
-                difficulty: (q.difficulty || "medium") as DifficultyLevel,
-                options: (q.options || q.question_options || []).map(
-                  (o: any, idx: number) => ({
-                    id: String(o.id || idx),
-                    option_text: o.option_text || o.content || "",
-                  }),
-                ),
-              };
-            }),
-          };
+        if (!attemptPromises[testId]) {
+          attemptPromises[testId] = quizApi.startAttempt(testId);
         }
-
+        const requestedAt = Date.now();
+        const startedAttempt = await attemptPromises[testId];
+        const receivedAt = Date.now();
         if (!isMounted) return;
+
+        const serverNow = startedAttempt.server_now ? Date.parse(startedAttempt.server_now) : NaN;
+        const offsetMs = Number.isFinite(serverNow)
+          ? serverNow - Math.round((requestedAt + receivedAt) / 2)
+          : 0;
+        const deadlineMs = startedAttempt.expires_at ? Date.parse(startedAttempt.expires_at) : null;
 
         setAttempt(startedAttempt);
         setQuizDetails(quizData);
-
-        const duration =
-          quizData?.duration_minutes ??
-          (startedAttempt as any)?.duration_minutes ??
-          15;
-        setTimeLeft(duration !== null ? duration * 60 : null);
-      } catch (err: any) {
+        setAnswers(readDraft(startedAttempt.attempt_id));
+        setDeadline({ deadlineMs, offsetMs });
+        setTimeLeft(secondsUntil(deadlineMs, offsetMs));
+      } catch (err: unknown) {
+        delete attemptPromises[testId];
         if (isMounted) {
-          setError(errorMessage(err));
+          setLoadError(errorMessage(err, "Không thể bắt đầu bài kiểm tra."));
         }
       } finally {
         if (isMounted) {
@@ -175,28 +173,63 @@ export default function CourseTestTakePage() {
     return () => {
       isMounted = false;
     };
-  }, [testId]);
+  }, [testId, reloadKey]);
 
+  // Lưu nháp theo lượt làm để tải lại trang không mất câu trả lời (không dùng cho kết quả).
   useEffect(() => {
-    if (timeLeft === null || timeLeft <= 0) return;
+    if (!attempt || typeof window === "undefined") return;
+    sessionStorage.setItem(draftKey(attempt.attempt_id), JSON.stringify(answers));
+  }, [answers, attempt]);
 
+  // Đồng hồ tính lại từ hạn nộp mỗi giây, nên mở lại trang không được cộng thêm giờ.
+  useEffect(() => {
+    if (deadline.deadlineMs === null) return;
     const timer = window.setInterval(() => {
-      setTimeLeft((current) => {
-        if (current === null) return null;
-        if (current <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return current - 1;
-      });
+      setTimeLeft(secondsUntil(deadline.deadlineMs, deadline.offsetMs));
     }, 1000);
-
     return () => window.clearInterval(timer);
-  }, [timeLeft]);
+  }, [deadline]);
 
+  const handleSubmitQuiz = async () => {
+    if (!attempt || submitting.current || isExpired) return;
+    submitting.current = true;
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const result = await quizApi.submitAttempt({
+        attempt_id: attempt.attempt_id,
+        answers: Object.values(answersRef.current),
+      });
+      clearDraft(attempt.attempt_id);
+      delete attemptPromises[testId];
+      router.replace(
+        `/learner/courses/${slug}/tests/${testId}/results?attemptId=${encodeURIComponent(result.attempt_id)}`,
+      );
+    } catch (err) {
+      submitting.current = false;
+      setIsSubmitting(false);
+      if (err instanceof ApiClientError && err.code === "QUIZ_ATTEMPT_EXPIRED") {
+        clearDraft(attempt.attempt_id);
+        delete attemptPromises[testId];
+        setIsExpired(true);
+        return;
+      }
+      setSubmitError(
+        errorMessage(err, "Chưa lưu được bài nộp. Câu trả lời của bạn vẫn được giữ nguyên."),
+      );
+    }
+  };
+
+  // Hết giờ thì tự nộp các câu đã trả lời một lần; nếu lỗi, người học bấm Thử nộp lại.
+  const submitRef = useRef(handleSubmitQuiz);
   useEffect(() => {
-    if (timeLeft === 0 && !submitted.current) {
-      void handleSubmitQuiz();
+    submitRef.current = handleSubmitQuiz;
+  });
+  useEffect(() => {
+    if (timeLeft === 0 && !autoSubmitted.current) {
+      autoSubmitted.current = true;
+      void submitRef.current();
     }
   }, [timeLeft]);
 
@@ -205,6 +238,7 @@ export default function CourseTestTakePage() {
     optionId: string,
     isMultiple: boolean,
   ) => {
+    if (timeLeft === 0 || isSubmitting) return;
     setAnswers((prev) => {
       const currentAnswer = prev[questionId];
       const selected = currentAnswer?.selected_option_ids ?? [];
@@ -228,60 +262,7 @@ export default function CourseTestTakePage() {
     });
   };
 
-  const handleSubmitQuiz = async () => {
-    if (!attempt || submitted.current || isSubmitting) return;
-    submitted.current = true;
-    setIsSubmitting(true);
-
-    try {
-      const answersPayload = Object.values(answers);
-
-      let timeSpentSeconds = 0;
-      if (typeof window !== "undefined") {
-        const startTimeStr = localStorage.getItem(`quiz_start_time_${testId}`);
-        if (startTimeStr) {
-          const startTime = Number(startTimeStr);
-          timeSpentSeconds = Math.max(
-            1,
-            Math.round((Date.now() - startTime) / 1000),
-          );
-        } else {
-          const totalSeconds =
-            ((quizDetails?.duration_minutes ??
-              (attempt as any)?.duration_minutes ??
-              15) as number) * 60;
-          timeSpentSeconds = Math.max(
-            0,
-            totalSeconds - (timeLeft ?? totalSeconds),
-          );
-        }
-
-        localStorage.setItem(`quiz_answers_${testId}`, JSON.stringify(answers));
-        localStorage.setItem(
-          `quiz_time_spent_${testId}`,
-          String(timeSpentSeconds),
-        );
-      }
-
-      try {
-        await quizApi.submitAttempt({
-          attempt_id: attempt.attempt_id,
-          answers: answersPayload,
-        });
-      } catch (submitApiError) {
-        console.warn("Backend submit error fallback:", submitApiError);
-      }
-
-      delete attemptPromises[testId];
-      router.push(`/learner/courses/${slug}/tests/${testId}/results`);
-    } catch (err) {
-      submitted.current = false;
-      setError(errorMessage(err));
-      setIsSubmitting(false);
-    }
-  };
-
-  if (isLoading || !attempt) {
+  if (isLoading) {
     return (
       <div className="mx-auto max-w-2xl rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm">
         <p className="text-sm font-medium text-slate-500">
@@ -291,14 +272,71 @@ export default function CourseTestTakePage() {
     );
   }
 
-  if (error || !attempt.questions || attempt.questions.length === 0) {
+  if (loadError || !attempt) {
+    return (
+      <div className="mx-auto max-w-2xl rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center shadow-sm">
+        <h2 className="text-lg font-bold text-rose-700">
+          Không bắt đầu được bài kiểm tra
+        </h2>
+        <p className="mt-2 text-sm text-rose-600">
+          {loadError || "Máy chủ chưa tạo được lượt làm bài."}
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setIsLoading(true);
+              setLoadError(null);
+              setReloadKey((key) => key + 1);
+            }}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#c93f3a]"
+          >
+            <RotateCcw className="h-4 w-4" /> Thử lại
+          </button>
+          <Link
+            href={`/learner/courses/${slug}`}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-gray-50"
+          >
+            <ArrowLeft className="h-4 w-4" /> Quay lại khóa học
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (isExpired) {
+    return (
+      <div className="mx-auto max-w-2xl rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center shadow-sm">
+        <h2 className="text-lg font-bold text-amber-800">Đã quá hạn nộp bài</h2>
+        <p className="mt-2 text-sm text-amber-700">
+          Lượt làm này đã hết giờ nên bài nộp không được ghi nhận. Bạn có thể làm lại bài kiểm tra.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Link
+            href={`/learner/courses/${slug}/tests/${testId}/results?attemptId=${encodeURIComponent(attempt.attempt_id)}`}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#c93f3a]"
+          >
+            Xem kết quả
+          </Link>
+          <Link
+            href={`/learner/courses/${slug}`}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-gray-50"
+          >
+            <ArrowLeft className="h-4 w-4" /> Quay lại khóa học
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!attempt.questions || attempt.questions.length === 0) {
     return (
       <div className="mx-auto max-w-2xl rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center shadow-sm">
         <h2 className="text-lg font-bold text-rose-700">
           Không có câu hỏi nào
         </h2>
         <p className="mt-2 text-sm text-rose-600">
-          {error || "This quiz does not have any questions assigned yet."}
+          Bài kiểm tra này chưa có câu hỏi.
         </p>
         <Link
           href={`/learner/courses/${slug}`}
@@ -311,7 +349,7 @@ export default function CourseTestTakePage() {
   }
 
   const formatTime = (seconds: number | null) => {
-    if (seconds === null) return "Unlimited";
+    if (seconds === null) return "Không giới hạn";
     const m = Math.floor(seconds / 60)
       .toString()
       .padStart(2, "0");
@@ -347,6 +385,31 @@ export default function CourseTestTakePage() {
         </div>
       </div>
 
+      {submitError && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"
+        >
+          <span>
+            <span className="font-semibold">Chưa nộp được bài.</span> {submitError}
+          </span>
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => void handleSubmitQuiz()}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#F7444E] px-4 py-2 text-xs font-bold text-white hover:bg-[#c93f3a] disabled:opacity-50"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Thử nộp lại
+          </button>
+        </div>
+      )}
+
+      {timeLeft === 0 && !submitError && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+          Hết giờ — đang nộp các câu đã trả lời...
+        </div>
+      )}
+
       {/* QUESTION CARD */}
       <article className="relative flex flex-col justify-between rounded-3xl border border-gray-200/80 bg-[#FFFAFC]/50 p-6 sm:p-8 shadow-sm transition">
         <div>
@@ -356,18 +419,20 @@ export default function CourseTestTakePage() {
               <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#F7444E]/10 text-xs font-bold text-[#F7444E]">
                 {currentIndex + 1}
               </span>
-              <DifficultyBadge difficulty={(currentQ as any)?.difficulty} />
+              <DifficultyBadge difficulty={currentQ?.difficulty} />
               <span className="rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs text-slate-500">
                 {TYPE_LABELS[currentQ.question_type as QuestionType] ||
                   currentQ.question_type}
               </span>
             </div>
 
-            {/* Countdown Timer */}
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-rose-200/80 bg-rose-50/80 px-3 py-1 text-xs font-bold text-[#F7444E] shadow-sm">
-              <Clock3 className="h-3.5 w-3.5 animate-pulse" />
-              <span>{formatTime(timeLeft)}</span>
-            </div>
+            {/* Countdown Timer (ẩn khi đề không giới hạn thời gian) */}
+            {timeLeft !== null && (
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-rose-200/80 bg-rose-50/80 px-3 py-1 text-xs font-bold text-[#F7444E] shadow-sm">
+                <Clock3 className="h-3.5 w-3.5 animate-pulse" />
+                <span>{formatTime(timeLeft)}</span>
+              </div>
+            )}
           </div>
 
           {/* Question Text */}
