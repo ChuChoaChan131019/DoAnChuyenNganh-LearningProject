@@ -26,6 +26,8 @@ import type {
   QuizAttempt,
   QuizAttemptQuestion,
   QuizResultResponse,
+  QuizAttemptReview,
+  QuizSubmitResult,
   QuizSubmissionPayload,
   QuizStatus,
 } from "../types/quiz";
@@ -878,6 +880,13 @@ async function questionMutation<T>(requestPromise: Promise<T>): Promise<T> {
   return result;
 }
 
+type QuestionSoftDeleteResult = {
+  id: string;
+  version: number;
+  status: import("../types/question").QuestionStatus;
+  deleted_at: string | null;
+};
+
 export const questionApi = {
   pendingReviewCount: () =>
     request<{ count: number }>("/api/v1/questions/review-count"),
@@ -1020,17 +1029,18 @@ export const questionApi = {
         body: JSON.stringify({ expected_version }),
       }),
     ),
+  /** Xóa mềm: câu hỏi chuyển sang mục "Đã xóa" cho mọi người, có thể khôi phục. */
   remove: (id: string) =>
-    request<{ id: string; deleted: boolean }>(`/api/v1/questions/${id}`, {
+    request<QuestionSoftDeleteResult>(`/api/v1/questions/${encodeURIComponent(id)}`, {
       method: "DELETE",
     }),
   delete: (id: string) =>
-    request<{ id: string; deleted: boolean }>(`/api/v1/questions/${id}`, {
+    request<QuestionSoftDeleteResult>(`/api/v1/questions/${encodeURIComponent(id)}`, {
       method: "DELETE",
     }),
   restore: (id: string) =>
-    request<{ id: string; restored: boolean }>(
-      `/api/v1/questions/${id}/restore`,
+    request<QuestionSoftDeleteResult>(
+      `/api/v1/questions/${encodeURIComponent(id)}/restore`,
       {
         method: "PATCH",
       },
@@ -1110,12 +1120,16 @@ export const quizApi = {
       },
     ),
   submitAttempt: (payload: QuizSubmissionPayload) =>
-    request<QuizAttempt & { passed: boolean }>(
+    request<QuizSubmitResult>(
       `/api/v1/quiz-attempts/${encodeURIComponent(payload.attempt_id)}/submit`,
       {
         method: "POST",
         body: JSON.stringify({ answers: payload.answers }),
       },
+    ),
+  getAttemptReview: (attemptId: string): Promise<QuizAttemptReview> =>
+    request<QuizAttemptReview>(
+      `/api/v1/quiz-attempts/${encodeURIComponent(attemptId)}/review`,
     ),
   latestResult: (quizId: string): Promise<QuizResultResponse> =>
     request<QuizResultResponse>(

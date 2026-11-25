@@ -84,6 +84,7 @@ export class QuestionsService {
 
   async update(id: string, dto: QuestionDto, actorId: string) {
     await this.assertQuestionManager(actorId);
+    this.assertNotDeleted(await this.getReviewState(id));
     this.validateQuestion(dto);
     await this.validatePlacement(dto);
     const { data, error } = await this.supabaseService.getAdminClient().rpc('update_shared_question_with_history', {
@@ -116,6 +117,7 @@ export class QuestionsService {
       throw new BadRequestException('A reason is required when rejecting a question');
     }
     const current = await this.getReviewState(id);
+    this.assertNotDeleted(current);
     if (expectedVersion !== undefined && expectedVersion !== current.version) {
       throw new ConflictException('Question has changed; reload before reviewing it');
     }
@@ -164,6 +166,7 @@ export class QuestionsService {
   async submitForReview(id: string, actorId: string, _role: string, expectedVersion?: number) {
     await this.assertQuestionManager(actorId);
     const current = await this.getReviewState(id);
+    this.assertNotDeleted(current);
     if (expectedVersion !== undefined && expectedVersion !== current.version) {
       throw new ConflictException('Question has changed; reload before submitting it');
     }
@@ -213,9 +216,27 @@ export class QuestionsService {
     return data ?? [];
   }
 
+  /** Xóa mềm: câu hỏi chuyển sang mục "Đã xóa" cho mọi người, vẫn giữ trong các đề và bài nộp cũ. */
   async remove(id: string, actorId: string) {
+    return this.setDeleted(id, actorId, true);
+  }
+
+  async restore(id: string, actorId: string) {
+    return this.setDeleted(id, actorId, false);
+  }
+
+  private async setDeleted(id: string, actorId: string, deleted: boolean) {
     await this.assertQuestionManager(actorId);
-    throw new ConflictException('Saved questions are not deleted from the AI authoring screen');
+    const { data, error } = await this.supabaseService.getAdminClient().rpc('set_shared_question_deleted', {
+      p_actor_id: actorId,
+      p_question_id: id,
+      p_deleted: deleted,
+    });
+    if (error?.code === '22023') throw new ConflictException(error.message);
+    this.throwRpcError(error);
+    const result = Array.isArray(data) ? data[0] : data;
+    if (!result) throw new NotFoundException('Question not found');
+    return result;
   }
 
   async saveAiDrafts(dto: SaveAiDraftBatchDto, actorId: string) {
@@ -385,10 +406,11 @@ export class QuestionsService {
     status: QuestionStatus;
     submitted_for_review_at: string | null;
     version: number;
+    deleted_at: string | null;
   }> {
     const { data, error } = await this.supabaseService.getClient()
       .from('questions')
-      .select('id,status,submitted_for_review_at,version')
+      .select('id,status,submitted_for_review_at,version,deleted_at')
       .eq('id', id)
       .is('generated_for_user_id', null)
       .maybeSingle();
@@ -399,7 +421,12 @@ export class QuestionsService {
       status: data.status as QuestionStatus,
       submitted_for_review_at: data.submitted_for_review_at ?? null,
       version: Number(data.version ?? 1),
+      deleted_at: data.deleted_at ?? null,
     };
+  }
+
+  private assertNotDeleted(question: { deleted_at?: string | null }) {
+    if (question.deleted_at) throw new ConflictException('Restore this question before changing it');
   }
 
   private throwRpcError(error: { message: string; code?: string } | null) {
@@ -436,6 +463,7 @@ export class QuestionsService {
     status?: string;
     is_ai_generated?: string;
     submitted_for_review?: string;
+    is_deleted?: string;
   }) {
   const supabase = this.supabaseService.getClient();
   let query = supabase
@@ -454,6 +482,8 @@ export class QuestionsService {
        updated_by,
        reviewed_by,
        reviewed_at,
+      deleted_at,
+      deleted_by,
       created_at,
       course_id,
       chapter_id,
@@ -490,6 +520,9 @@ export class QuestionsService {
   if (filters?.is_ai_generated === 'true' || filters?.is_ai_generated === 'false') {
     query = query.eq('is_ai_generated', filters.is_ai_generated === 'true');
   }
+  query = filters?.is_deleted === 'true'
+    ? query.not('deleted_at', 'is', null)
+    : query.is('deleted_at', null);
   if (filters?.submitted_for_review === 'true') {
     query = query.not('submitted_for_review_at', 'is', null);
   }

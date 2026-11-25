@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../../config/supabase.service.js';
-import { ConfigureQuizQuestionsDto, CreateQuizDto, SubmitQuizDto, UpdateQuizDto } from './dto/quiz.dto.js';
+import { ConfigureQuizQuestionsDto, CreateQuizDto, QuizAnswerDto, SubmitQuizDto, UpdateQuizDto } from './dto/quiz.dto.js';
 
 type QuizQuestionRow = {
   question_id: string;
@@ -8,12 +8,89 @@ type QuizQuestionRow = {
   questions: unknown;
 };
 
+type QuestionOptionRecord = { id: string; option_text: string; order_index?: number | null; is_correct?: boolean };
+
 type QuestionRecord = {
+  id?: string;
   status?: string;
   content?: string;
   question_type?: string;
-  options?: Array<{ id: string; option_text: string; is_correct?: boolean }>;
+  difficulty?: string;
+  explanation?: string | null;
+  deleted_at?: string | null;
+  options?: QuestionOptionRecord[];
 };
+
+type AttemptDetailRow = {
+  id: string;
+  question_id: string;
+  answer_text: string | null;
+  is_correct: boolean;
+  score_weight: number | null;
+  earned_score: number | null;
+  quiz_attempt_answers?: Array<{ option_id: string }> | null;
+  questions?: unknown;
+};
+
+type RpcError = { message: string; code?: string } | null;
+
+/** Câu trả lời đã chấm, gửi vào RPC submit_quiz_attempt. */
+export type GradedAnswer = {
+  question_id: string;
+  answer_text: string | null;
+  is_correct: boolean;
+  score_weight: number;
+  earned_score: number;
+  selected_option_ids: string[];
+};
+
+export const DEFAULT_QUIZ_SUBMIT_GRACE_SECONDS = 30;
+
+export function quizSubmitGraceSeconds(raw = process.env.QUIZ_SUBMIT_GRACE_SECONDS): number {
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= 0 ? Math.floor(value) : DEFAULT_QUIZ_SUBMIT_GRACE_SECONDS;
+}
+
+/** Chấm một câu theo trọng số. Chỉ giữ những phương án thuộc câu hỏi. */
+export function gradeAnswer(
+  questionId: string,
+  weight: number,
+  options: QuestionOptionRecord[],
+  answer: QuizAnswerDto | undefined,
+): GradedAnswer {
+  const optionIds = new Set(options.map((option) => option.id));
+  const correctIds = options.filter((option) => option.is_correct).map((option) => option.id);
+  const selected = [...new Set(answer?.selected_option_ids ?? [])].filter((id) => optionIds.has(id));
+  const text = typeof answer?.answer === 'string' ? answer.answer : null;
+
+  let isCorrect: boolean;
+  if (text !== null && selected.length === 0) {
+    const normalized = text.trim().toLowerCase();
+    isCorrect = normalized.length > 0 && options
+      .filter((option) => option.is_correct)
+      .some((option) => String(option.option_text ?? '').trim().toLowerCase() === normalized);
+  } else {
+    isCorrect = correctIds.length > 0
+      && selected.length === correctIds.length
+      && selected.every((id) => correctIds.includes(id));
+  }
+
+  return {
+    question_id: questionId,
+    answer_text: text,
+    is_correct: isCorrect,
+    score_weight: weight,
+    earned_score: isCorrect ? weight : 0,
+    selected_option_ids: selected,
+  };
+}
+
+export function scorePercentage(score: number | null | undefined, maxScore: number | null | undefined): number | null {
+  if (score === null || score === undefined) return null;
+  const max = Number(maxScore ?? 0);
+  if (!(max > 0)) return 0;
+  return Math.min(100, Math.round((Number(score) / max) * 10000) / 100);
+}
 
 @Injectable()
 export class QuizzesService {
@@ -132,15 +209,30 @@ export class QuizzesService {
       throw new BadRequestException('Question ids must be unique');
     }
 
+    const supabase = this.supabaseService.getClient();
     if (ids.length) {
-      const { data, error } = await this.supabaseService.getClient().from('questions').select('id,status').in('id', ids);
+      const { data, error } = await supabase.from('questions').select('id,status,deleted_at').in('id', ids);
       this.throwQueryError(error);
       if ((data ?? []).length !== ids.length || (data ?? []).some((question) => question.status !== 'approved')) {
         throw new BadRequestException('Only approved questions can be added to a quiz');
       }
+
+      // Câu đã xóa mềm chỉ được giữ nếu nó vốn đã nằm trong đề này.
+      const deletedIds = (data ?? []).filter((question) => question.deleted_at).map((question) => question.id as string);
+      if (deletedIds.length) {
+        const { data: existing, error: existingError } = await supabase
+          .from('quiz_questions')
+          .select('question_id')
+          .eq('quiz_id', quizId)
+          .in('question_id', deletedIds);
+        this.throwQueryError(existingError);
+        const kept = new Set((existing ?? []).map((row) => row.question_id as string));
+        if (deletedIds.some((id) => !kept.has(id))) {
+          throw new BadRequestException('Deleted questions cannot be added to a quiz');
+        }
+      }
     }
 
-    const supabase = this.supabaseService.getClient();
     const { error: deleteError } = await supabase.from('quiz_questions').delete().eq('quiz_id', quizId);
     this.throwMutationError(deleteError);
 
@@ -157,16 +249,37 @@ export class QuizzesService {
     return this.getTotals(quizId);
   }
 
- async getQuestions(quizId: string, role?: string) {
+  async getQuestions(quizId: string, role?: string) {
     await this.requireQuiz(quizId, role);
+    if (role === 'learner') {
+      // Người học chỉ nhận nội dung câu hỏi và phương án; không có đáp án hay lời giải.
+      const { data, error } = await this.supabaseService.getClient().from('quiz_questions')
+        .select('question_id,score_weight,questions(id,status,content,question_type,difficulty,options:question_options(id,option_text,order_index))')
+        .eq('quiz_id', quizId);
+      this.throwQueryError(error);
+      return ((data ?? []) as QuizQuestionRow[])
+        .filter((item) => this.questionRecord(item)?.status === 'approved')
+        .map((item) => {
+          const question = this.questionRecord(item);
+          return {
+            question_id: item.question_id,
+            score_weight: item.score_weight,
+            questions: {
+              id: question?.id ?? item.question_id,
+              content: question?.content,
+              question_type: question?.question_type,
+              difficulty: question?.difficulty,
+              options: (question?.options ?? []).map(({ id, option_text, order_index }) => ({ id, option_text, order_index })),
+            },
+          };
+        });
+    }
+
     const { data, error } = await this.supabaseService.getClient().from('quiz_questions')
-      .select('question_id,score_weight,questions(id,status,content,question_type,explanation,options:question_options(id,option_text,order_index,is_correct))')
+      .select('question_id,score_weight,questions(id,status,content,question_type,difficulty,explanation,deleted_at,options:question_options(id,option_text,order_index,is_correct))')
       .eq('quiz_id', quizId);
     this.throwQueryError(error);
-    const questions = (data ?? []) as QuizQuestionRow[];
-    return role === 'learner'
-      ? questions.filter((item) => this.questionRecord(item)?.status === 'approved')
-      : questions;
+    return (data ?? []) as QuizQuestionRow[];
   }
 
   async startAttempt(quizId: string, learnerId: string) {
@@ -174,60 +287,34 @@ export class QuizzesService {
     if (!quiz.is_active) throw new BadRequestException('Only published quizzes can be attempted');
     const questions = await this.getScoringQuestions(quizId);
     if (!questions.length) throw new BadRequestException('Bài kiểm tra hiện không có câu hỏi đã duyệt.');
-    const supabase = this.supabaseService.getClient();
 
-    // 1. Kiểm tra xem học viên có attempt nào đang làm dở dang (chưa submit) hay không
-    let existingQuery = supabase
-      .from('quiz_attempts')
-      .select('id, quiz_id, started_at')
-      .eq('quiz_id', quizId)
-      .is('completed_at', null)
-      .order('started_at', { ascending: false })
-      .limit(1);
-
-    if (learnerId) {
-      existingQuery = existingQuery.eq('user_id', learnerId);
-    }
-
-    const { data: existingAttempt } = await existingQuery.maybeSingle();
-
-    // Nếu đã có attempt đang mở, tái sử dụng attempt này (chống nhân bản khi mount/strict mode)
-    let attemptData = existingAttempt;
-
-    // 2. Nếu chưa có attempt nào dở dang, tạo mới hoàn toàn
-    if (!attemptData) {
-      const insertPayload: Record<string, any> = {
-        quiz_id: quizId,
-        total_score: 0,
-        pass_percentage: Number(quiz.pass_percentage ?? 50),
-        is_passed: false,
-      };
-
-      if (learnerId) {
-        insertPayload.user_id = learnerId;
-      }
-
-      const { data, error } = await supabase
-        .from('quiz_attempts')
-        .insert(insertPayload)
-        .select('id, quiz_id, started_at')
-        .single();
-
-      this.throwMutationError(error);
-      if (!data) throw new BadRequestException('Unable to start quiz attempt');
-      attemptData = data;
-    }
+    const { data, error } = await this.supabaseService.getClient().rpc('start_quiz_attempt', {
+      p_quiz_id: quizId,
+      p_user_id: learnerId,
+      p_grace_seconds: quizSubmitGraceSeconds(),
+    });
+    this.throwRpcError(error);
+    const attempt = (Array.isArray(data) ? data[0] : data) as {
+      id: string; quiz_id: string; started_at: string; expires_at: string | null; server_now: string;
+    } | null;
+    if (!attempt?.id) throw new BadRequestException('Unable to start quiz attempt');
 
     return {
-      attempt_id: attemptData.id,
-      ...attemptData,
+      attempt_id: attempt.id,
+      id: attempt.id,
+      quiz_id: attempt.quiz_id,
+      quiz_title: quiz.title,
+      duration_minutes: quiz.duration_minutes ?? null,
+      started_at: attempt.started_at,
+      expires_at: attempt.expires_at,
+      server_now: attempt.server_now,
       questions: questions.map((item) => {
         const question = this.questionRecord(item);
         return {
           question_id: item.question_id,
           content: question?.content,
           question_type: question?.question_type,
-          difficulty: (question as any)?.difficulty,
+          difficulty: question?.difficulty,
           options: (question?.options ?? []).map(({ id, option_text }) => ({ id, option_text })),
         };
       }),
@@ -237,127 +324,223 @@ export class QuizzesService {
   async submitAttempt(attemptId: string, dto: SubmitQuizDto, learnerId: string) {
     const supabase = this.supabaseService.getClient();
 
-    // 1. Kiểm tra attempt hợp lệ
     const { data: attempt, error: attemptError } = await supabase
       .from('quiz_attempts')
-      .select('*, quizzes(*)')
+      .select('id, quiz_id')
       .eq('id', attemptId)
       .eq('user_id', learnerId)
       .maybeSingle();
-
     this.throwQueryError(attemptError);
     if (!attempt) throw new NotFoundException('Quiz attempt not found');
 
     const questions = await this.getScoringQuestions(attempt.quiz_id);
     const answerMap = new Map(dto.answers.map((answer) => [answer.question_id, answer]));
-    let earnedScore = 0;
-    let totalMaxScore = 0;
-
-    // 2. Duyệt từng câu hỏi và lưu vào quiz_attempt_details + quiz_attempt_answers
-    for (const item of questions) {
+    let maxScore = 0;
+    const graded = questions.map((item) => {
       const weight = Number(item.score_weight || 1.0);
-      totalMaxScore += weight;
+      maxScore += weight;
+      return gradeAnswer(item.question_id, weight, this.questionRecord(item)?.options ?? [], answerMap.get(item.question_id));
+    });
 
-      const answer = answerMap.get(item.question_id);
-      const options = this.questionRecord(item)?.options ?? [];
-      const correctIds = options.filter((option) => option.is_correct).map((option) => option.id);
-      const selected = answer?.selected_option_ids ?? [];
+    // Lưu nguyên tử trong database: lượt đã nộp thì trả lại kết quả cũ, quá hạn thì từ chối.
+    const { data, error } = await supabase.rpc('submit_quiz_attempt', {
+      p_attempt_id: attemptId,
+      p_user_id: learnerId,
+      p_details: graded,
+      p_max_score: maxScore,
+      p_grace_seconds: quizSubmitGraceSeconds(),
+    });
+    this.throwRpcError(error);
+    const result = (Array.isArray(data) ? data[0] : data) as Record<string, any> | null;
+    if (!result) throw new BadRequestException('Unable to submit quiz attempt');
 
-      const isCorrect = answer?.answer !== undefined
-        ? answer.answer.trim().toLowerCase() === String(options.find((option) => option.is_correct)?.option_text ?? '').trim().toLowerCase()
-        : selected.length === correctIds.length && selected.every((id) => correctIds.includes(id));
-
-      if (isCorrect) {
-        earnedScore += weight;
-      }
-
-      // Insert vào bảng quiz_attempt_details
-      const { data: detailData, error: detailError } = await supabase
-        .from('quiz_attempt_details')
-        .insert({
-          attempt_id: attemptId,
-          question_id: item.question_id,
-          answer_text: answer?.answer ?? null,
-          is_correct: isCorrect,
-          ai_feedback: null,
-        })
-        .select('id')
-        .single();
-
-      this.throwMutationError(detailError);
-
-      // Nếu có chọn đáp án trắc nghiệm, lưu vào bảng quiz_attempt_answers
-      if (detailData && selected.length > 0) {
-        const optionRows = selected.map((optId) => ({
-          detail_id: detailData.id,
-          option_id: optId,
-        }));
-        const { error: optionsInsertError } = await supabase
-          .from('quiz_attempt_answers')
-          .insert(optionRows);
-
-        this.throwMutationError(optionsInsertError);
-      }
+    if (result.status === 'expired') {
+      throw new ConflictException({
+        error: { code: 'QUIZ_ATTEMPT_EXPIRED', message: 'The submission deadline for this quiz attempt has passed' },
+      });
+    }
+    if (result.end_reason === 'expired') {
+      throw new ConflictException({
+        error: { code: 'QUIZ_ATTEMPT_EXPIRED', message: 'This quiz attempt ended because time ran out' },
+      });
     }
 
-    // 3. Tính % và trạng thái đỗ/trượt
-    const percentage = totalMaxScore > 0 ? Number(((earnedScore / totalMaxScore) * 100).toFixed(2)) : 0;
-    const isPassed = percentage >= Number(attempt.pass_percentage ?? 50);
-
-    // Cập nhật lại bảng quiz_attempts
-    const { data: updatedAttempt, error: updateError } = await supabase
-      .from('quiz_attempts')
-      .update({
-        total_score: earnedScore,
-        completed_at: new Date().toISOString(),
-        is_passed: isPassed,
-      })
-      .eq('id', attemptId)
-      .select('*')
-      .single();
-
-    this.throwMutationError(updateError);
-
     return {
-      ...updatedAttempt,
-      score: earnedScore,
-      max_score: totalMaxScore,
-      percentage,
-      passed: isPassed,
+      attempt_id: result.attempt_id,
+      id: result.attempt_id,
+      quiz_id: result.quiz_id,
+      started_at: result.started_at,
+      completed_at: result.completed_at,
+      end_reason: result.end_reason,
+      already_submitted: result.status === 'already_submitted',
+      score: Number(result.score ?? 0),
+      max_score: Number(result.max_score ?? 0),
+      percentage: result.percentage === null || result.percentage === undefined
+        ? scorePercentage(result.score, result.max_score)
+        : Number(result.percentage),
+      pass_percentage: Number(result.pass_percentage ?? 50),
+      passed: Boolean(result.passed),
+    };
+  }
+
+  async getAttemptReview(attemptId: string, learnerId: string) {
+    const supabase = this.supabaseService.getClient();
+    const attemptColumns = 'id, quiz_id, user_id, started_at, expires_at, completed_at, total_score, max_score, score_percentage, pass_percentage, is_passed, end_reason';
+    const loadAttempt = async () => {
+      const { data, error } = await supabase
+        .from('quiz_attempts')
+        .select(attemptColumns)
+        .eq('id', attemptId)
+        .eq('user_id', learnerId)
+        .maybeSingle();
+      this.throwQueryError(error);
+      return data as Record<string, any> | null;
+    };
+
+    let attempt = await loadAttempt();
+    if (!attempt) throw new NotFoundException('Quiz attempt not found');
+    if (!attempt.completed_at) {
+      await this.expireOverdueAttempts(attempt.quiz_id, learnerId);
+      attempt = await loadAttempt();
+      if (!attempt) throw new NotFoundException('Quiz attempt not found');
+    }
+    if (!attempt.completed_at) {
+      throw new ConflictException({
+        error: { code: 'QUIZ_ATTEMPT_IN_PROGRESS', message: 'This quiz attempt has not been submitted yet' },
+      });
+    }
+
+    const questionColumns = 'id,content,question_type,difficulty,explanation,options:question_options(id,option_text,order_index,is_correct)';
+    const [{ data: details, error: detailsError }, { data: links, error: linksError }] = await Promise.all([
+      supabase
+        .from('quiz_attempt_details')
+        .select(`id,question_id,answer_text,is_correct,score_weight,earned_score,quiz_attempt_answers(option_id),questions(${questionColumns})`)
+        .eq('attempt_id', attemptId),
+      supabase
+        .from('quiz_questions')
+        .select(`question_id,score_weight,questions(${questionColumns})`)
+        .eq('quiz_id', attempt.quiz_id),
+    ]);
+    this.throwQueryError(detailsError);
+    this.throwQueryError(linksError);
+
+    // Mỗi câu chỉ lấy một dòng chi tiết (dữ liệu cũ có thể bị trùng do nộp lại).
+    const detailByQuestion = new Map<string, AttemptDetailRow>();
+    for (const detail of (details ?? []) as AttemptDetailRow[]) {
+      if (!detailByQuestion.has(detail.question_id)) detailByQuestion.set(detail.question_id, detail);
+    }
+    const linkRows = (links ?? []) as QuizQuestionRow[];
+    const weightByQuestion = new Map(linkRows.map((link) => [link.question_id, Number(link.score_weight || 1)]));
+
+    // Thứ tự: theo đề; câu đã bị gỡ khỏi đề nhưng có trong bài nộp được thêm vào cuối.
+    const orderedIds = detailByQuestion.size
+      ? [
+          ...linkRows.map((link) => link.question_id).filter((id) => detailByQuestion.has(id)),
+          ...[...detailByQuestion.keys()].filter((id) => !weightByQuestion.has(id)),
+        ]
+      : linkRows.filter((link) => this.questionRecord(link)?.content !== undefined).map((link) => link.question_id);
+    const questionById = new Map<string, QuestionRecord | null>();
+    for (const link of linkRows) questionById.set(link.question_id, this.questionRecord(link));
+    for (const detail of detailByQuestion.values()) {
+      const record = this.questionRecord(detail as unknown as QuizQuestionRow);
+      if (record) questionById.set(detail.question_id, record);
+    }
+
+    const questions = orderedIds.map((questionId) => {
+      const detail = detailByQuestion.get(questionId);
+      const question = questionById.get(questionId) ?? null;
+      const weight = Number(detail?.score_weight ?? weightByQuestion.get(questionId) ?? 1);
+      const isCorrect = Boolean(detail?.is_correct);
+      return {
+        question_id: questionId,
+        content: question?.content ?? '',
+        question_type: question?.question_type ?? 'single_choice',
+        difficulty: question?.difficulty ?? null,
+        explanation: question?.explanation ?? null,
+        score_weight: weight,
+        earned_score: Number(detail?.earned_score ?? (isCorrect ? weight : 0)),
+        is_correct: isCorrect,
+        answered: Boolean(detail && ((detail.quiz_attempt_answers?.length ?? 0) > 0 || detail.answer_text)),
+        answer_text: detail?.answer_text ?? null,
+        selected_option_ids: (detail?.quiz_attempt_answers ?? []).map((row) => row.option_id),
+        options: [...(question?.options ?? [])]
+          .sort((a, b) => Number(a.order_index ?? 0) - Number(b.order_index ?? 0))
+          .map(({ id, option_text, is_correct }) => ({ id, option_text, is_correct: Boolean(is_correct) })),
+      };
+    });
+
+    const maxScore = attempt.max_score ?? questions.reduce((sum, item) => sum + item.score_weight, 0);
+    return {
+      attempt_id: attempt.id,
+      quiz_id: attempt.quiz_id,
+      started_at: attempt.started_at,
+      expires_at: attempt.expires_at,
+      completed_at: attempt.completed_at,
+      end_reason: attempt.end_reason ?? 'submitted',
+      score: Number(attempt.total_score ?? 0),
+      max_score: Number(maxScore),
+      percentage: attempt.score_percentage === null || attempt.score_percentage === undefined
+        ? scorePercentage(attempt.total_score, maxScore)
+        : Number(attempt.score_percentage),
+      pass_percentage: Number(attempt.pass_percentage ?? 50),
+      passed: Boolean(attempt.is_passed),
+      correct_count: questions.filter((item) => item.is_correct).length,
+      total_questions: questions.length,
+      questions,
     };
   }
 
   async latestResult(quizId: string, learnerId: string) {
+    await this.expireOverdueAttempts(quizId, learnerId);
     const { data, error } = await this.supabaseService
       .getClient()
       .from('quiz_attempts')
-      .select('id, quiz_id, total_score, pass_percentage, is_passed, completed_at')
+      .select('id, quiz_id, total_score, max_score, score_percentage, pass_percentage, is_passed, completed_at, end_reason')
       .eq('quiz_id', quizId)
       .eq('user_id', learnerId)
       .not('completed_at', 'is', null)
-      .order('completed_at', { ascending: false })
+      // Lượt làm gần nhất là lượt bắt đầu sau cùng; lượt hết giờ có completed_at = expires_at.
+      .order('started_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
     this.throwQueryError(error);
 
-    return data
-      ? {
-          quiz_id: quizId,
-          latest_attempt_id: data.id,
-          score: data.total_score,
-          percentage: data.total_score !== null ? data.total_score : null,
-          is_passed: data.is_passed,
-          completed_at: data.completed_at,
-        }
-      : {
-          quiz_id: quizId,
-          latest_attempt_id: null,
-          score: null,
-          percentage: null,
-          is_passed: null,
-          completed_at: null,
-        };
+    if (!data) {
+      return {
+        quiz_id: quizId,
+        latest_attempt_id: null,
+        score: null,
+        max_score: null,
+        percentage: null,
+        is_passed: null,
+        end_reason: null,
+        completed_at: null,
+      };
+    }
+
+    const maxScore = data.max_score ?? (await this.getTotals(quizId)).total_score;
+    return {
+      quiz_id: quizId,
+      latest_attempt_id: data.id,
+      score: data.total_score,
+      max_score: maxScore,
+      percentage: data.score_percentage === null || data.score_percentage === undefined
+        ? scorePercentage(data.total_score, maxScore)
+        : Number(data.score_percentage),
+      is_passed: data.is_passed,
+      end_reason: data.end_reason ?? 'submitted',
+      completed_at: data.completed_at,
+    };
+  }
+
+  private async expireOverdueAttempts(quizId: string, learnerId: string) {
+    const { error } = await this.supabaseService.getClient().rpc('expire_overdue_quiz_attempts', {
+      p_quiz_id: quizId,
+      p_user_id: learnerId,
+      p_grace_seconds: quizSubmitGraceSeconds(),
+    });
+    this.throwRpcError(error);
   }
 
   private async requireQuiz(id: string, role?: string) {
@@ -375,7 +558,7 @@ export class QuizzesService {
 
   private async getScoringQuestions(quizId: string): Promise<QuizQuestionRow[]> {
     const { data, error } = await this.supabaseService.getClient().from('quiz_questions')
-      .select('question_id,score_weight,questions(id,status,content,question_type,options:question_options(id,option_text,order_index,is_correct))')
+      .select('question_id,score_weight,questions(id,status,content,question_type,difficulty,options:question_options(id,option_text,order_index,is_correct))')
       .eq('quiz_id', quizId);
     this.throwQueryError(error);
     return (data ?? []).filter((item) => this.questionRecord(item as QuizQuestionRow)?.status === 'approved') as QuizQuestionRow[];
@@ -408,4 +591,10 @@ export class QuizzesService {
   private questionRecord(item: QuizQuestionRow): QuestionRecord | null { return Array.isArray(item.questions) ? (item.questions[0] as QuestionRecord | undefined) ?? null : item.questions as QuestionRecord | null; }
   private throwQueryError(error: { message: string } | null) { if (error) throw new BadRequestException(error.message); }
   private throwMutationError(error: { message: string } | null) { if (error) throw new ConflictException(error.message); }
+  private throwRpcError(error: RpcError) {
+    if (!error) return;
+    if (error.code === 'P0002' || error.message.includes('not found')) throw new NotFoundException(error.message);
+    if (error.code === '23505') throw new ConflictException(error.message);
+    throw new BadRequestException(error.message);
+  }
 }

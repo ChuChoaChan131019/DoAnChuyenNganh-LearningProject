@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Clock, Users } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, Clock, Eye, Users } from 'lucide-react';
 import { TestItem, TestStatus } from '@/types/test-and-practice';
 import { DifficultyLevel } from '@/types/question';
-import { quizApi, courseApi } from '@/lib/api';
+import { ApiClientError, quizApi, courseApi } from '@/lib/api';
 import { vietnameseDifficulty } from '@/lib/ui-labels';
 
 const STYLES = {
@@ -71,6 +72,7 @@ export default function TestsPage() {
   const [tests, setTests] = useState<TestItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -78,9 +80,11 @@ export default function TestsPage() {
     async function loadTestsFromDb() {
       try {
         setIsLoading(true);
+        setError(null);
+        // Lỗi tải danh sách bài kiểm tra phải hiện ra, không được biến thành danh sách rỗng.
         const [quizzesData, coursesData] = await Promise.all([
-          quizApi.list().catch(() => []),
-          courseApi.list().catch(() => []),
+          quizApi.list(),
+          courseApi.list().catch(() => null),
         ]);
 
         if (!isMounted) return;
@@ -89,15 +93,17 @@ export default function TestsPage() {
         (coursesData || []).forEach((c: any) => {
           courseMap.set(String(c.id), c.title);
         });
+        const courseFallback = coursesData ? 'Không có khóa học' : 'Chưa tải được';
 
         const mappedTests: TestItem[] = await Promise.all(
           (quizzesData || []).map(async (q: any) => {
-            let qCount = 0;
+            // null = chưa tải được; chỉ hiện 0 khi tải thành công và bài thật sự không có câu.
+            let qCount: number | null = null;
             try {
               const qList = await quizApi.getQuestions(q.id);
-              qCount = Array.isArray(qList) ? qList.length : 0;
+              qCount = Array.isArray(qList) ? qList.length : null;
             } catch {
-              qCount = 0;
+              qCount = null;
             }
 
             const formattedDate = q.created_at
@@ -108,7 +114,7 @@ export default function TestsPage() {
               id: String(q.id),
               title: q.title || 'Untitled Test',
               created_at: formattedDate,
-              course_title: courseMap.get(String(q.course_id)) || 'General Course',
+              course_title: courseMap.get(String(q.course_id)) || courseFallback,
               questions_count: qCount,
               duration_minutes: q.duration_minutes ?? 15,
               pass_score: Number(q.pass_percentage ?? q.pass_score ?? 50),
@@ -125,10 +131,10 @@ export default function TestsPage() {
         if (isMounted) {
           setTests(mappedTests);
         }
-      } catch (err: any) {
-        console.error('Lỗi khi tải danh sách tests:', err);
+      } catch (err: unknown) {
         if (isMounted) {
-          setError(err?.message || 'Không thể tải danh sách bài kiểm tra.');
+          setTests([]);
+          setError(err instanceof ApiClientError ? err.message : 'Đã xảy ra lỗi khi tải dữ liệu.');
         }
       } finally {
         if (isMounted) {
@@ -142,7 +148,7 @@ export default function TestsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   const handleCreateTest = () => {
     router.push('/content-manager/testsandpractice/builder');
@@ -202,7 +208,15 @@ export default function TestsPage() {
               ) : error ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-sm text-rose-600">
-                    {error}
+                    <p className="font-semibold">Không tải được bài kiểm tra</p>
+                    <p className="mt-1 text-xs text-rose-500">{error}</p>
+                    <button
+                      type="button"
+                      onClick={() => setReloadKey((key) => key + 1)}
+                      className="mt-4 rounded-xl bg-[#F7444E] px-4 py-2 text-xs font-semibold text-white hover:bg-[#c93f3a]"
+                    >
+                      Thử lại
+                    </button>
                   </td>
                 </tr>
               ) : tests.length === 0 ? (
@@ -225,6 +239,13 @@ export default function TestsPage() {
                       <p className="text-xs text-gray-400 mt-0.5">
                         Created {test.created_at}
                       </p>
+                      <Link
+                        href={`/content-manager/quizzes/${test.id}/preview`}
+                        onClick={(event) => event.stopPropagation()}
+                        className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-sky-700 hover:underline"
+                      >
+                        <Eye className="h-3 w-3" /> Xem trước
+                      </Link>
                     </td>
 
                     <td className="whitespace-nowrap px-4 py-4 text-gray-700 font-medium text-xs sm:text-sm">
@@ -232,7 +253,11 @@ export default function TestsPage() {
                     </td>
 
                     <td className="whitespace-nowrap px-4 py-4 text-gray-600 font-medium">
-                      {test.questions_count}
+                      {test.questions_count === null ? (
+                        <span className="text-xs text-amber-600">Chưa tải được</span>
+                      ) : (
+                        test.questions_count
+                      )}
                     </td>
 
                     <td className="whitespace-nowrap px-4 py-4 text-gray-600">

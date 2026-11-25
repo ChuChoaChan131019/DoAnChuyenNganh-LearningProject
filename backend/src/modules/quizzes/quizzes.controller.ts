@@ -71,6 +71,12 @@ export class QuizzesController {
     return this.quizzesService.submitAttempt(attemptId, dto, request.user.id);
   }
 
+  @Get('quiz-attempts/:attemptId/review')
+  @Roles('learner')
+  getAttemptReview(@Param('attemptId') attemptId: string, @Req() request: any) {
+    return this.quizzesService.getAttemptReview(attemptId, request.user.id);
+  }
+
   @Get('quiz-results/latest')
   @Roles('learner')
   latestResult(@Query('quiz_id') quizId: string, @Req() request: any) {

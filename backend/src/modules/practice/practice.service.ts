@@ -812,6 +812,7 @@ export class PracticeService {
       .select('id, course_id, chapter_id, lesson_id, question_type, difficulty, content, courses(id, title), chapters(id, title), lessons(id, title), question_options(id, option_text, order_index)')
       .eq('status', 'approved')
       .is('generated_for_user_id', null)
+      .is('deleted_at', null)
       .in('course_id', filters.courseIds);
     if (filters.chapterIds?.length) query = query.in('chapter_id', filters.chapterIds);
     if (filters.difficulty) query = query.eq('difficulty', filters.difficulty);

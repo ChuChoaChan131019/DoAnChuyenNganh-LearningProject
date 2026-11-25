@@ -151,6 +151,10 @@ Câu hỏi gắn khóa học và có thể gắn chương, bài học. Câu hỏ
 | `course_id` | `uuid`, FK → `courses.id` | Có | Khóa học của câu hỏi. |
 | `chapter_id` | `uuid`, FK → `chapters.id` | Không | Chương kiến thức của câu hỏi; có thể trống ở dữ liệu cũ. |
 | `lesson_id` | `uuid`, FK → `lessons.id` | Không | Bài học liên quan chi tiết, nếu câu hỏi thuộc một bài cụ thể. |
+| `deleted_at` | `timestamptz` | Không | Thời điểm xóa mềm; `NULL` nghĩa là câu đang dùng được. |
+| `deleted_by` | `uuid` | Không | Người đã xóa mềm câu hỏi. |
+
+Xóa câu hỏi là xóa mềm (migration `20261125090000_quiz_attempt_integrity.sql`): RPC `set_shared_question_deleted(actor, question, deleted)` đặt hoặc bỏ `deleted_at`, tăng `version` và ghi `question_history` với `action = 'deleted'` hoặc `'restored'`. Mọi `content_manager`/`admin` được xóa và khôi phục. `GET /questions` mặc định bỏ câu đã xóa; `is_deleted=true` trả mục "Đã xóa". Câu đã xóa không thêm được vào đề mới và không xuất hiện trong luyện tập chung, nhưng vẫn được giữ và chấm trong các đề đang dùng nó và trong lịch sử làm bài. Câu đã xóa phải được khôi phục trước khi sửa hoặc gửi duyệt.
 
 Migration `database/migrations/20261105004802_lesson_ai_practice.sql` thêm quyền sở hữu cho câu AI cá nhân và chỉ mục một phần `(generated_for_user_id, created_at desc)` trên các dòng có chủ sở hữu. Các truy vấn ngân hàng câu hỏi và luyện tập chung phải lọc `generated_for_user_id is null`; API luyện tập AI chỉ trả hoặc chấm câu riêng khi trường này trùng người dùng từ token.
 
@@ -229,10 +233,22 @@ Mỗi dòng là một lần học sinh bắt đầu/làm xong một đề; kết
 | `started_at` | `timestamptz` | Không | Thời điểm bắt đầu; mặc định thời điểm tạo. |
 | `completed_at` | `timestamptz` | Không | Thời điểm nộp bài; `NULL` nếu đang làm dở. |
 | `total_score` | `double precision` | Không | Tổng điểm đạt được theo trọng số câu hỏi, không phải phần trăm. |
+| `max_score` | `double precision` | Không | Tổng trọng số của đề tại thời điểm nộp. Dữ liệu cũ được tính lại từ cấu hình đề hiện tại. |
+| `score_percentage` | `numeric(5,2)` | Không | Phần trăm chính thức `total_score / max_score × 100`, do máy chủ tính. |
+| `expires_at` | `timestamptz` | Không | Hạn nộp = `started_at + duration_minutes`; `NULL` khi đề không giới hạn thời gian. |
+| `end_reason` | `varchar(20)` | Không | `submitted` (đã nộp) hoặc `expired` (hết giờ mà chưa nộp, 0 điểm); `NULL` khi đang làm. |
 | `pass_percentage` | `numeric` | Không | Ngưỡng đạt được lưu cùng lượt làm; mặc định 50. |
 | `is_passed` | `boolean` | Không | Kết quả đạt/chưa đạt; mặc định `false`. |
 | `user_id` | `uuid` | Có | ID học sinh làm đề; backend đối chiếu tài khoản, database chưa khai báo FK cho trường này. |
 | `quiz_id` | `uuid`, FK → `quizzes.id` | Có | Đề được làm. |
+
+Migration `database/migrations/20261125090000_quiz_attempt_integrity.sql` thêm chỉ mục duy nhất một phần `quiz_attempts_one_open_per_learner_idx (quiz_id, user_id) WHERE completed_at IS NULL`, nên mỗi học viên chỉ có tối đa một lượt đang mở cho một đề. Các RPC (chỉ `service_role` được gọi):
+
+- `start_quiz_attempt(quiz, user, grace)`: đóng lượt quá hạn, trả lượt đang mở còn hạn (giữ nguyên `expires_at`) hoặc tạo lượt mới; trả kèm `server_now`.
+- `submit_quiz_attempt(attempt, user, details, max_score, grace)`: khóa lượt làm và lưu bài nộp trong một transaction. Lượt đã nộp → trả lại kết quả cũ (`already_submitted`), không lưu thêm. Nộp sau `expires_at + grace` → đóng lượt với 0 điểm và trả `expired`.
+- `expire_overdue_quiz_attempts(quiz, user, grace)`: đóng các lượt đang mở đã quá hạn với `end_reason = 'expired'`, 0 điểm, `is_passed = false`.
+
+Thời gian ân hạn lấy từ biến môi trường backend `QUIZ_SUBMIT_GRACE_SECONDS` (mặc định 30 giây).
 
 ### `quiz_attempt_details` — Kết quả từng câu trong lượt làm đề
 
@@ -246,6 +262,8 @@ Mỗi dòng lưu câu hỏi, câu trả lời văn bản và kết quả chấm 
 | `ai_feedback` | `text` | Không | Phản hồi AI cho câu trả lời nếu được tạo; backend hiện ghi `NULL` khi nộp quiz. |
 | `attempt_id` | `uuid`, FK → `quiz_attempts.id` | Có | Lượt làm đề chứa câu trả lời. |
 | `question_id` | `uuid`, FK → `questions.id` | Có | Câu hỏi được trả lời. |
+| `score_weight` | `double precision` | Không | Trọng số của câu tại thời điểm nộp. |
+| `earned_score` | `double precision` | Không | Điểm đạt được của câu (bằng `score_weight` nếu đúng, 0 nếu sai). |
 
 ### `quiz_attempt_answers` — Phương án đã chọn trong quiz
 
