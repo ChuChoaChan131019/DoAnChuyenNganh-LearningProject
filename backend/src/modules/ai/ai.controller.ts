@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Req,
+  UseGuards,
+  Param,
+  Query,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import { AiService } from './ai.service.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
@@ -17,11 +27,36 @@ export class AiController {
     return this.aiService.getTutorHistory(request.user.id);
   }
 
-  @Post('tutor/message')
-  async sendTutorMessage(
-    @Body() body: TutorMessageDto,
+  @Get('tutor/history/paged')
+  getTutorHistoryPage(
     @Req() request: any,
+    @Query('page') page = '1',
+    @Query('page_size') pageSize = '10',
   ) {
+    return this.aiService.getTutorConversationsPage(
+      request.user.id,
+      Number(page),
+      Number(pageSize),
+    );
+  }
+
+  @Get('tutor/conversations/:conversationId/messages')
+  getTutorConversationMessages(
+    @Req() request: any,
+    @Param('conversationId', ParseUUIDPipe) conversationId: string,
+    @Query('page_size') pageSize = '20',
+    @Query('before') before?: string,
+  ) {
+    return this.aiService.getTutorMessagesPage(
+      request.user.id,
+      conversationId,
+      Number(pageSize),
+      before,
+    );
+  }
+
+  @Post('tutor/message')
+  async sendTutorMessage(@Body() body: TutorMessageDto, @Req() request: any) {
     return this.aiService.sendTutorMessage(request.user.id, body);
   }
 

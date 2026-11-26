@@ -1,13 +1,16 @@
-'use client';
+"use client";
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
-import { BookOpen, Check, ChevronDown, FileText, Search } from 'lucide-react';
-import { ApiClientError, courseApi } from '@/lib/api';
-import { vietnameseStatus } from '@/lib/ui-labels';
-import type { Course } from '@/types/learning-content';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { BookOpen, Check, ChevronDown, FileText, Search } from "lucide-react";
+import { catalogApi } from "@/lib/api";
+import { vietnameseStatus } from "@/lib/ui-labels";
+import type { Course } from "@/types/learning-content";
+import { Pagination } from "@/components/ui/pagination";
+import { useServerPagination } from "@/hooks/use-server-pagination";
 
-type SearchKind = 'all' | 'khóa học' | 'chương' | 'bài học' | 'câu hỏi' | 'resources';
+type SearchKind =
+  "all" | "khóa học" | "chương" | "bài học" | "câu hỏi" | "resources";
 
 type LessonResult = {
   id: string;
@@ -19,94 +22,57 @@ type LessonResult = {
 };
 
 export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
-  const [query, setQuery] = useState('');
-  const [kind, setKind] = useState<SearchKind>('all');
-  const [level, setLevel] = useState('all');
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [lessons, setLessons] = useState<LessonResult[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingLessons, setLoadingLessons] = useState(false);
-  const [error, setError] = useState('');
+  const [query, setQuery] = useState("");
+  const [kind, setKind] = useState<SearchKind>("all");
+  const [level, setLevel] = useState("all");
+  const loadCourses = useCallback(
+    (page: number, page_size: number) =>
+      catalogApi.page<Course>("courses", {
+        page,
+        page_size,
+        search: query,
+        level: level === "all" ? undefined : level,
+      }),
+    [query, level],
+  );
+  const loadLessons = useCallback(
+    (page: number, page_size: number) =>
+      catalogApi.page<LessonResult>("lessons", {
+        page,
+        page_size,
+        search: query,
+      }),
+    [query],
+  );
+  const courseSearchPaging = useServerPagination(loadCourses, {
+    resetKey: JSON.stringify([query, level, learner]),
+  });
+  const lessonSearchPaging = useServerPagination(loadLessons, {
+    resetKey: JSON.stringify([query, learner]),
+  });
+  const loading = courseSearchPaging.isLoading || lessonSearchPaging.isLoading;
+  const loadingLessons = lessonSearchPaging.isLoading;
+  const error = courseSearchPaging.error || lessonSearchPaging.error;
 
-  useEffect(() => {
-    let active = true;
-
-    const courseRequest = learner ? courseApi.learnerList() : courseApi.list();
-    courseRequest
-      .then(async (loadedCourses) => {
-        const availableCourses = learner
-          ? loadedCourses.filter((course) => isPublishedStatus(course.status))
-          : loadedCourses;
-        if (active) {
-          setCourses(availableCourses);
-          setLoading(false);
-          setLoadingLessons(true);
-        }
-
-        const lessonGroups = await Promise.allSettled(availableCourses.map(async (course) => {
-          const chapterGroups = learner
-            ? (await courseApi.learnerLessons(course.slug)).chapters
-            : await courseApi.chapters(String(course.id));
-
-          return chapterGroups.flatMap((chapter) => chapter.lessons
-            .filter((lesson) => !learner || isPublishedStatus(lesson.status))
-            .map((lesson) => ({
-              id: String(lesson.id),
-              title: lesson.title,
-              status: String(lesson.status),
-              courseTitle: course.title,
-              courseSlug: course.slug,
-              chapterTitle: chapter.title,
-            })));
-        }));
-
-        if (active) {
-          setLessons(lessonGroups.flatMap((group) => group.status === 'fulfilled' ? group.value : []));
-          setLoadingLessons(false);
-        }
-      })
-      .catch((requestError: unknown) => {
-        if (active) {
-          setError(requestError instanceof ApiClientError ? requestError.message : 'Không thể tải nội dung để tìm kiếm.');
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [learner]);
-
-  const visibleCourses = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    return courses.filter((course) => {
-      const matchesQuery = !term || [course.title, course.description, course.slug]
-        .some((value) => value?.toLowerCase().includes(term));
-      const matchesLevel = level === 'all' || course.level.toLowerCase() === level;
-      return matchesQuery && matchesLevel;
-    });
-  }, [courses, level, query]);
-
-  const visibleLessons = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    return lessons.filter((lesson) => !term || [lesson.title, lesson.courseTitle, lesson.chapterTitle]
-      .some((value) => value.toLowerCase().includes(term)));
-  }, [lessons, query]);
-
-  const showCourses = kind === 'all' || kind === 'khóa học';
-  const showChapters = kind === 'all' || kind === 'chương';
-  const showLessons = kind === 'all' || kind === 'bài học';
-  const showQuestions = kind === 'all' || kind === 'câu hỏi';
-  const showResources = kind === 'all' || kind === 'resources';
-  const resultCount = (showCourses ? visibleCourses.length : 0) + (showLessons ? visibleLessons.length : 0);
+  const showCourses = kind === "all" || kind === "khóa học";
+  const showChapters = kind === "all" || kind === "chương";
+  const showLessons = kind === "all" || kind === "bài học";
+  const showQuestions = kind === "all" || kind === "câu hỏi";
+  const showResources = kind === "all" || kind === "resources";
+  const resultCount =
+    (showCourses ? courseSearchPaging.totalItems : 0) +
+    (showLessons ? lessonSearchPaging.totalItems : 0);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-12">
       <header>
-        <h1 className="text-3xl font-bold tracking-tight text-[#002c3e]">Tìm kiếm</h1>
-        <p className="mt-2 text-sm text-slate-500">Tìm kiếm khóa học, chương, bài học, tài liệu và câu hỏi tại cùng một nơi.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-[#002c3e]">
+          Tìm kiếm
+        </h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Tìm kiếm khóa học, chương, bài học, tài liệu và câu hỏi tại cùng một
+          nơi.
+        </p>
       </header>
 
       <section className="flex flex-col gap-3 rounded-2xl border border-[#dfe6df] bg-white p-3 shadow-sm sm:flex-row">
@@ -125,75 +91,189 @@ export function CourseLessonSearch({ learner = false }: { learner?: boolean }) {
           value={kind}
           onChange={(value) => setKind(value as SearchKind)}
           options={[
-            ['all', 'All content types'],
-            ['khóa học', 'Khóa học'],
-            ['chương', 'Chương'],
-            ['bài học', 'Bài học'],
-            ['câu hỏi', 'Câu hỏi'],
-            ['resources', 'Tài liệu'],
+            ["all", "All content types"],
+            ["khóa học", "Khóa học"],
+            ["chương", "Chương"],
+            ["bài học", "Bài học"],
+            ["câu hỏi", "Câu hỏi"],
+            ["resources", "Tài liệu"],
           ]}
         />
         <FilterDropdown
           value={level}
           onChange={setLevel}
           options={[
-            ['all', 'Any level'],
-            ['beginner', 'Cơ bản'],
-            ['intermediate', 'Trung cấp'],
-            ['advanced', 'Nâng cao'],
+            ["all", "Any level"],
+            ["beginner", "Cơ bản"],
+            ["intermediate", "Trung cấp"],
+            ["advanced", "Nâng cao"],
           ]}
         />
       </section>
 
-      {loading && <p className="text-sm text-slate-500">Đang tải nội dung...</p>}
-      {!loading && loadingLessons && showLessons && <p className="text-sm text-slate-500">Đang tải bài học...</p>}
-      {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}
-      {!loading && !loadingLessons && !error && resultCount === 0 && !showChapters && !showQuestions && !showResources && <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-sm text-slate-500">Không tìm thấy khóa học hoặc bài học phù hợp.</div>}
-
-      {!loading && !error && (resultCount > 0 || showChapters || showQuestions || showResources) && (
-        <div className="space-y-6">
-          {showCourses && <ResultSection title={`Courses · ${visibleCourses.length}`} emptyMessage="No courses match your search.">
-            {visibleCourses.map((course) => <Link key={course.id} href={learner ? `/learner/courses/${course.slug}` : `/content-manager/learning-content/courses/${course.slug}`} className="flex items-center justify-between gap-3 px-6 py-4 hover:bg-slate-50">
-              <span className="flex min-w-0 items-center gap-3 text-sm font-medium text-slate-700"><BookOpen className="h-4 w-4 shrink-0 text-[#f7444e]" /><span className="truncate">{course.title}</span></span>
-              {!learner && <StatusBadge status={course.status} />}
-            </Link>)}
-          </ResultSection>}
-          {showChapters && <ResultSection title="Chương" emptyMessage="No chapters available yet." />}
-          {showLessons && <ResultSection title={`Lessons · ${visibleLessons.length}`} emptyMessage="Chưa có bài học match your search.">
-            {visibleLessons.map((lesson) => <Link key={lesson.id} href={learner ? `/learner/courses/${lesson.courseSlug}/lessons/${lesson.id}` : `/content-manager/learning-content/lessons/${lesson.id}`} className="flex items-center gap-3 px-6 py-4 hover:bg-slate-50">
-              <FileText className="h-4 w-4 shrink-0 text-[#78bcc4]" />
-              <span className="min-w-0 flex-1 text-sm font-medium text-slate-700"><span className="block truncate">{lesson.title}</span><span className="mt-1 block truncate text-xs font-normal text-slate-400">{lesson.courseTitle} · {lesson.chapterTitle}</span></span>
-              {!learner && <StatusBadge status={lesson.status} />}
-            </Link>)}
-          </ResultSection>}
-          {showQuestions && <ResultSection title="Câu hỏi" emptyMessage="No questions available yet." />}
-          {showResources && <ResultSection title="Tài liệu" emptyMessage="No resources available yet." />}
-        </div>
+      {loading && (
+        <p className="text-sm text-slate-500">Đang tải nội dung...</p>
       )}
+      {!loading && loadingLessons && showLessons && (
+        <p className="text-sm text-slate-500">Đang tải bài học...</p>
+      )}
+      {error && (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </p>
+      )}
+      {!loading &&
+        !loadingLessons &&
+        !error &&
+        resultCount === 0 &&
+        !showChapters &&
+        !showQuestions &&
+        !showResources && (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-sm text-slate-500">
+            Không tìm thấy khóa học hoặc bài học phù hợp.
+          </div>
+        )}
+
+      {!loading &&
+        !error &&
+        (resultCount > 0 || showChapters || showQuestions || showResources) && (
+          <div className="space-y-6">
+            {showCourses && (
+              <ResultSection
+                title={`Courses · ${courseSearchPaging.totalItems}`}
+                emptyMessage="Không tìm thấy khóa học phù hợp."
+                isEmpty={courseSearchPaging.totalItems === 0}
+              >
+                {courseSearchPaging.pageItems.map((course) => (
+                  <Link
+                    key={course.id}
+                    href={
+                      learner
+                        ? `/learner/courses/${course.slug}`
+                        : `/content-manager/learning-content/courses/${course.slug}`
+                    }
+                    className="flex items-center justify-between gap-3 px-6 py-4 hover:bg-slate-50"
+                  >
+                    <span className="flex min-w-0 items-center gap-3 text-sm font-medium text-slate-700">
+                      <BookOpen className="h-4 w-4 shrink-0 text-[#f7444e]" />
+                      <span className="truncate">{course.title}</span>
+                    </span>
+                    {!learner && <StatusBadge status={course.status} />}
+                  </Link>
+                ))}
+                <Pagination
+                  page={courseSearchPaging.page}
+                  pageSize={courseSearchPaging.pageSize}
+                  totalItems={courseSearchPaging.totalItems}
+                  onPageChange={courseSearchPaging.setPage}
+                />
+              </ResultSection>
+            )}
+            {showChapters && (
+              <ResultSection
+                title="Chương"
+                emptyMessage="No chapters available yet."
+              />
+            )}
+            {showLessons && (
+              <ResultSection
+                title={`Lessons · ${lessonSearchPaging.totalItems}`}
+                emptyMessage="Không tìm thấy bài học phù hợp."
+                isEmpty={!loadingLessons && lessonSearchPaging.totalItems === 0}
+              >
+                {lessonSearchPaging.pageItems.map((lesson) => (
+                  <Link
+                    key={lesson.id}
+                    href={
+                      learner
+                        ? `/learner/courses/${lesson.courseSlug}/lessons/${lesson.id}`
+                        : `/content-manager/learning-content/lessons/${lesson.id}`
+                    }
+                    className="flex items-center gap-3 px-6 py-4 hover:bg-slate-50"
+                  >
+                    <FileText className="h-4 w-4 shrink-0 text-[#78bcc4]" />
+                    <span className="min-w-0 flex-1 text-sm font-medium text-slate-700">
+                      <span className="block truncate">{lesson.title}</span>
+                      <span className="mt-1 block truncate text-xs font-normal text-slate-400">
+                        {lesson.courseTitle} · {lesson.chapterTitle}
+                      </span>
+                    </span>
+                    {!learner && <StatusBadge status={lesson.status} />}
+                  </Link>
+                ))}
+                <Pagination
+                  page={lessonSearchPaging.page}
+                  pageSize={lessonSearchPaging.pageSize}
+                  totalItems={lessonSearchPaging.totalItems}
+                  onPageChange={lessonSearchPaging.setPage}
+                />
+              </ResultSection>
+            )}
+            {showQuestions && (
+              <ResultSection
+                title="Câu hỏi"
+                emptyMessage="No questions available yet."
+              />
+            )}
+            {showResources && (
+              <ResultSection
+                title="Tài liệu"
+                emptyMessage="No resources available yet."
+              />
+            )}
+          </div>
+        )}
     </div>
   );
 }
 
-function ResultSection({ title, emptyMessage, children }: { title: string; emptyMessage?: string; children?: React.ReactNode }) {
-  return <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm"><h2 className="border-b border-[#dfe6df] px-6 py-5 text-sm font-bold text-slate-800">{title}</h2><div className="divide-y divide-[#dfe6df]">{children || <p className="px-6 py-4 text-sm text-slate-400">{emptyMessage}</p>}</div></section>;
+function ResultSection({
+  title,
+  emptyMessage,
+  children,
+  isEmpty = false,
+}: {
+  title: string;
+  emptyMessage?: string;
+  children?: React.ReactNode;
+  isEmpty?: boolean;
+}) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-sm">
+      <h2 className="border-b border-[#dfe6df] px-6 py-5 text-sm font-bold text-slate-800">
+        {title}
+      </h2>
+
+      <div className="divide-y divide-[#dfe6df]">
+        {isEmpty || !children ? (
+          <p className="px-6 py-4 text-sm text-slate-400">{emptyMessage}</p>
+        ) : (
+          children
+        )}
+      </div>
+    </section>
+  );
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const normalizedStatus = status.replace('_', ' ').toLowerCase();
+  const normalizedStatus = status.replace("_", " ").toLowerCase();
   const label = vietnameseStatus(normalizedStatus);
-  const styles = normalizedStatus === 'published'
-    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-    : normalizedStatus === 'approved'
-      ? 'border-sky-200 bg-sky-50 text-sky-700'
-      : normalizedStatus === 'in review'
-        ? 'border-amber-200 bg-amber-50 text-amber-700'
-        : 'border-slate-200 bg-slate-100 text-slate-600';
+  const styles =
+    normalizedStatus === "published"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : normalizedStatus === "approved"
+        ? "border-sky-200 bg-sky-50 text-sky-700"
+        : normalizedStatus === "in review"
+          ? "border-amber-200 bg-amber-50 text-amber-700"
+          : "border-slate-200 bg-slate-100 text-slate-600";
 
-  return <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium ${styles}`}>{label}</span>;
-}
-
-function isPublishedStatus(status: string) {
-  return status.toLowerCase().replace('_', ' ') === 'published';
+  return (
+    <span
+      className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium ${styles}`}
+    >
+      {label}
+    </span>
+  );
 }
 
 function FilterDropdown({
@@ -207,15 +287,18 @@ function FilterDropdown({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const selectedLabel = options.find(([optionValue]) => optionValue === value)?.[1] ?? options[0][1];
+  const selectedLabel =
+    options.find(([optionValue]) => optionValue === value)?.[1] ??
+    options[0][1];
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setIsOpen(false);
+      if (rootRef.current && !rootRef.current.contains(event.target as Node))
+        setIsOpen(false);
     }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
@@ -225,13 +308,18 @@ function FilterDropdown({
         onClick={() => setIsOpen((open) => !open)}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        className={`flex h-11 w-full items-center justify-between gap-4 rounded-xl border bg-white px-3.5 text-sm text-slate-700 shadow-sm outline-none transition ${isOpen ? 'border-[#f7444e] ring-2 ring-[#f7444e]/10' : 'border-slate-200 hover:border-[#78bcc4]'}`}
+        className={`flex h-11 w-full items-center justify-between gap-4 rounded-xl border bg-white px-3.5 text-sm text-slate-700 shadow-sm outline-none transition ${isOpen ? "border-[#f7444e] ring-2 ring-[#f7444e]/10" : "border-slate-200 hover:border-[#78bcc4]"}`}
       >
         <span>{selectedLabel}</span>
-        <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown
+          className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
       {isOpen && (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-30 w-full min-w-[190px] overflow-hidden rounded-2xl border border-[#dfe6df] bg-white p-1.5 shadow-[0_8px_20px_rgba(0,44,62,0.14)]" role="listbox">
+        <div
+          className="absolute left-0 top-[calc(100%+6px)] z-30 w-full min-w-[190px] overflow-hidden rounded-2xl border border-[#dfe6df] bg-white p-1.5 shadow-[0_8px_20px_rgba(0,44,62,0.14)]"
+          role="listbox"
+        >
           {options.map(([optionValue, optionLabel]) => {
             const isSelected = optionValue === value;
             return (
@@ -244,7 +332,7 @@ function FilterDropdown({
                   onChange(optionValue);
                   setIsOpen(false);
                 }}
-                className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition ${isSelected ? 'bg-[#c8eff3] text-[#002c3e]' : 'text-[#163e4b] hover:bg-[#f3fbfb]'}`}
+                className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition ${isSelected ? "bg-[#c8eff3] text-[#002c3e]" : "text-[#163e4b] hover:bg-[#f3fbfb]"}`}
               >
                 <span>{optionLabel}</span>
                 {isSelected && <Check className="h-4 w-4" />}

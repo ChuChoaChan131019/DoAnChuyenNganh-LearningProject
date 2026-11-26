@@ -244,7 +244,7 @@ export class PracticeService {
     return practiceSet;
   }
 
-  async listAiPracticeSets(userId: string, chapterId: string) {
+  async listAiPracticeSets(userId: string, chapterId: string, pagination?: { page: number; pageSize: number }) {
     const supabase = this.supabaseService.getClient();
     const staleBefore = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const completedAt = new Date().toISOString();
@@ -264,16 +264,20 @@ export class PracticeService {
       throw new InternalServerErrorException('Unable to refresh AI practice sets');
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('ai_practice_sets')
-      .select('id, course_id, chapter_id, lesson_id, status, difficulty, requested_count, generated_count, error_code, attempt_count, created_at, completed_at, lessons(id, title)')
+      .select('id, course_id, chapter_id, lesson_id, status, difficulty, requested_count, generated_count, error_code, attempt_count, created_at, completed_at, lessons(id, title)', pagination ? { count: 'exact' } : undefined)
       .eq('user_id', userId)
       .eq('chapter_id', chapterId)
       .order('created_at', { ascending: false });
+    if (pagination) {
+      const from = (pagination.page - 1) * pagination.pageSize;
+      query = query.order('id', { ascending: false }).range(from, from + pagination.pageSize - 1);
+    }
+    const { data, error, count } = await query;
     if (error) throw new InternalServerErrorException('Unable to load AI practice sets');
 
-    return {
-      sets: (data ?? []).map((practiceSet: any) => ({
+    const sets = (data ?? []).map((practiceSet: any) => ({
         id: practiceSet.id,
         course_id: practiceSet.course_id,
         chapter_id: practiceSet.chapter_id,
@@ -289,8 +293,8 @@ export class PracticeService {
         attempt_count: practiceSet.attempt_count,
         created_at: practiceSet.created_at,
         completed_at: practiceSet.completed_at,
-      })),
-    };
+      }));
+    return pagination ? { items: sets, total: count ?? 0, page: pagination.page, page_size: pagination.pageSize, total_pages: Math.ceil((count ?? 0) / pagination.pageSize) } : { sets };
   }
 
   async getAiPracticeSetQuestions(userId: string, setId: string) {

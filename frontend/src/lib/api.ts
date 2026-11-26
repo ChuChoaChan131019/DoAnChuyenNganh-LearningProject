@@ -282,6 +282,23 @@ export const aiTutorApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  historyPaged: (page = 1, pageSize = 10) =>
+    request<
+      import("../types/pagination").PageResponse<
+        import("../types/ai-tutor-pagination").TutorHistoryConversation
+      >
+    >(`/api/v1/ai/tutor/history/paged?page=${page}&page_size=${pageSize}`),
+
+  messagesPaged: (conversationId: string, before?: string, pageSize = 20) =>
+    request<{
+      items: import("../types/ai-tutor-pagination").TutorHistoryMessage[];
+      next_cursor: string | null;
+    }>(
+      `/api/v1/ai/tutor/conversations/${encodeURIComponent(
+        conversationId,
+      )}/messages?page_size=${pageSize}${before ? `&before=${encodeURIComponent(before)}` : ""}`,
+    ),
 };
 
 export const discussionApi = {
@@ -527,6 +544,21 @@ export type LessonValidationResult = {
   warnings: LessonValidationIssue[];
   validator_version?: string;
   created_at: string;
+};
+
+export const catalogApi = {
+  page: <T>(
+    kind: "courses" | "lessons" | "questions" | "quizzes" | "code" | "review",
+    filters: Record<string, string | number | undefined> = {},
+  ) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== "") params.set(key, String(value));
+    });
+    return request<import("../types/pagination").PageResponse<T>>(
+      `/api/v1/catalog/${kind}?${params}`,
+    );
+  },
 };
 
 export const courseApi = {
@@ -924,6 +956,38 @@ export const questionApi = {
       `/api/v1/questions${query ? `?${query}` : ""}`,
     );
   },
+
+  listPaged: (
+    filters: {
+      search?: string;
+      course_id?: string;
+      chapter_id?: string;
+      lesson_id?: string;
+      question_type?: string;
+      difficulty?: string;
+      status?: string;
+      is_ai_generated?: boolean;
+      is_deleted?: boolean;
+      submitted_for_review?: boolean;
+      page?: number;
+      page_size?: number;
+    } = {},
+  ) => {
+    const params = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== null && value !== "") {
+        params.set(key, String(value));
+      }
+    }
+
+    return request<
+      import("../types/pagination").PageResponse<
+        import("../types/question").QuestionItem
+      >
+    >(`/api/v1/questions/paged?${params.toString()}`);
+  },
+
   // The detail response includes nested relations not covered by QuestionItem.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getById: (id: string) => request<any>(`/api/v1/questions/${id}`),
@@ -1031,13 +1095,19 @@ export const questionApi = {
     ),
   /** Xóa mềm: câu hỏi chuyển sang mục "Đã xóa" cho mọi người, có thể khôi phục. */
   remove: (id: string) =>
-    request<QuestionSoftDeleteResult>(`/api/v1/questions/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-    }),
+    request<QuestionSoftDeleteResult>(
+      `/api/v1/questions/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+      },
+    ),
   delete: (id: string) =>
-    request<QuestionSoftDeleteResult>(`/api/v1/questions/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-    }),
+    request<QuestionSoftDeleteResult>(
+      `/api/v1/questions/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+      },
+    ),
   restore: (id: string) =>
     request<QuestionSoftDeleteResult>(
       `/api/v1/questions/${encodeURIComponent(id)}/restore`,
@@ -1182,6 +1252,14 @@ export const practiceApi = {
   ): Promise<{ sets: import("../types/practice").AiPracticeSet[] }> =>
     request(
       `/api/v1/practice/ai-sets?chapter_id=${encodeURIComponent(chapterId)}`,
+    ),
+  aiSetsPaged: (chapterId: string, page: number, pageSize: number) =>
+    request<
+      import("../types/pagination").PageResponse<
+        import("../types/practice").AiPracticeSet
+      >
+    >(
+      `/api/v1/practice/ai-sets?chapter_id=${encodeURIComponent(chapterId)}&page=${page}&page_size=${pageSize}`,
     ),
   aiSetQuestions: (
     setId: string,
@@ -1404,7 +1482,7 @@ export const learnerOverviewApi = {
 };
 export type AuthoringNotification = {
   id: string;
-  target_type: 'lesson' | 'question';
+  target_type: "lesson" | "question";
   target_id: string;
   title: string;
   reason: string;
@@ -1413,18 +1491,37 @@ export type AuthoringNotification = {
 };
 
 export const authoringNotificationApi = {
-  list: (offset = 0) => request<{ items: AuthoringNotification[]; has_more: boolean }>(`/api/v1/authoring-notifications?offset=${offset}`),
-  unreadCount: () => request<{ count: number }>('/api/v1/authoring-notifications/unread-count'),
-  markRead: (id: string) => request<{ id: string; read_at: string }>(
-    `/api/v1/authoring-notifications/${encodeURIComponent(id)}/read`,
-    { method: 'PATCH' },
-  ),
+  list: (offset = 0) =>
+    request<{ items: AuthoringNotification[]; has_more: boolean }>(
+      `/api/v1/authoring-notifications?offset=${offset}`,
+    ),
+  unreadCount: () =>
+    request<{ count: number }>("/api/v1/authoring-notifications/unread-count"),
+  markRead: (id: string) =>
+    request<{ id: string; read_at: string }>(
+      `/api/v1/authoring-notifications/${encodeURIComponent(id)}/read`,
+      { method: "PATCH" },
+    ),
 };
 
 export type UserNotification = {
   id: string;
-  event_type: 'discussion_reply' | 'discussion_moderation' | 'report_resolved' | 'authoring_change' | 'content_published' | 'discussion_report';
-  target_type: 'post' | 'comment' | 'report' | 'lesson' | 'question' | 'quiz' | 'code_exercise' | 'course';
+  event_type:
+    | "discussion_reply"
+    | "discussion_moderation"
+    | "report_resolved"
+    | "authoring_change"
+    | "content_published"
+    | "discussion_report";
+  target_type:
+    | "post"
+    | "comment"
+    | "report"
+    | "lesson"
+    | "question"
+    | "quiz"
+    | "code_exercise"
+    | "course";
   target_id: string;
   title: string;
   body: string;
@@ -1444,18 +1541,31 @@ export type UserNotificationPage = {
 
 export const userNotificationApi = {
   list: (offset = 0, unreadOnly = false) =>
-    request<UserNotificationPage>('/api/v1/user-notifications?offset=' + offset + '&unread_only=' + unreadOnly),
-  unreadCount: () => request<{ count: number }>('/api/v1/user-notifications/unread-count'),
-  markRead: (id: string) => request<{ id: string; read_at: string }>(
-    '/api/v1/user-notifications/' + encodeURIComponent(id) + '/read', { method: 'PATCH' },
-  ),
-  following: (courseId: string) => request<{ following: boolean }>(
-    '/api/v1/user-notifications/follows/' + encodeURIComponent(courseId),
-  ),
-  follow: (courseId: string) => request<{ following: boolean }>(
-    '/api/v1/user-notifications/follows/' + encodeURIComponent(courseId), { method: 'PUT' },
-  ),
-  unfollow: (courseId: string) => request<{ following: boolean }>(
-    '/api/v1/user-notifications/follows/' + encodeURIComponent(courseId), { method: 'DELETE' },
-  ),
+    request<UserNotificationPage>(
+      "/api/v1/user-notifications?offset=" +
+        offset +
+        "&unread_only=" +
+        unreadOnly,
+    ),
+  unreadCount: () =>
+    request<{ count: number }>("/api/v1/user-notifications/unread-count"),
+  markRead: (id: string) =>
+    request<{ id: string; read_at: string }>(
+      "/api/v1/user-notifications/" + encodeURIComponent(id) + "/read",
+      { method: "PATCH" },
+    ),
+  following: (courseId: string) =>
+    request<{ following: boolean }>(
+      "/api/v1/user-notifications/follows/" + encodeURIComponent(courseId),
+    ),
+  follow: (courseId: string) =>
+    request<{ following: boolean }>(
+      "/api/v1/user-notifications/follows/" + encodeURIComponent(courseId),
+      { method: "PUT" },
+    ),
+  unfollow: (courseId: string) =>
+    request<{ following: boolean }>(
+      "/api/v1/user-notifications/follows/" + encodeURIComponent(courseId),
+      { method: "DELETE" },
+    ),
 };

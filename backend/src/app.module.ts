@@ -16,6 +16,7 @@ import { AdminAccountsModule } from './modules/admin-accounts/admin-accounts.mod
 import { LearnerOverviewModule } from './modules/learner-overview/learner-overview.module.js';
 import { AuthoringNotificationsModule } from './modules/authoring-notifications/authoring-notifications.module.js';
 import { UserNotificationsModule } from './modules/user-notifications/user-notifications.module.js';
+import { CatalogModule } from './modules/catalog/catalog.module.js';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { UserNotificationsModule } from './modules/user-notifications/user-notif
     LearnerOverviewModule,
     AuthoringNotificationsModule,
     UserNotificationsModule,
+    CatalogModule,
   ],
 
   controllers: [AppController],

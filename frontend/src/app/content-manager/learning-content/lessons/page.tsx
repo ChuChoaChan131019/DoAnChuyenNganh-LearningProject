@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { Clock3, FileText, Globe2, Plus, Search } from "lucide-react";
 import type { ContentStatus, Lesson } from "@/types/learning-content";
-import { courseApi } from "@/lib/api";
+import { catalogApi, courseApi } from "@/lib/api";
+import { Pagination } from "@/components/ui/pagination";
+import { useServerPagination } from "@/hooks/use-server-pagination";
 
 type LessonRow = Lesson & { course: string; chapter: string; slug: string };
 
@@ -12,7 +14,10 @@ const statusStyles: Record<ContentStatus, string> = {
   Published: "border-emerald-200 bg-emerald-50 text-emerald-700",
   Draft: "border-slate-200 bg-slate-100 text-slate-600",
 };
-const statusLabels: Record<ContentStatus, string> = { Published: "Đã xuất bản", Draft: "Bản nháp" };
+const statusLabels: Record<ContentStatus, string> = {
+  Published: "Đã xuất bản",
+  Draft: "Bản nháp",
+};
 
 function StatusBadge({ status }: { status: ContentStatus }) {
   return (
@@ -27,58 +32,20 @@ function StatusBadge({ status }: { status: ContentStatus }) {
 
 export default function LessonsPage() {
   const [query, setQuery] = useState("");
-  const [lessons, setLessons] = useState<LessonRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isActive = true;
-
-    courseApi.list()
-      .then(async (courses) => {
-        const lessonGroups = await Promise.all(
-          courses.map(async (course) => {
-            const chapters = await courseApi.chapters(String(course.id));
-            return chapters.flatMap((chapter) =>
-              chapter.lessons.map((lesson) => ({
-                ...lesson,
-                slug: lesson.id ?? lesson.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-                course: course.title,
-                chapter: chapter.title,
-              })),
-            );
-          }),
-        );
-
-        if (isActive) {
-          setLessons(lessonGroups.flat());
-          setIsLoading(false);
-        }
-      })
-      .catch(() => {
-        if (isActive) {
-          setLoadError("Không thể tải danh sách bài học.");
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, []);
-
-  const filteredLessons = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    return term
-      ? lessons.filter((lesson) =>
-          [lesson.title, lesson.chapter, lesson.course, lesson.slug].some(
-            (value) => value.toLowerCase().includes(term),
-          ),
-        )
-      : lessons;
-  }, [lessons, query]);
+  const loadPage = useCallback(
+    (page: number, page_size: number) =>
+      catalogApi.page<LessonRow>("lessons", { page, page_size, search: query }),
+    [query],
+  );
+  const lessonPaging = useServerPagination(loadPage, { resetKey: query });
+  const {
+    pageItems: filteredLessons,
+    isLoading,
+    error: loadError,
+  } = lessonPaging;
 
   async function changeStatus(lesson: LessonRow) {
     if (!lesson.id || busyId) return;
@@ -87,12 +54,17 @@ export default function LessonsPage() {
     setActionError(null);
     try {
       const current = await courseApi.lesson(lesson.id);
-      await courseApi.reviewAction(lesson.id, { action: "publish", version: current.version });
-      setLessons((rows) => rows.map((row) => row.id === lesson.id
-        ? { ...row, status: "Published" }
-        : row));
+      await courseApi.reviewAction(lesson.id, {
+        action: "publish",
+        version: current.version,
+      });
+      lessonPaging.refresh();
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Không thể thay đổi trạng thái bài học.");
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Không thể thay đổi trạng thái bài học.",
+      );
     } finally {
       setBusyId(null);
     }
@@ -106,7 +78,8 @@ export default function LessonsPage() {
             Bài học
           </h1>
           <p className="mt-1 text-sm text-[#637981]">
-            Toàn bộ nội dung bài học C#, từ câu hỏi “C# là gì?” đến “async / await”.
+            Toàn bộ nội dung bài học C#, từ câu hỏi “C# là gì?” đến “async /
+            await”.
           </p>
         </div>
         <Link
@@ -118,7 +91,14 @@ export default function LessonsPage() {
         </Link>
       </header>
       <section className="overflow-hidden rounded-2xl border border-[#dfe6df] bg-white shadow-[0_8px_24px_rgba(0,44,62,0.06)]">
-        {actionError && <p role="alert" className="border-b border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700">{actionError}</p>}
+        {actionError && (
+          <p
+            role="alert"
+            className="border-b border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700"
+          >
+            {actionError}
+          </p>
+        )}
         <div className="border-b border-[#dfe6df] px-4 py-4 sm:px-5">
           <label className="relative block w-full max-w-[348px]">
             <span className="sr-only">Tìm bài học</span>
@@ -142,17 +122,49 @@ export default function LessonsPage() {
               {loadError}
             </p>
           )}
-          {filteredLessons.map((lesson) => (
-            <div key={lesson.slug} className="flex min-h-[70px] flex-wrap items-center gap-3 border-b border-[#dfe6df] px-5 py-3 last:border-0">
-              <Link href={`/content-manager/learning-content/lessons/${lesson.slug}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg hover:bg-[#f8fbf9]">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#e0f3f2] text-[#527983]"><FileText className="h-4 w-4" /></span>
-                <span className="min-w-0"><span className="block font-semibold text-[#002C3E]">{lesson.title}</span><span className="block truncate text-xs text-[#637981]">{lesson.chapter} · /{lesson.slug}</span></span>
+          {lessonPaging.pageItems.map((lesson) => (
+            <div
+              key={lesson.slug}
+              className="flex min-h-[70px] flex-wrap items-center gap-3 border-b border-[#dfe6df] px-5 py-3 last:border-0"
+            >
+              <Link
+                href={`/content-manager/learning-content/lessons/${lesson.slug}`}
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-lg hover:bg-[#f8fbf9]"
+              >
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#e0f3f2] text-[#527983]">
+                  <FileText className="h-4 w-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-semibold text-[#002C3E]">
+                    {lesson.title}
+                  </span>
+                  <span className="block truncate text-xs text-[#637981]">
+                    {lesson.chapter} · /{lesson.slug}
+                  </span>
+                </span>
               </Link>
               <div className="flex shrink-0 items-center gap-3">
-                <span className="hidden items-center gap-1 text-xs text-[#637981] sm:flex"><Clock3 className="h-3.5 w-3.5" />{lesson.duration}</span>
-                {lesson.ai && <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 text-[11px] font-semibold text-cyan-700">✣ Tự động</span>}
+                <span className="hidden items-center gap-1 text-xs text-[#637981] sm:flex">
+                  <Clock3 className="h-3.5 w-3.5" />
+                  {lesson.duration}
+                </span>
+                {lesson.ai && (
+                  <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 text-[11px] font-semibold text-cyan-700">
+                    ✣ Tự động
+                  </span>
+                )}
                 <StatusBadge status={lesson.status} />
-                {lesson.status === "Draft" && <button type="button" onClick={() => void changeStatus(lesson)} disabled={!!busyId} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#14919B] px-3 text-xs font-semibold text-white disabled:opacity-50"><Globe2 className="h-3.5 w-3.5" />Xuất bản</button>}
+                {lesson.status === "Draft" && (
+                  <button
+                    type="button"
+                    onClick={() => void changeStatus(lesson)}
+                    disabled={!!busyId}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#14919B] px-3 text-xs font-semibold text-white disabled:opacity-50"
+                  >
+                    <Globe2 className="h-3.5 w-3.5" />
+                    Xuất bản
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -162,6 +174,12 @@ export default function LessonsPage() {
             Không tìm thấy bài học.
           </p>
         )}
+        <Pagination
+          page={lessonPaging.page}
+          pageSize={lessonPaging.pageSize}
+          totalItems={lessonPaging.totalItems}
+          onPageChange={lessonPaging.setPage}
+        />
       </section>
     </div>
   );

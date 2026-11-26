@@ -1,4 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
@@ -17,17 +29,28 @@ export class QuestionsController {
   constructor(private readonly questionsService: QuestionsService) {}
 
   @Get('courses')
-  listCourses() { return this.questionsService.listCourses(); }
+  listCourses() {
+    return this.questionsService.listCourses();
+  }
 
   @Get('courses/:id/chapters')
-  listChapters(@Param('id') id: string) { return this.questionsService.listChapters(id); }
+  listChapters(@Param('id') id: string) {
+    return this.questionsService.listChapters(id);
+  }
 
   @Get('chapters/:id/lessons')
-  listLessons(@Param('id') id: string) { return this.questionsService.listLessons(id); }
+  listLessons(@Param('id') id: string) {
+    return this.questionsService.listLessons(id);
+  }
 
   @Get('questions')
   listQuestions(@Query() filters: Record<string, string>) {
     return this.questionsService.listQuestions(filters);
+  }
+
+  @Get('questions/paged')
+  listQuestionsPaged(@Query() filters: Record<string, string>) {
+    return this.questionsService.listQuestionsPaged(filters);
   }
 
   @Get('questions/review-count')
@@ -59,24 +82,56 @@ export class QuestionsController {
 
   @Put('questions/:id')
   @Roles('content_manager')
-  update(@Param('id') id: string, @Body() dto: QuestionDto, @Req() request: any) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: QuestionDto,
+    @Req() request: any,
+  ) {
     return this.questionsService.update(id, dto, request.user.id);
   }
 
   @Patch('questions/:id/status')
-  updateStatus(@Param('id') id: string, @Body() body: SubmitQuestionDto, @Req() request: any) {
-    return this.questionsService.updateStatus(id, body.status, request.user.id, body.reason, body.expected_version);
+  updateStatus(
+    @Param('id') id: string,
+    @Body() body: SubmitQuestionDto,
+    @Req() request: any,
+  ) {
+    return this.questionsService.updateStatus(
+      id,
+      body.status,
+      request.user.id,
+      body.reason,
+      body.expected_version,
+    );
   }
 
   @Post('questions/:id/revoke-approval')
-  revokeApproval(@Param('id') id: string, @Body() body: RevokeQuestionApprovalDto, @Req() request: any) {
-    return this.questionsService.revokeApproval(id, request.user.id, body.reason, body.expected_version);
+  revokeApproval(
+    @Param('id') id: string,
+    @Body() body: RevokeQuestionApprovalDto,
+    @Req() request: any,
+  ) {
+    return this.questionsService.revokeApproval(
+      id,
+      request.user.id,
+      body.reason,
+      body.expected_version,
+    );
   }
 
   @Post('questions/:id/submit-review')
   @Roles('content_manager')
-  submitForReview(@Param('id') id: string, @Body() body: SubmitQuestionDto, @Req() request: any) {
-    return this.questionsService.submitForReview(id, request.user.id, request.user.role, body.expected_version);
+  submitForReview(
+    @Param('id') id: string,
+    @Body() body: SubmitQuestionDto,
+    @Req() request: any,
+  ) {
+    return this.questionsService.submitForReview(
+      id,
+      request.user.id,
+      request.user.role,
+      body.expected_version,
+    );
   }
 
   @Delete('questions/:id')
@@ -89,5 +144,4 @@ export class QuestionsController {
   restore(@Param('id') id: string, @Req() request: any) {
     return this.questionsService.restore(id, request.user.id);
   }
-
 }
