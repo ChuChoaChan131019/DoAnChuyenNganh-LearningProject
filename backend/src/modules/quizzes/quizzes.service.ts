@@ -1,11 +1,17 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../../config/supabase.service.js';
-import { ConfigureQuizQuestionsDto, CreateQuizDto, QuizAnswerDto, SubmitQuizDto, UpdateQuizDto } from './dto/quiz.dto.js';
+import { ConfigureQuizQuestionsDto, CreateQuizDto, QuizAnswerDto, SaveQuizConfigurationDto, SubmitQuizDto, UpdateQuizDto } from './dto/quiz.dto.js';
 
 type QuizQuestionRow = {
   question_id: string;
   score_weight: number;
   questions: unknown;
+};
+
+type AttemptQuestion = {
+  question_id: string;
+  score_weight: number;
+  question: QuestionRecord;
 };
 
 type QuestionOptionRecord = { id: string; option_text: string; order_index?: number | null; is_correct?: boolean };
@@ -28,6 +34,8 @@ type AttemptDetailRow = {
   is_correct: boolean;
   score_weight: number | null;
   earned_score: number | null;
+  question_snapshot?: QuestionRecord | null;
+  selected_option_ids?: string[] | null;
   quiz_attempt_answers?: Array<{ option_id: string }> | null;
   questions?: unknown;
 };
@@ -43,13 +51,6 @@ export type GradedAnswer = {
   earned_score: number;
   selected_option_ids: string[];
 };
-
-export const DEFAULT_QUIZ_SUBMIT_GRACE_SECONDS = 30;
-
-export function quizSubmitGraceSeconds(raw = process.env.QUIZ_SUBMIT_GRACE_SECONDS): number {
-  const value = Number(raw);
-  return Number.isFinite(value) && value >= 0 ? Math.floor(value) : DEFAULT_QUIZ_SUBMIT_GRACE_SECONDS;
-}
 
 /** Chấm một câu theo trọng số. Chỉ giữ những phương án thuộc câu hỏi. */
 export function gradeAnswer(
@@ -96,7 +97,7 @@ export function scorePercentage(score: number | null | undefined, maxScore: numb
 export class QuizzesService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async list(filters: { course_id?: string; status?: string; visibility?: string }) {
+  async list(filters: { course_id?: string; status?: string; visibility?: string }, role?: string) {
     let query = this.supabaseService.getClient().from('quizzes').select('*').order('created_at', { ascending: false });
     if (filters.course_id) query = query.eq('course_id', filters.course_id);
     const { data, error } = await query;
@@ -125,6 +126,25 @@ export class QuizzesService {
     }
     if (filters.status === 'draft' || filters.status === 'archived') quizzes = quizzes.filter((quiz) => !quiz.is_active);
     if (filters.visibility === 'private') quizzes = quizzes.filter((quiz) => !quiz.is_active);
+    if (role === 'learner' && quizzes.length) {
+      const client = this.supabaseService.getClient();
+      const courseIds = [...new Set(quizzes.map((quiz) => quiz.course_id).filter(Boolean))];
+      const chapterIds = [...new Set(quizzes.map((quiz) => quiz.chapter_id).filter(Boolean))];
+      if (!courseIds.length) return [];
+      const { data: courses, error: courseError } = await client.from('courses').select('id,status').in('id', courseIds);
+      this.throwQueryError(courseError);
+      const publishedCourses = new Set((courses ?? []).filter((course) => course.status === 'published').map((course) => course.id));
+      let publishedChapters = new Set<string>();
+      if (chapterIds.length) {
+        const { data: chapters, error: chapterError } = await client.from('chapters').select('id,course_id,status').in('id', chapterIds);
+        this.throwQueryError(chapterError);
+        publishedChapters = new Set((chapters ?? [])
+          .filter((chapter) => chapter.status === 'published' && publishedCourses.has(chapter.course_id))
+          .map((chapter) => chapter.id));
+      }
+      quizzes = quizzes.filter((quiz) => publishedCourses.has(quiz.course_id)
+        && (!quiz.chapter_id || publishedChapters.has(quiz.chapter_id)));
+    }
     return quizzes.map((quiz) => this.presentQuiz(quiz));
   }
 
@@ -139,8 +159,10 @@ export class QuizzesService {
   }
 
   async create(dto: CreateQuizDto, actorId: string) {
+    await this.assertChapterBelongsToCourse(dto.course_id, dto.chapter_id ?? null);
     const insertPayload: Record<string, any> = {
       title: dto.title,
+      description: dto.description ?? null,
       course_id: dto.course_id,
       chapter_id: dto.chapter_id ?? null,
       duration_minutes: dto.duration_minutes ?? 15,
@@ -150,8 +172,8 @@ export class QuizzesService {
       shuffle_options: dto.shuffle_options ?? true,
       // A quiz is private until the explicit publish action succeeds.
       is_active: false,
-      is_required: (dto as any).is_required ?? true,
-      counts_toward_progress: (dto as any).counts_toward_progress ?? true,
+      is_required: dto.is_required ?? true,
+      counts_toward_progress: dto.counts_toward_progress ?? true,
     };
 
     const { data, error } = await this.supabaseService
@@ -167,10 +189,15 @@ export class QuizzesService {
   }
 
   async update(id: string, dto: UpdateQuizDto) {
+    if (dto.course_id !== undefined || dto.chapter_id !== undefined) {
+      const quiz = await this.requireQuiz(id);
+      await this.assertChapterBelongsToCourse(dto.course_id ?? quiz.course_id, dto.chapter_id === undefined ? quiz.chapter_id : dto.chapter_id);
+    }
     // Saving edits always returns the quiz to draft. Publication can only be
     // changed through setStatus(), which validates the assigned questions.
     const updatePayload: Record<string, any> = { is_active: false };
     if (dto.title !== undefined) updatePayload.title = dto.title;
+    if (dto.description !== undefined) updatePayload.description = dto.description;
     if (dto.course_id !== undefined) updatePayload.course_id = dto.course_id;
     if (dto.chapter_id !== undefined) updatePayload.chapter_id = dto.chapter_id ?? null;
     if (dto.duration_minutes !== undefined) updatePayload.duration_minutes = dto.duration_minutes;
@@ -178,6 +205,8 @@ export class QuizzesService {
     if (dto.shuffle_questions !== undefined) updatePayload.shuffle_questions = dto.shuffle_questions;
     if (dto.shuffle_options !== undefined) updatePayload.shuffle_options = dto.shuffle_options;
     if (dto.pass_score !== undefined) updatePayload.pass_percentage = dto.pass_score;
+    if (dto.is_required !== undefined) updatePayload.is_required = dto.is_required;
+    if (dto.counts_toward_progress !== undefined) updatePayload.counts_toward_progress = dto.counts_toward_progress;
     const { data, error } = await this.supabaseService
       .getClient()
       .from('quizzes')
@@ -201,9 +230,10 @@ export class QuizzesService {
     return this.presentQuiz(data);
   }
 
-  async configureQuestions(quizId: string, dto: ConfigureQuizQuestionsDto) {
+  async configureQuestions(quizId: string, dto: ConfigureQuizQuestionsDto, settings?: UpdateQuizDto) {
     const quiz = await this.requireQuiz(quizId);
-    if (quiz.is_active) await this.setStatus(quizId, 'archived');
+    await this.assertChapterBelongsToCourse(settings?.course_id ?? quiz.course_id,
+      settings?.chapter_id === undefined ? quiz.chapter_id : settings.chapter_id);
     const ids = dto.questions.map((question) => question.question_id);
     if (new Set(ids).size !== ids.length) {
       throw new BadRequestException('Question ids must be unique');
@@ -211,10 +241,14 @@ export class QuizzesService {
 
     const supabase = this.supabaseService.getClient();
     if (ids.length) {
-      const { data, error } = await supabase.from('questions').select('id,status,deleted_at').in('id', ids);
+      const { data, error } = await supabase.from('questions').select('id,status,deleted_at,course_id').in('id', ids);
       this.throwQueryError(error);
       if ((data ?? []).length !== ids.length || (data ?? []).some((question) => question.status !== 'approved')) {
         throw new BadRequestException('Only approved questions can be added to a quiz');
+      }
+      const targetCourseId = settings?.course_id ?? quiz.course_id;
+      if ((data ?? []).some((question) => question.course_id !== targetCourseId)) {
+        throw new BadRequestException('Question belongs to another course');
       }
 
       // Câu đã xóa mềm chỉ được giữ nếu nó vốn đã nằm trong đề này.
@@ -233,20 +267,33 @@ export class QuizzesService {
       }
     }
 
-    const { error: deleteError } = await supabase.from('quiz_questions').delete().eq('quiz_id', quizId);
-    this.throwMutationError(deleteError);
-
-    if (dto.questions.length) {
-      const insertRows = dto.questions.map((q) => ({
-        quiz_id: quizId,
+    const { error } = await supabase.rpc('replace_quiz_questions', {
+      p_quiz_id: quizId,
+      p_settings: settings ? {
+        title: settings.title,
+        course_id: settings.course_id,
+        chapter_id: settings.chapter_id,
+        duration_minutes: settings.duration_minutes,
+        pass_score: settings.pass_score,
+        quiz_type: settings.quiz_type,
+        shuffle_questions: settings.shuffle_questions,
+        shuffle_options: settings.shuffle_options,
+        description: settings.description,
+        is_required: settings.is_required,
+        counts_toward_progress: settings.counts_toward_progress,
+      } : null,
+      p_questions: dto.questions.map((q) => ({
         question_id: q.question_id,
-        score_weight: q.score_weight || 1.0,
-      }));
-
-      const { error } = await supabase.from('quiz_questions').insert(insertRows);
-      this.throwMutationError(error);
-    }
+        score_weight: q.score_weight,
+      })),
+    });
+    this.throwRpcError(error);
     return this.getTotals(quizId);
+  }
+
+  async saveConfiguration(quizId: string, dto: SaveQuizConfigurationDto) {
+    await this.configureQuestions(quizId, dto, dto.settings);
+    return this.getById(quizId);
   }
 
   async getQuestions(quizId: string, role?: string) {
@@ -254,8 +301,9 @@ export class QuizzesService {
     if (role === 'learner') {
       // Người học chỉ nhận nội dung câu hỏi và phương án; không có đáp án hay lời giải.
       const { data, error } = await this.supabaseService.getClient().from('quiz_questions')
-        .select('question_id,score_weight,questions(id,status,content,question_type,difficulty,options:question_options(id,option_text,order_index))')
-        .eq('quiz_id', quizId);
+        .select('question_id,score_weight,order_index,questions(id,status,content,question_type,difficulty,options:question_options(id,option_text,order_index))')
+        .eq('quiz_id', quizId)
+        .order('order_index', { ascending: true });
       this.throwQueryError(error);
       return ((data ?? []) as QuizQuestionRow[])
         .filter((item) => this.questionRecord(item)?.status === 'approved')
@@ -269,35 +317,37 @@ export class QuizzesService {
               content: question?.content,
               question_type: question?.question_type,
               difficulty: question?.difficulty,
-              options: (question?.options ?? []).map(({ id, option_text, order_index }) => ({ id, option_text, order_index })),
+              options: question?.question_type === 'fill_in_blank' ? []
+                : (question?.options ?? []).map(({ id, option_text, order_index }) => ({ id, option_text, order_index })),
             },
           };
         });
     }
 
     const { data, error } = await this.supabaseService.getClient().from('quiz_questions')
-      .select('question_id,score_weight,questions(id,status,content,question_type,difficulty,explanation,deleted_at,options:question_options(id,option_text,order_index,is_correct))')
-      .eq('quiz_id', quizId);
+      .select('question_id,score_weight,order_index,questions(id,course_id,status,content,question_type,difficulty,explanation,deleted_at,options:question_options(id,option_text,order_index,is_correct))')
+      .eq('quiz_id', quizId)
+      .order('order_index', { ascending: true });
     this.throwQueryError(error);
     return (data ?? []) as QuizQuestionRow[];
   }
 
   async startAttempt(quizId: string, learnerId: string) {
-    const quiz = await this.requireQuiz(quizId, 'learner');
-    if (!quiz.is_active) throw new BadRequestException('Only published quizzes can be attempted');
-    const questions = await this.getScoringQuestions(quizId);
-    if (!questions.length) throw new BadRequestException('Bài kiểm tra hiện không có câu hỏi đã duyệt.');
-
+    // The RPC checks publication only for a new attempt. An existing attempt
+    // remains resumable after a manager archives or edits the quiz.
+    const quiz = await this.requireQuiz(quizId);
     const { data, error } = await this.supabaseService.getClient().rpc('start_quiz_attempt', {
       p_quiz_id: quizId,
       p_user_id: learnerId,
-      p_grace_seconds: quizSubmitGraceSeconds(),
+      p_grace_seconds: 0,
     });
     this.throwRpcError(error);
     const attempt = (Array.isArray(data) ? data[0] : data) as {
       id: string; quiz_id: string; started_at: string; expires_at: string | null; server_now: string;
+      questions: AttemptQuestion[];
     } | null;
     if (!attempt?.id) throw new BadRequestException('Unable to start quiz attempt');
+    if (!attempt.questions?.length) throw new ConflictException('This quiz attempt has no saved questions');
 
     return {
       attempt_id: attempt.id,
@@ -308,14 +358,15 @@ export class QuizzesService {
       started_at: attempt.started_at,
       expires_at: attempt.expires_at,
       server_now: attempt.server_now,
-      questions: questions.map((item) => {
-        const question = this.questionRecord(item);
+      questions: attempt.questions.map((item) => {
+        const question = item.question;
         return {
           question_id: item.question_id,
           content: question?.content,
           question_type: question?.question_type,
           difficulty: question?.difficulty,
-          options: (question?.options ?? []).map(({ id, option_text }) => ({ id, option_text })),
+          options: question?.question_type === 'fill_in_blank' ? []
+            : (question?.options ?? []).map(({ id, option_text }) => ({ id, option_text })),
         };
       }),
     };
@@ -326,20 +377,42 @@ export class QuizzesService {
 
     const { data: attempt, error: attemptError } = await supabase
       .from('quiz_attempts')
-      .select('id, quiz_id')
+      .select('id, quiz_id, completed_at')
       .eq('id', attemptId)
       .eq('user_id', learnerId)
       .maybeSingle();
     this.throwQueryError(attemptError);
     if (!attempt) throw new NotFoundException('Quiz attempt not found');
 
-    const questions = await this.getScoringQuestions(attempt.quiz_id);
+    let questions: AttemptQuestion[] = [];
+    if (!attempt.completed_at) {
+      const { data: snapshot, error: snapshotError } = await supabase.rpc('get_quiz_attempt_snapshot', {
+        p_attempt_id: attemptId,
+        p_user_id: learnerId,
+      });
+      this.throwRpcError(snapshotError);
+      questions = (snapshot ?? []) as AttemptQuestion[];
+    }
+    if (!attempt.completed_at && !questions.length) {
+      throw new ConflictException('This quiz attempt has no saved questions');
+    }
     const answerMap = new Map(dto.answers.map((answer) => [answer.question_id, answer]));
     let maxScore = 0;
     const graded = questions.map((item) => {
       const weight = Number(item.score_weight || 1.0);
       maxScore += weight;
-      return gradeAnswer(item.question_id, weight, this.questionRecord(item)?.options ?? [], answerMap.get(item.question_id));
+      const question = item.question;
+      return {
+        ...gradeAnswer(item.question_id, weight, question?.options ?? [], answerMap.get(item.question_id)),
+        question_snapshot: question && {
+          id: question.id ?? item.question_id,
+          content: question.content,
+          question_type: question.question_type,
+          difficulty: question.difficulty,
+          explanation: question.explanation,
+          options: question.options ?? [],
+        },
+      };
     });
 
     // Lưu nguyên tử trong database: lượt đã nộp thì trả lại kết quả cũ, quá hạn thì từ chối.
@@ -348,7 +421,7 @@ export class QuizzesService {
       p_user_id: learnerId,
       p_details: graded,
       p_max_score: maxScore,
-      p_grace_seconds: quizSubmitGraceSeconds(),
+      p_grace_seconds: 0,
     });
     this.throwRpcError(error);
     const result = (Array.isArray(data) ? data[0] : data) as Record<string, any> | null;
@@ -404,22 +477,54 @@ export class QuizzesService {
       attempt = await loadAttempt();
       if (!attempt) throw new NotFoundException('Quiz attempt not found');
     }
+
+    // A timed-out attempt was never submitted successfully. Never reveal its answer key.
+    if (attempt.end_reason === 'expired') {
+      return {
+        attempt_id: attempt.id,
+        quiz_id: attempt.quiz_id,
+        started_at: attempt.started_at,
+        expires_at: attempt.expires_at,
+        completed_at: attempt.completed_at,
+        end_reason: 'expired',
+        score: Number(attempt.total_score ?? 0),
+        max_score: Number(attempt.max_score ?? 0),
+        percentage: Number(attempt.score_percentage ?? 0),
+        pass_percentage: Number(attempt.pass_percentage ?? 50),
+        passed: false,
+        correct_count: 0,
+        total_questions: 0,
+        questions: [],
+      };
+    }
     if (!attempt.completed_at) {
       throw new ConflictException({
         error: { code: 'QUIZ_ATTEMPT_IN_PROGRESS', message: 'This quiz attempt has not been submitted yet' },
       });
     }
 
+    // The saved attempt snapshot retains the exact question order shown to this learner.
+    // Historical completed attempts may not have one, so keep the link/detail fallback.
+    const { data: savedSnapshot, error: snapshotError } = await supabase.rpc('get_quiz_attempt_snapshot', {
+      p_attempt_id: attemptId,
+      p_user_id: learnerId,
+    });
+    if (snapshotError && snapshotError.code !== 'P0002') this.throwRpcError(snapshotError);
+    const snapshotOrder = !snapshotError && Array.isArray(savedSnapshot)
+      ? (savedSnapshot as AttemptQuestion[]).map((item) => item.question_id)
+      : null;
+
     const questionColumns = 'id,content,question_type,difficulty,explanation,options:question_options(id,option_text,order_index,is_correct)';
     const [{ data: details, error: detailsError }, { data: links, error: linksError }] = await Promise.all([
       supabase
         .from('quiz_attempt_details')
-        .select(`id,question_id,answer_text,is_correct,score_weight,earned_score,quiz_attempt_answers(option_id),questions(${questionColumns})`)
+        .select(`id,question_id,answer_text,is_correct,score_weight,earned_score,question_snapshot,selected_option_ids,quiz_attempt_answers(option_id),questions(${questionColumns})`)
         .eq('attempt_id', attemptId),
       supabase
         .from('quiz_questions')
-        .select(`question_id,score_weight,questions(${questionColumns})`)
-        .eq('quiz_id', attempt.quiz_id),
+        .select(`question_id,score_weight,order_index,questions(${questionColumns})`)
+        .eq('quiz_id', attempt.quiz_id)
+        .order('order_index', { ascending: true }),
     ]);
     this.throwQueryError(detailsError);
     this.throwQueryError(linksError);
@@ -435,8 +540,8 @@ export class QuizzesService {
     // Thứ tự: theo đề; câu đã bị gỡ khỏi đề nhưng có trong bài nộp được thêm vào cuối.
     const orderedIds = detailByQuestion.size
       ? [
-          ...linkRows.map((link) => link.question_id).filter((id) => detailByQuestion.has(id)),
-          ...[...detailByQuestion.keys()].filter((id) => !weightByQuestion.has(id)),
+          ...(snapshotOrder ?? linkRows.map((link) => link.question_id)).filter((id) => detailByQuestion.has(id)),
+          ...[...detailByQuestion.keys()].filter((id) => !(snapshotOrder ?? linkRows.map((link) => link.question_id)).includes(id)),
         ]
       : linkRows.filter((link) => this.questionRecord(link)?.content !== undefined).map((link) => link.question_id);
     const questionById = new Map<string, QuestionRecord | null>();
@@ -448,7 +553,7 @@ export class QuizzesService {
 
     const questions = orderedIds.map((questionId) => {
       const detail = detailByQuestion.get(questionId);
-      const question = questionById.get(questionId) ?? null;
+      const question = detail?.question_snapshot ?? questionById.get(questionId) ?? null;
       const weight = Number(detail?.score_weight ?? weightByQuestion.get(questionId) ?? 1);
       const isCorrect = Boolean(detail?.is_correct);
       return {
@@ -460,11 +565,12 @@ export class QuizzesService {
         score_weight: weight,
         earned_score: Number(detail?.earned_score ?? (isCorrect ? weight : 0)),
         is_correct: isCorrect,
-        answered: Boolean(detail && ((detail.quiz_attempt_answers?.length ?? 0) > 0 || detail.answer_text)),
+        answered: Boolean(detail && ((detail.selected_option_ids?.length ?? 0) > 0 || (detail.quiz_attempt_answers?.length ?? 0) > 0 || detail.answer_text)),
         answer_text: detail?.answer_text ?? null,
-        selected_option_ids: (detail?.quiz_attempt_answers ?? []).map((row) => row.option_id),
-        options: [...(question?.options ?? [])]
-          .sort((a, b) => Number(a.order_index ?? 0) - Number(b.order_index ?? 0))
+        selected_option_ids: detail?.selected_option_ids ?? (detail?.quiz_attempt_answers ?? []).map((row) => row.option_id),
+        options: (detail?.question_snapshot
+          ? [...(question?.options ?? [])]
+          : [...(question?.options ?? [])].sort((a, b) => Number(a.order_index ?? 0) - Number(b.order_index ?? 0)))
           .map(({ id, option_text, is_correct }) => ({ id, option_text, is_correct: Boolean(is_correct) })),
       };
     });
@@ -538,7 +644,7 @@ export class QuizzesService {
     const { error } = await this.supabaseService.getClient().rpc('expire_overdue_quiz_attempts', {
       p_quiz_id: quizId,
       p_user_id: learnerId,
-      p_grace_seconds: quizSubmitGraceSeconds(),
+      p_grace_seconds: 0,
     });
     this.throwRpcError(error);
   }
@@ -550,18 +656,32 @@ export class QuizzesService {
     if (role === 'learner' && !data.is_active) {
       throw new ForbiddenException('This quiz is not available to learners');
     }
+    if (role === 'learner') await this.assertPublishedPlacement(data.course_id, data.chapter_id);
     if (role === 'learner' && !(await this.hasApprovedQuestion(id))) {
       throw new ForbiddenException('Bài kiểm tra hiện không khả dụng với người học.');
     }
     return data;
   }
 
-  private async getScoringQuestions(quizId: string): Promise<QuizQuestionRow[]> {
-    const { data, error } = await this.supabaseService.getClient().from('quiz_questions')
-      .select('question_id,score_weight,questions(id,status,content,question_type,difficulty,options:question_options(id,option_text,order_index,is_correct))')
-      .eq('quiz_id', quizId);
+  private async assertChapterBelongsToCourse(courseId: string, chapterId?: string | null) {
+    if (!chapterId) return;
+    const { data, error } = await this.supabaseService.getClient().from('chapters')
+      .select('id,course_id').eq('id', chapterId).maybeSingle();
     this.throwQueryError(error);
-    return (data ?? []).filter((item) => this.questionRecord(item as QuizQuestionRow)?.status === 'approved') as QuizQuestionRow[];
+    if (!data || data.course_id !== courseId) throw new BadRequestException('Chapter belongs to another course');
+  }
+
+  private async assertPublishedPlacement(courseId: string, chapterId?: string | null) {
+    const client = this.supabaseService.getClient();
+    const { data: course, error: courseError } = await client.from('courses').select('status').eq('id', courseId).maybeSingle();
+    this.throwQueryError(courseError);
+    if (course?.status !== 'published') throw new ForbiddenException('This course is not published');
+    if (!chapterId) return;
+    const { data: chapter, error: chapterError } = await client.from('chapters')
+      .select('course_id,status').eq('id', chapterId).maybeSingle();
+    this.throwQueryError(chapterError);
+    if (chapter?.course_id !== courseId || chapter.status !== 'published')
+      throw new ForbiddenException('This chapter is not published');
   }
 
   private async getTotals(quizId: string) {

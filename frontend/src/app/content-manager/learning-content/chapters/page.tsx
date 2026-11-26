@@ -53,9 +53,13 @@ export default function ChaptersPage() {
 
   useEffect(() => {
     let active = true;
-    setIsLoading(true);
-    setLoadError("");
-    courseApi.list().then((courses) => {
+    Promise.resolve().then(() => {
+      if (!active) return null;
+      setIsLoading(true);
+      setLoadError("");
+      return courseApi.list();
+    }).then((courses) => {
+      if (!courses) return;
       if (!active) return;
       const options = courses.map((course) => ({ id: String(course.id), title: course.title }));
       setCourseOptions(options);
@@ -76,9 +80,13 @@ export default function ChaptersPage() {
   useEffect(() => {
     if (!selectedCourseId) return;
     let active = true;
-    setIsLoading(true);
-    setLoadError("");
-    courseApi.chapters(selectedCourseId).then((loadedChapters) => {
+    Promise.resolve().then(() => {
+      if (!active) return null;
+      setIsLoading(true);
+      setLoadError("");
+      return courseApi.chapters(selectedCourseId);
+    }).then((loadedChapters) => {
+      if (!loadedChapters) return;
       if (!active) return;
       setChapters(loadedChapters);
       setExpanded(loadedChapters.map((chapter) => chapter.id));

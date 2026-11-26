@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsDefined,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -42,6 +43,8 @@ export class CreateQuizDto {
   @IsOptional() @IsEnum(QuizStatus) status?: QuizStatus;
   @IsBoolean() shuffle_questions!: boolean;
   @IsBoolean() shuffle_options!: boolean;
+  @IsOptional() @IsBoolean() is_required?: boolean;
+  @IsOptional() @IsBoolean() counts_toward_progress?: boolean;
 }
 
 export class UpdateQuizDto {
@@ -56,6 +59,8 @@ export class UpdateQuizDto {
   @IsOptional() @IsEnum(QuizStatus) status?: QuizStatus;
   @IsOptional() @IsBoolean() shuffle_questions?: boolean;
   @IsOptional() @IsBoolean() shuffle_options?: boolean;
+  @IsOptional() @IsBoolean() is_required?: boolean;
+  @IsOptional() @IsBoolean() counts_toward_progress?: boolean;
 }
 
 export class QuizQuestionConfigurationDto {
@@ -81,4 +86,11 @@ export class SubmitQuizDto {
   @ValidateNested({ each: true })
   @Type(() => QuizAnswerDto)
   answers!: QuizAnswerDto[];
+}
+
+export class SaveQuizConfigurationDto extends ConfigureQuizQuestionsDto {
+  @IsDefined()
+  @ValidateNested()
+  @Type(() => UpdateQuizDto)
+  settings!: UpdateQuizDto;
 }

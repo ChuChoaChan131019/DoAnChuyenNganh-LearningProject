@@ -201,6 +201,7 @@ Schema dành để lưu đầu vào, kết quả thô và trạng thái kiểm t
 | --- | --- | --- | --- |
 | `id` | `uuid`, PK | Có | ID đề kiểm tra. |
 | `title` | `varchar(255)` | Có | Tên đề. |
+| `description` | `text` | Không | Mô tả đề kiểm tra. |
 | `duration_minutes` | `integer` | Không | Thời lượng làm bài, tính bằng phút; mặc định 15. |
 | `pass_percentage` | `numeric` | Không | Ngưỡng phần trăm để đạt, từ 0 đến 100; mặc định 50. |
 | `shuffle_questions` | `boolean` | Không | Có trộn thứ tự câu hỏi hay không; mặc định `true`. |
@@ -217,9 +218,12 @@ Schema dành để lưu đầu vào, kết quả thô và trạng thái kiểm t
 
 Bảng nối nhiều-nhiều giữa đề và ngân hàng câu hỏi. Cặp `quiz_id` + `question_id` là khóa chính; backend chỉ nhận câu hỏi `approved` khi cấu hình đề.
 
+Migration `20261126110000_atomic_quiz_question_replacement.sql` thêm RPC `replace_quiz_questions` chỉ cho `service_role`. RPC kiểm tra câu hỏi, lưu cài đặt, chuyển đề về bản nháp và thay toàn bộ liên kết trong một transaction; lỗi ở bất kỳ bước nào sẽ hoàn tác tất cả thay đổi.
+
 | Trường | Kiểu | Bắt buộc | Chức năng |
 | --- | --- | --- | --- |
 | `score_weight` | `double precision` | Không | Trọng số điểm của câu trong đề; mặc định 1.0. |
+| `order_index` | `integer` | Không | Thứ tự câu hỏi khi không bật xáo trộn. |
 | `quiz_id` | `uuid`, PK/FK → `quizzes.id` | Có | Đề chứa câu hỏi. |
 | `question_id` | `uuid`, PK/FK → `questions.id` | Có | Câu hỏi được đưa vào đề. |
 
@@ -245,10 +249,12 @@ Mỗi dòng là một lần học sinh bắt đầu/làm xong một đề; kết
 Migration `database/migrations/20261125090000_quiz_attempt_integrity.sql` thêm chỉ mục duy nhất một phần `quiz_attempts_one_open_per_learner_idx (quiz_id, user_id) WHERE completed_at IS NULL`, nên mỗi học viên chỉ có tối đa một lượt đang mở cho một đề. Các RPC (chỉ `service_role` được gọi):
 
 - `start_quiz_attempt(quiz, user, grace)`: đóng lượt quá hạn, trả lượt đang mở còn hạn (giữ nguyên `expires_at`) hoặc tạo lượt mới; trả kèm `server_now`.
-- `submit_quiz_attempt(attempt, user, details, max_score, grace)`: khóa lượt làm và lưu bài nộp trong một transaction. Lượt đã nộp → trả lại kết quả cũ (`already_submitted`), không lưu thêm. Nộp sau `expires_at + grace` → đóng lượt với 0 điểm và trả `expired`.
+- `submit_quiz_attempt(attempt, user, details, max_score, grace)`: khóa lượt làm và lưu bài nộp trong một transaction. Lượt đã nộp → trả lại kết quả cũ (`already_submitted`), không lưu thêm. Nộp sau `expires_at` → đóng lượt với 0 điểm và trả `expired`; tham số `grace` chỉ giữ để tương thích với chữ ký RPC cũ.
 - `expire_overdue_quiz_attempts(quiz, user, grace)`: đóng các lượt đang mở đã quá hạn với `end_reason = 'expired'`, 0 điểm, `is_passed = false`.
 
-Thời gian ân hạn lấy từ biến môi trường backend `QUIZ_SUBMIT_GRACE_SECONDS` (mặc định 30 giây).
+Migration `20261126120000_quiz_attempt_start_snapshot.sql` lưu câu hỏi, phương án, đáp án và trọng số vào `private.quiz_attempt_snapshots` ngay khi tạo lượt làm. Bảng này không nằm trong Data API công khai, bật RLS và không cấp quyền cho `anon`/`authenticated`. Backend lấy bản chụp qua RPC chỉ dành cho `service_role`, chấm theo bản đó và chỉ gửi câu hỏi không có đáp án cho người học; câu điền khuyết chỉ gửi ô nhập, không gửi phương án chứa đáp án. Lượt còn hạn được mở lại theo bản chụp cũ kể cả khi quiz đã chuyển về nháp, miễn là khóa học và chương vẫn công bố; tạo lượt mới vẫn yêu cầu quiz đã xuất bản. Lượt cũ đang mở được chụp từ đề còn lưu tại thời điểm áp dụng migration, nên không thể tái tạo các câu đã bị gỡ trước đó.
+
+Backend truyền `grace = 0` khi bắt đầu, nộp và kiểm tra lượt làm. Giao diện tự gửi bài khi còn khoảng 3 giây để yêu cầu có thể đến máy chủ trước hạn. Lượt hết hạn chỉ được xem điểm, không được xem đáp án.
 
 ### `quiz_attempt_details` — Kết quả từng câu trong lượt làm đề
 
@@ -264,6 +270,8 @@ Mỗi dòng lưu câu hỏi, câu trả lời văn bản và kết quả chấm 
 | `question_id` | `uuid`, FK → `questions.id` | Có | Câu hỏi được trả lời. |
 | `score_weight` | `double precision` | Không | Trọng số của câu tại thời điểm nộp. |
 | `earned_score` | `double precision` | Không | Điểm đạt được của câu (bằng `score_weight` nếu đúng, 0 nếu sai). |
+| `question_snapshot` | `jsonb` | Không | Nội dung, lời giải và các phương án tại thời điểm nộp; dùng để xem lại bài cũ sau khi ngân hàng câu hỏi thay đổi. |
+| `selected_option_ids` | `jsonb` | Không | ID các phương án đã chọn tại thời điểm nộp. |
 
 ### `quiz_attempt_answers` — Phương án đã chọn trong quiz
 
@@ -273,7 +281,9 @@ Lưu từng phương án trắc nghiệm được học sinh chọn cho một c�
 | --- | --- | --- | --- |
 | `id` | `uuid`, PK | Có | ID dòng phương án được chọn. |
 | `detail_id` | `uuid`, FK → `quiz_attempt_details.id` | Có | Chi tiết lượt làm chứa lựa chọn. |
-| `option_id` | `uuid`, FK → `question_options.id` | Có | Phương án học sinh đã chọn. |
+| `option_id` | `uuid` | Có | ID phương án học sinh đã chọn; giữ lại khi phương án hiện tại được thay thế. |
+
+Migration `20261126100000_quiz_review_snapshot_and_strict_deadline.sql` chụp dữ liệu lịch sử còn có thể đọc được, bỏ FK từ `quiz_attempt_answers.option_id` sang phương án hiện tại, và lưu bản chụp nguyên tử cùng bài nộp mới. Dữ liệu đã bị sửa trước migration không thể khôi phục chính xác về bản gốc.
 
 ## 5. Luyện tập câu hỏi
 

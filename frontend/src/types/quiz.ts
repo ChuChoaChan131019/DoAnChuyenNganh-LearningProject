@@ -38,11 +38,12 @@ export interface QuizQuestionItem {
   quiz_id: string;
   question_id: string;
   score_weight: number;
-  questions?: any;
+  questions?: QuestionItem | QuestionItem[] | null;
 }
 
 export interface QuizItem {
   id: string;
+  created_at?: string;
   title: string;
   description?: string | null;
   course_id: string;
@@ -52,6 +53,7 @@ export interface QuizItem {
   quiz_type: QuizType;
   duration_minutes: number | null;
   pass_score: number;
+  pass_percentage?: number;
   total_score: number;
   total_questions: number;
   is_active: boolean;
@@ -182,3 +184,4 @@ export interface QuizAttemptQuestion {
   difficulty?: 'easy' | 'medium' | 'hard';
   options: Array<{ id: string; option_text: string }>;
 }
+import type { QuestionItem } from './question';

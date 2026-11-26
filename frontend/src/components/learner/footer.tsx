@@ -1,4 +1,5 @@
 import { Code2, GraduationCap, Mail, Send } from 'lucide-react';
+import Link from 'next/link';
 
 export function LearnerFooter() {
   return (
@@ -43,22 +44,22 @@ export function LearnerFooter() {
         <div className="grid grid-cols-2 gap-x-12 gap-y-6 text-sm sm:grid-cols-3 lg:gap-x-16">
           <div>
             <p className="font-semibold uppercase tracking-wider text-[#637981]">Nền tảng</p>
-            <a className="mt-4 block text-[#637981] hover:text-[#002c3e]" href="/learner/courses">Khóa học</a>
-            <a className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/learner/practice">Luyện tập</a>
-            <a className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/learner/ai-tutor">Trợ giảng trí tuệ nhân tạo</a>
+            <Link className="mt-4 block text-[#637981] hover:text-[#002c3e]" href="/learner/courses">Khóa học</Link>
+            <Link className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/learner/practice">Luyện tập</Link>
+            <Link className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/learner/ai-tutor">Trợ giảng trí tuệ nhân tạo</Link>
           </div>
 
           <div>
             <p className="font-semibold uppercase tracking-wider text-[#637981]">Không gian nội dung</p>
-            <a className="mt-4 block text-[#637981] hover:text-[#002c3e]" href="/content-manager/dashboard">Bảng điều khiển</a>
-            <a className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/content-manager/questions/bank">Ngân hàng câu hỏi</a>
-            <a className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/content-manager/testsandpractice/tests">Bài kiểm tra</a>
-            <a className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/content-manager">Công cụ tạo nội dung tự động</a>
+            <Link className="mt-4 block text-[#637981] hover:text-[#002c3e]" href="/content-manager/dashboard">Bảng điều khiển</Link>
+            <Link className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/content-manager/questions/bank">Ngân hàng câu hỏi</Link>
+            <Link className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/content-manager/testsandpractice/tests">Bài kiểm tra</Link>
+            <Link className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="/content-manager">Công cụ tạo nội dung tự động</Link>
           </div>
 
           <div>
             <p className="font-semibold uppercase tracking-wider text-[#637981]">Hỗ trợ</p>
-            <a className="mt-4 block text-[#637981] hover:text-[#002c3e]" href="/learner/search">Tìm kiếm</a>
+            <Link className="mt-4 block text-[#637981] hover:text-[#002c3e]" href="/learner/search">Tìm kiếm</Link>
             <a className="mt-2 block text-[#637981] hover:text-[#002c3e]" href="#">Cài đặt</a>
           </div>
         </div>

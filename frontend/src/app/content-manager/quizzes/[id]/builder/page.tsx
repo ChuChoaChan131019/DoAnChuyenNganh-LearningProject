@@ -140,6 +140,8 @@ export default function QuizBuilderPage() {
   const [isLoadingPlacement, setIsLoadingPlacement] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadVersion, setLoadVersion] = useState(0);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -148,6 +150,7 @@ export default function QuizBuilderPage() {
     const load = async () => {
       try {
         setIsLoading(true);
+        setLoadError(null);
 
         const loadedCourses = await questionApi.listCourses();
         if (!active) return;
@@ -155,14 +158,8 @@ export default function QuizBuilderPage() {
 
         if (quizId) {
           const [loadedQuiz, configured] = await Promise.all([
-            quizApi.getById(quizId).catch((err) => {
-              console.error("Error fetching quiz:", err);
-              return null;
-            }),
-            quizApi.getQuestions(quizId).catch((err) => {
-              console.error("Error fetching questions:", err);
-              return [];
-            }),
+            quizApi.getById(quizId),
+            quizApi.getQuestions(quizId),
           ]);
 
           if (!active) return;
@@ -173,12 +170,11 @@ export default function QuizBuilderPage() {
             setCourseFilter(loadedQuiz.course_id || "");
 
             if (loadedQuiz.course_id) {
-              const loadedChapters = await questionApi
-                .listChapters(loadedQuiz.course_id)
-                .catch(() => []);
+              const loadedChapters = await questionApi.listChapters(loadedQuiz.course_id);
               if (active) setChapters(loadedChapters);
             }
           }
+          if (!loadedQuiz) throw new Error('Không tải được bài kiểm tra.');
 
           if (Array.isArray(configured) && configured.length > 0) {
             setAssignedQuestions(
@@ -197,7 +193,7 @@ export default function QuizBuilderPage() {
           }
         }
       } catch (loadError) {
-        if (active) setError(getErrorMessage(loadError));
+        if (active) setLoadError(getErrorMessage(loadError));
       } finally {
         if (active) setIsLoading(false);
       }
@@ -208,7 +204,7 @@ export default function QuizBuilderPage() {
     return () => {
       active = false;
     };
-  }, [quizId]);
+  }, [quizId, loadVersion]);
 
   const assignedIds = useMemo(
     () =>
@@ -309,6 +305,10 @@ export default function QuizBuilderPage() {
   const handleSettingsCourse = (nextCourseId: string) => {
     updateSettings("course_id", nextCourseId);
     updateSettings("chapter_id", null);
+    setSelectedIds([]);
+    setCourseFilter(nextCourseId);
+    setChapterFilter("");
+    setLessonFilter("");
     void loadPlacement(nextCourseId);
   };
 
@@ -368,6 +368,7 @@ export default function QuizBuilderPage() {
   };
 
   const save = async (publishAfterSave = false) => {
+    if (isLoading || loadError || !quiz) return;
     setError(null);
     setSaveMessage(null);
 
@@ -406,24 +407,29 @@ export default function QuizBuilderPage() {
     ) {
       return setError("Điểm của mỗi câu hỏi phải từ 0,1 trở lên.");
     }
+    if (assignedQuestions.some((item) => item.question.course_id !== settings.course_id)) {
+      return setError('Các câu hỏi phải thuộc khóa học của bài kiểm tra.');
+    }
 
     setIsSaving(true);
     try {
       const payload = {
         title: settings.title.trim(),
+        description: settings.description.trim(),
         course_id: settings.course_id,
         chapter_id: settings.chapter_id || null,
         duration_minutes: settings.duration_minutes,
-        pass_score: Number(settings.pass_percentage) || 50,
+        pass_score: Number(settings.pass_percentage),
         quiz_type: settings.quiz_type,
         shuffle_questions: settings.shuffle_questions,
         shuffle_options: settings.shuffle_options,
+        is_required: settings.is_required,
+        counts_toward_progress: settings.counts_toward_progress,
       };
 
-      let saved = await quizApi.update(quizId, payload);
-
-      await quizApi.configureQuestions(
+      let saved = await quizApi.saveConfiguration(
         quizId,
+        payload,
         assignedQuestions.map((item) => ({
           question_id: item.question.id,
           score_weight: item.score_weight || 1.0,
@@ -469,6 +475,17 @@ export default function QuizBuilderPage() {
     return (
       <div className="mx-auto max-w-7xl p-8 text-sm text-gray-500">
         Đang tải công cụ tạo bài kiểm tra...
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-4 p-8" role="alert">
+        <p className="text-sm text-rose-700">Không tải được bài kiểm tra: {loadError}</p>
+        <button type="button" onClick={() => setLoadVersion((value) => value + 1)} className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold">
+          Thử lại
+        </button>
       </div>
     );
   }

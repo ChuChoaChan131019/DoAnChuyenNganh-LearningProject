@@ -5,6 +5,7 @@ import { RolesGuard } from '../../common/guards/roles.guard.js';
 import {
   ConfigureQuizQuestionsDto,
   CreateQuizDto,
+  SaveQuizConfigurationDto,
   SubmitQuizDto,
   UpdateQuizDto,
 } from './dto/quiz.dto.js';
@@ -18,7 +19,7 @@ export class QuizzesController {
   @Get('quizzes')
   @Roles('content_manager', 'admin', 'learner')
   list(@Query() filters: { course_id?: string; status?: string; visibility?: string }, @Req() request: any) {
-    return this.quizzesService.list(request.user.role === 'learner' ? { ...filters, status: 'published', visibility: 'public' } : filters);
+    return this.quizzesService.list(request.user.role === 'learner' ? { ...filters, status: 'published', visibility: 'public' } : filters, request.user.role);
   }
 
   @Get('quizzes/:id')
@@ -57,6 +58,12 @@ export class QuizzesController {
   @Roles('content_manager', 'admin')
   configureQuestions(@Param('id') id: string, @Body() dto: ConfigureQuizQuestionsDto) {
     return this.quizzesService.configureQuestions(id, dto);
+  }
+
+  @Put('quizzes/:id/configuration')
+  @Roles('content_manager', 'admin')
+  saveConfiguration(@Param('id') id: string, @Body() dto: SaveQuizConfigurationDto) {
+    return this.quizzesService.saveConfiguration(id, dto);
   }
 
   @Post('quizzes/:id/attempts')

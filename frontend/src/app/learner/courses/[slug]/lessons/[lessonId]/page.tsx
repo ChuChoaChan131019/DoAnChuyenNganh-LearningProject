@@ -31,7 +31,17 @@ import { useTutorContext } from "@/contexts/tutor-context";
 import type { LessonActivityResponse } from "@/types/learner-overview";
 
 // DỮ LIỆU ĐỒNG BỘ TRỰC TIẾP TỪ PAGE_7.TSX
-const COURSE_MAP: Record<string, any> = {
+type LessonCoursePreview = {
+  title: string;
+  level: string;
+  instructor: string;
+  instructorRole: string;
+  resources: Array<{ name: string; type: string; isVideo: boolean }>;
+  tests: Array<{ id: string; title: string; description: string; duration: string; difficulty: string }>;
+  chapters: Array<{ title: string; lessons: Array<{ id: string; title: string; duration: string; completed: boolean }> }>;
+};
+
+const COURSE_MAP: Record<string, LessonCoursePreview> = {
   "csharp-fundamentals": {
     title: "C# cơ bản",
     level: "Cơ bản",
@@ -809,8 +819,8 @@ export default function LearnerLessonPage() {
     completed: boolean;
     chapterTitle: string;
   }> = [];
-  currentCourse.chapters.forEach((chapter: any) => {
-    chapter.lessons.forEach((lesson: any) => {
+  currentCourse.chapters.forEach((chapter) => {
+    chapter.lessons.forEach((lesson) => {
       allCourseLessons.push({ ...lesson, chapterTitle: chapter.title });
     });
   });
@@ -1008,9 +1018,14 @@ export default function LearnerLessonPage() {
 
   // Cập nhật khi đổi bài học
   useEffect(() => {
-    setHasRun(false);
-    setIsRunning(false);
-    setConsoleOutput("");
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setHasRun(false);
+      setIsRunning(false);
+      setConsoleOutput("");
+    });
+    return () => { active = false; };
   }, [activeLessonId]);
 
   const activeLessonCode = databaseLesson

@@ -57,6 +57,9 @@ describe('standard fill-in-blank answer compatibility', () => {
   ])('quiz grades %s', async (answer, score) => {
     // RPC submit_quiz_attempt lưu đúng phần điểm backend đã chấm.
     const rpc = async (_name: string, args: { p_details: Array<{ earned_score: number }>; p_max_score: number }) => {
+      if (_name === 'get_quiz_attempt_snapshot') {
+        return { data: [{ question_id: 'q1', score_weight: 1, question }], error: null };
+      }
       const total = args.p_details.reduce((sum, item) => sum + item.earned_score, 0);
       return {
         data: { status: 'submitted', attempt_id: 'attempt', quiz_id: 'quiz', end_reason: 'submitted', score: total, max_score: args.p_max_score, percentage: total * 100, pass_percentage: 50, passed: total > 0 },
@@ -74,9 +77,6 @@ describe('standard fill-in-blank answer compatibility', () => {
           ),
       }),
     } as never);
-    vi.spyOn(service as any, 'getScoringQuestions').mockResolvedValue([
-      { question_id: 'q1', score_weight: 1, questions: question },
-    ]);
     await expect(
       service.submitAttempt(
         'attempt',

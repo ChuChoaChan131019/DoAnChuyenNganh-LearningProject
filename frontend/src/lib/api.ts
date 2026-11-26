@@ -1180,6 +1180,15 @@ export const quizApi = {
         body: JSON.stringify({ questions }),
       },
     ),
+  saveConfiguration: (
+    quizId: string,
+    settings: Partial<QuizData>,
+    questions: Array<{ question_id: string; score_weight: number }>,
+  ): Promise<QuizData> =>
+    request<QuizData>(`/api/v1/quizzes/${encodeURIComponent(quizId)}/configuration`, {
+      method: 'PUT',
+      body: JSON.stringify({ settings, questions }),
+    }),
   startAttempt: (
     quizId: string,
   ): Promise<QuizAttempt & { questions: QuizAttemptQuestion[] }> =>

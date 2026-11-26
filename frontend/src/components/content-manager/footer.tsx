@@ -1,4 +1,5 @@
 import { Code2, GraduationCap, Mail, Send } from 'lucide-react';
+import Link from 'next/link';
 
 export function Footer() {
   return (
@@ -43,29 +44,29 @@ export function Footer() {
         <div className="grid grid-cols-2 gap-x-12 gap-y-6 text-sm sm:grid-cols-3 lg:gap-x-16">
           <div>
             <p className="font-semibold uppercase tracking-wider text-white/75">Nền tảng</p>
-            <a
+            <Link
               className="mt-4 block text-white/75 hover:text-white"
               href="/content-manager/learning-content/courses"
             >
               Khóa học
-            </a>
-            <a className="mt-2 block text-white/75 hover:text-white" href="/content-manager">Thống kê</a>
-            <a className="mt-2 block text-white/75 hover:text-white" href="/content-manager">Trợ giảng trí tuệ nhân tạo</a>
+            </Link>
+            <Link className="mt-2 block text-white/75 hover:text-white" href="/content-manager">Thống kê</Link>
+            <Link className="mt-2 block text-white/75 hover:text-white" href="/content-manager">Trợ giảng trí tuệ nhân tạo</Link>
           </div>
 
           <div>
             <p className="font-semibold uppercase tracking-wider text-white/75">Không gian nội dung</p>
-            <a className="mt-4 block text-white/75 hover:text-white" href="/content-manager">Bảng điều khiển</a>
-            <a className="mt-2 block text-white/75 hover:text-white" href="/content-manager/questions/bank">Ngân hàng câu hỏi</a>
-            <a className="mt-2 block text-white/75 hover:text-white" href="/content-manager/testsandpractice/tests">Bài kiểm tra</a>
-            <a className="mt-2 block text-white/75 hover:text-white" href="/content-manager">Công cụ tạo nội dung tự động</a>
+            <Link className="mt-4 block text-white/75 hover:text-white" href="/content-manager">Bảng điều khiển</Link>
+            <Link className="mt-2 block text-white/75 hover:text-white" href="/content-manager/questions/bank">Ngân hàng câu hỏi</Link>
+            <Link className="mt-2 block text-white/75 hover:text-white" href="/content-manager/testsandpractice/tests">Bài kiểm tra</Link>
+            <Link className="mt-2 block text-white/75 hover:text-white" href="/content-manager">Công cụ tạo nội dung tự động</Link>
           </div>
 
           <div>
             <p className="font-semibold uppercase tracking-wider text-white/75">Hỗ trợ</p>
-            <a className="mt-4 block text-white/75 hover:text-white" href="/content-manager/search">Tìm kiếm</a>
-            <a className="mt-2 block text-white/75 hover:text-white" href="/content-manager">Cài đặt</a>
-            <a className="mt-2 block text-white/75 hover:text-white" href="/content-manager">Thông báo</a>
+            <Link className="mt-4 block text-white/75 hover:text-white" href="/content-manager/search">Tìm kiếm</Link>
+            <Link className="mt-2 block text-white/75 hover:text-white" href="/content-manager">Cài đặt</Link>
+            <Link className="mt-2 block text-white/75 hover:text-white" href="/content-manager">Thông báo</Link>
           </div>
         </div>
       </div>
