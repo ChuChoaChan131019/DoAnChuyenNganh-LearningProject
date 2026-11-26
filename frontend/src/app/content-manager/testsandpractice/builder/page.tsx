@@ -1,8 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { quizPreviewDraftUrl, saveQuizPreviewDraft } from '@/lib/quiz-preview-draft';
+import React, { useState, useCallback, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  quizPreviewDraftUrl,
+  saveQuizPreviewDraft,
+} from "@/lib/quiz-preview-draft";
 import {
   Eye,
   Settings,
@@ -12,48 +15,52 @@ import {
   GripVertical,
   BookOpen,
   Layers,
-} from 'lucide-react';
-import { DifficultyLevel, QuestionType, QuestionItem } from '@/types/question';
-import { courseApi, questionApi, quizApi } from '@/lib/api';
-import { vietnameseDifficulty } from '@/lib/ui-labels';
+} from "lucide-react";
+import { DifficultyLevel, QuestionType, QuestionItem } from "@/types/question";
+import { catalogApi, courseApi, quizApi } from "@/lib/api";
+import { vietnameseDifficulty } from "@/lib/ui-labels";
+import { Pagination } from "@/components/ui/pagination";
+import { useServerPagination } from "@/hooks/use-server-pagination";
 
 const STYLES = {
-  pageContainer: 'mx-auto max-w-7xl space-y-6 pb-12',
-  card: 'bg-[#FFFAFC]/50 border border-gray-200/80 rounded-2xl p-5 shadow-sm flex flex-col h-full',
-  cardHeader: 'pb-3 mb-4 border-b border-gray-100 flex items-center justify-between',
-  cardTitle: 'text-base font-semibold text-gray-900',
+  pageContainer: "mx-auto max-w-7xl space-y-6 pb-12",
+  card: "bg-[#FFFAFC]/50 border border-gray-200/80 rounded-2xl p-5 shadow-sm flex flex-col h-full",
+  cardHeader:
+    "pb-3 mb-4 border-b border-gray-100 flex items-center justify-between",
+  cardTitle: "text-base font-semibold text-gray-900",
 
   primaryBtn:
-    'inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#c93f3a] active:scale-[0.98] disabled:opacity-50',
+    "inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#c93f3a] active:scale-[0.98] disabled:opacity-50",
   secondaryBtn:
-    'inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 active:scale-[0.98]',
+    "inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 active:scale-[0.98]",
   addBtn:
-    'inline-flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200/80 px-2.5 py-1 rounded-lg transition active:scale-[0.96]',
+    "inline-flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200/80 px-2.5 py-1 rounded-lg transition active:scale-[0.96]",
   removeBtn:
-    'p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition active:scale-[0.96]',
+    "p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition active:scale-[0.96]",
 
   bankItemCard:
-    'p-3 rounded-xl border border-gray-100 hover:border-gray-200 bg-gray-50/40 hover:bg-white transition-all space-y-2.5',
+    "p-3 rounded-xl border border-gray-100 hover:border-gray-200 bg-gray-50/40 hover:bg-white transition-all space-y-2.5",
   selectedItemCard:
-    'p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 transition-all flex items-start gap-2.5 group',
+    "p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 transition-all flex items-start gap-2.5 group",
 
   difficultyBadges: {
-    easy: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
-    medium: 'bg-amber-50 text-amber-700 border-amber-200/60',
-    hard: 'bg-rose-50 text-rose-700 border-rose-200/60',
+    easy: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
+    medium: "bg-amber-50 text-amber-700 border-amber-200/60",
+    hard: "bg-rose-50 text-rose-700 border-rose-200/60",
   },
 };
 
 const TYPE_LABELS: Record<QuestionType, string> = {
-  single_choice: 'Một đáp án',
-  multiple_choice: 'Nhiều đáp án',
-  true_false: 'Đúng / Sai',
-  fill_in_blank: 'Điền vào chỗ trống',
+  single_choice: "Một đáp án",
+  multiple_choice: "Nhiều đáp án",
+  true_false: "Đúng / Sai",
+  fill_in_blank: "Điền vào chỗ trống",
 };
 
 function DifficultyBadge({ level }: { level: DifficultyLevel }) {
-  const formatted = level ? vietnameseDifficulty(level) : 'Trung bình';
-  const badgeStyle = STYLES.difficultyBadges[level] || STYLES.difficultyBadges.medium;
+  const formatted = level ? vietnameseDifficulty(level) : "Trung bình";
+  const badgeStyle =
+    STYLES.difficultyBadges[level] || STYLES.difficultyBadges.medium;
   return (
     <span
       className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${badgeStyle}`}
@@ -80,13 +87,14 @@ interface CourseItem {
 function TestBuilderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const quizId = searchParams.get('quizId') || searchParams.get('id');
+  const quizId = searchParams.get("quizId") || searchParams.get("id");
 
   const [courses, setCourses] = useState<CourseItem[]>([]);
-  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
-  const [bankQuestions, setBankQuestions] = useState<QuestionDisplayItem[]>([]);
-  const [selectedQuestions, setSelectedQuestions] = useState<QuestionDisplayItem[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [selectedQuestions, setSelectedQuestions] = useState<
+    QuestionDisplayItem[]
+  >([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   // 1. Tải danh sách khóa học và nạp câu hỏi đã chọn nếu có quizId
@@ -98,7 +106,7 @@ function TestBuilderContent() {
         const rawCourses = await courseApi.list().catch(() => []);
         if (!isMounted) return;
 
-        const mappedCourses: CourseItem[] = (rawCourses || []).map((c: any) => ({
+        const mappedCourses: CourseItem[] = (rawCourses || []).map((c) => ({
           id: String(c.id),
           title: c.title,
         }));
@@ -116,23 +124,30 @@ function TestBuilderContent() {
             setSelectedCourseId(String(quizData.course_id));
           }
 
-          if (Array.isArray(quizQuestionsData) && quizQuestionsData.length > 0) {
-            const mappedSelected: QuestionDisplayItem[] = quizQuestionsData.map((item: any) => {
-              const q = item.questions || item;
-              return {
-                id: String(item.question_id || q.id),
-                title: q.content || q.title || 'Untitled question',
-                type: (q.question_type || q.type || 'single_choice') as QuestionType,
-                lesson: q.lesson?.title || q.lesson || 'General',
-                difficulty: (q.difficulty || 'medium') as DifficultyLevel,
-                score_weight: Number(item.score_weight) || 1.0,
-              };
-            });
+          if (
+            Array.isArray(quizQuestionsData) &&
+            quizQuestionsData.length > 0
+          ) {
+            const mappedSelected: QuestionDisplayItem[] = quizQuestionsData.map(
+              (item) => {
+                const q = item.questions || item;
+                return {
+                  id: String(item.question_id || q.id),
+                  title: q.content || q.title || "Untitled question",
+                  type: (q.question_type ||
+                    q.type ||
+                    "single_choice") as QuestionType,
+                  lesson: q.lesson?.title || q.lesson || "General",
+                  difficulty: (q.difficulty || "medium") as DifficultyLevel,
+                  score_weight: Number(item.score_weight) || 1.0,
+                };
+              },
+            );
             setSelectedQuestions(mappedSelected);
           }
         }
       } catch (error) {
-        console.error('Error loading initial data:', error);
+        console.error("Error loading initial data:", error);
       }
     }
 
@@ -143,48 +158,44 @@ function TestBuilderContent() {
     };
   }, [quizId]);
 
-  // 2. Tải câu hỏi từ ngân hàng: chỉ lấy câu hỏi đã approved theo quy chuẩn backend
-  useEffect(() => {
-    let isMounted = true;
-
-    questionApi
-      .list({
-        course_id: selectedCourseId ? selectedCourseId : undefined,
-        status: 'approved' as any,
-      })
-      .then((data: QuestionItem[]) => {
-        if (!isMounted) return;
-        const mappedBank: QuestionDisplayItem[] = (data || []).map((q: any) => ({
-          id: String(q.id),
-          title: q.content,
-          type: q.question_type as QuestionType,
-          lesson: q.lesson?.title || 'General',
-          difficulty: q.difficulty as DifficultyLevel,
-          score_weight: 1.0,
-        }));
-        setBankQuestions(mappedBank);
-      })
-      .catch((err: unknown) => console.error('Error fetching question bank:', err));
-
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedCourseId]);
-
-  // 3. Lọc danh sách câu hỏi khả dụng theo từ khóa tìm kiếm
-  const availableQuestions = useMemo(() => {
-    const selectedIds = new Set(selectedQuestions.map((q) => q.id));
-    return bankQuestions
-      .filter((q) => !selectedIds.has(q.id))
-      .filter(
-        (q) =>
-          q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          q.lesson.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-  }, [bankQuestions, selectedQuestions, searchQuery]);
+  const excludedIds = selectedQuestions
+    .map((question) => question.id)
+    .sort()
+    .join(",");
+  const loadPage = useCallback(
+    async (page: number, page_size: number) => {
+      const result = await catalogApi.page<QuestionItem>("questions", {
+        page,
+        page_size,
+        course_id: selectedCourseId,
+        status: "approved",
+        search: searchQuery,
+        exclude_ids: excludedIds,
+      });
+      return {
+        ...result,
+        items: result.items.map((question): QuestionDisplayItem => ({
+          id: question.id,
+          title: question.content,
+          type: question.question_type,
+          lesson: question.lesson?.title ?? "General",
+          difficulty: question.difficulty,
+          score_weight: 1,
+        })),
+      };
+    },
+    [selectedCourseId, searchQuery, excludedIds],
+  );
+  const availablePaging = useServerPagination(loadPage, {
+    resetKey: JSON.stringify([selectedCourseId, searchQuery]),
+  });
+  const availableQuestions = availablePaging.pageItems;
 
   const handleAddQuestion = (question: QuestionDisplayItem) => {
-    setSelectedQuestions((prev) => [...prev, { ...question, score_weight: question.score_weight || 1.0 }]);
+    setSelectedQuestions((prev) => [
+      ...prev,
+      { ...question, score_weight: question.score_weight || 1.0 },
+    ]);
   };
 
   const handleRemoveQuestion = (id: string) => {
@@ -194,7 +205,7 @@ function TestBuilderContent() {
   // 4. Lưu câu hỏi vào quiz_questions và chuyển tiếp sang trang quizzes/[id]/builder
   const handleSaveQuestions = async () => {
     if (selectedQuestions.length === 0) {
-      alert('Vui lòng chọn ít nhất 1 câu hỏi vào bài kiểm tra.');
+      alert("Vui lòng chọn ít nhất 1 câu hỏi vào bài kiểm tra.");
       return;
     }
 
@@ -203,19 +214,20 @@ function TestBuilderContent() {
       let targetQuizId = quizId;
 
       if (!targetQuizId) {
-        const defaultCourseId = selectedCourseId || (courses.length > 0 ? courses[0].id : '');
+        const defaultCourseId =
+          selectedCourseId || (courses.length > 0 ? courses[0].id : "");
         if (!defaultCourseId) {
-          alert('Vui lòng tạo hoặc chọn một khóa học trước khi lưu.');
+          alert("Vui lòng tạo hoặc chọn một khóa học trước khi lưu.");
           return;
         }
 
         const createdQuiz = await quizApi.create({
-          title: 'Bài kiểm tra mới',
+          title: "Bài kiểm tra mới",
           course_id: defaultCourseId,
-          quiz_type: 'exam',
+          quiz_type: "exam",
           pass_score: 50,
-          visibility: 'private',
-          status: 'draft',
+          visibility: "private",
+          status: "draft",
           shuffle_questions: true,
           shuffle_options: true,
         });
@@ -227,13 +239,13 @@ function TestBuilderContent() {
         selectedQuestions.map((q) => ({
           question_id: q.id,
           score_weight: q.score_weight || 1.0,
-        })) as any
+        })),
       );
 
       router.push(`/content-manager/quizzes/${targetQuizId}/builder`);
-    } catch (error: any) {
-      console.error('Lỗi khi lưu câu hỏi:', error);
-      alert(error?.message || 'Lưu câu hỏi thất bại.');
+    } catch (error: unknown) {
+      console.error("Lỗi khi lưu câu hỏi:", error);
+      alert(error instanceof Error ? error.message : "Lưu câu hỏi thất bại.");
     } finally {
       setIsSaving(false);
     }
@@ -257,13 +269,20 @@ function TestBuilderContent() {
           <button
             type="button"
             disabled={selectedQuestions.length === 0}
-            title={selectedQuestions.length ? 'Xem đề như học viên thấy, kể cả thay đổi chưa lưu' : 'Chọn ít nhất 1 câu hỏi để xem trước'}
+            title={
+              selectedQuestions.length
+                ? "Xem đề như học viên thấy, kể cả thay đổi chưa lưu"
+                : "Chọn ít nhất 1 câu hỏi để xem trước"
+            }
             onClick={() => {
               saveQuizPreviewDraft({
                 quiz_id: quizId,
-                questions: selectedQuestions.map((q) => ({ question_id: q.id, score_weight: q.score_weight || 1.0 })),
+                questions: selectedQuestions.map((q) => ({
+                  question_id: q.id,
+                  score_weight: q.score_weight || 1.0,
+                })),
               });
-              window.open(quizPreviewDraftUrl(quizId), '_blank');
+              window.open(quizPreviewDraftUrl(quizId), "_blank");
             }}
             className={`${STYLES.secondaryBtn} disabled:cursor-not-allowed disabled:opacity-50`}
           >
@@ -277,7 +296,7 @@ function TestBuilderContent() {
             className={STYLES.primaryBtn}
           >
             <Settings className="h-4 w-4" />
-            <span>{isSaving ? 'Đang lưu...' : 'Setting test'}</span>
+            <span>{isSaving ? "Đang lưu..." : "Setting test"}</span>
           </button>
         </div>
       </div>
@@ -293,7 +312,7 @@ function TestBuilderContent() {
                 <h2 className={STYLES.cardTitle}>Ngân hàng câu hỏi</h2>
               </div>
               <span className="text-xs text-gray-400 font-medium">
-                {availableQuestions.length} available
+                {availablePaging.totalItems} available
               </span>
             </div>
 
@@ -325,8 +344,17 @@ function TestBuilderContent() {
             </div>
 
             <div className="space-y-2.5 max-h-[640px] overflow-y-auto pr-1">
-              {availableQuestions.length > 0 ? (
-                availableQuestions.map((q) => (
+              {availablePaging.error && (
+                <p role="alert" className="p-3 text-sm text-rose-700">
+                  {availablePaging.error}
+                </p>
+              )}
+              {availablePaging.isLoading ? (
+                <p className="p-3 text-sm text-slate-500">
+                  Đang tải câu hỏi...
+                </p>
+              ) : availableQuestions.length > 0 ? (
+                availablePaging.pageItems.map((q) => (
                   <div key={q.id} className={STYLES.bankItemCard}>
                     <p className="text-xs font-medium text-gray-800 leading-snug line-clamp-2">
                       {q.title}
@@ -355,6 +383,14 @@ function TestBuilderContent() {
                 </div>
               )}
             </div>
+
+            {/* Phân trang ngân hàng câu hỏi */}
+            <Pagination
+              page={availablePaging.page}
+              pageSize={availablePaging.pageSize}
+              totalItems={availablePaging.totalItems}
+              onPageChange={availablePaging.setPage}
+            />
           </div>
         </div>
 
@@ -425,7 +461,13 @@ function TestBuilderContent() {
 
 export default function TestBuilderPage() {
   return (
-    <Suspense fallback={<div className="mx-auto max-w-7xl px-6 py-10 text-sm text-gray-500">Đang tải công cụ tạo bài kiểm tra...</div>}>
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-7xl px-6 py-10 text-sm text-gray-500">
+          Đang tải công cụ tạo bài kiểm tra...
+        </div>
+      }
+    >
       <TestBuilderContent />
     </Suspense>
   );

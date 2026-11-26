@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
@@ -19,14 +19,19 @@ import type {
   Course,
   CourseLevel,
 } from "@/types/learning-content";
-import { ApiClientError, courseApi } from "@/lib/api";
+import { ApiClientError, catalogApi, courseApi } from "@/lib/api";
 import { vietnameseCourseLevel } from "@/lib/ui-labels";
+import { Pagination } from "@/components/ui/pagination";
+import { useServerPagination } from "@/hooks/use-server-pagination";
 
 const statusStyles: Record<ContentStatus, string> = {
   Published: "border-emerald-200 bg-emerald-50 text-emerald-700",
   Draft: "border-slate-200 bg-slate-100 text-slate-600",
 };
-const statusLabels: Record<ContentStatus, string> = { Published: "Đã xuất bản", Draft: "Bản nháp" };
+const statusLabels: Record<ContentStatus, string> = {
+  Published: "Đã xuất bản",
+  Draft: "Bản nháp",
+};
 const levelStyles: Record<CourseLevel, string> = {
   Beginner: "bg-rose-50 text-rose-600",
   Intermediate: "bg-cyan-50 text-cyan-700",
@@ -53,7 +58,8 @@ const courseGradientBySlug: Record<string, string> = {
 };
 
 function getCourseGradient(course: Course) {
-  if (courseGradientBySlug[course.slug]) return courseGradientBySlug[course.slug];
+  if (courseGradientBySlug[course.slug])
+    return courseGradientBySlug[course.slug];
   const hash = String(course.id)
     .split("")
     .reduce((total, character) => total + character.charCodeAt(0), 0);
@@ -108,17 +114,26 @@ function CourseActions({
       >
         <MoreHorizontal className="h-4 w-4" />
       </button>
-      {openMenu === course.id && typeof document !== "undefined" &&
+      {openMenu === course.id &&
+        typeof document !== "undefined" &&
         createPortal(
           <div
             data-course-menu
             className="fixed z-[100] w-28 rounded-lg border border-[#dfe6df] bg-white p-1 text-xs shadow-lg"
             style={menuPosition}
           >
-            <button type="button" onClick={onEdit} className="w-full rounded px-2 py-1.5 text-left hover:bg-[#eaf4f3]">
+            <button
+              type="button"
+              onClick={onEdit}
+              className="w-full rounded px-2 py-1.5 text-left hover:bg-[#eaf4f3]"
+            >
               Chỉnh sửa
             </button>
-            <button type="button" onClick={onDelete} className="w-full rounded px-2 py-1.5 text-left text-[#F7444E] hover:bg-[#fff1f0]">
+            <button
+              type="button"
+              onClick={onDelete}
+              className="w-full rounded px-2 py-1.5 text-left text-[#F7444E] hover:bg-[#fff1f0]"
+            >
               Xóa
             </button>
           </div>,
@@ -326,9 +341,6 @@ function CourseList({
 }
 
 export default function CoursesPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState("Tất cả trình độ");
   const [status, setStatus] = useState("Tất cả trạng thái");
@@ -342,25 +354,6 @@ export default function CoursesPage() {
   const [editLevel, setEditLevel] = useState<CourseLevel>("Beginner");
   const [editError, setEditError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-    courseApi
-      .list()
-      .then((loadedCourses) => {
-        if (isMounted) setCourses(loadedCourses);
-      })
-      .catch(() => {
-        if (isMounted) setLoadError("Không thể tải danh sách khóa học. Vui lòng thử lại.");
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (openMenu === null) return;
@@ -389,23 +382,33 @@ export default function CoursesPage() {
     };
   }, [openMenu]);
 
-  const filteredCourses = useMemo(
-    () =>
-      courses.filter((course) => {
-        const term = query.trim().toLowerCase();
-        return (
-          (!term ||
-            [
-              course.title,
-              course.slug,
-              course.description,
-            ].some((value) => value.toLowerCase().includes(term))) &&
-          (level === "Tất cả trình độ" || course.level === level) &&
-          (status === "Tất cả trạng thái" || course.status === status)
-        );
+  const loadPage = useCallback(
+    (page: number, page_size: number) =>
+      catalogApi.page<Course>("courses", {
+        page,
+        page_size,
+        search: query,
+        sort,
+        level: (
+          {
+            "Cơ bản": "beginner",
+            "Trung cấp": "intermediate",
+            "Nâng cao": "advanced",
+          } as Record<string, string>
+        )[level],
+        status: status === "Tất cả trạng thái" ? undefined : status,
       }),
-    [courses, level, query, status],
+    [query, sort, level, status],
   );
+  const coursePaging = useServerPagination(loadPage, {
+    pageSize: 9,
+    resetKey: JSON.stringify([query, sort, level, status]),
+  });
+  const {
+    pageItems: filteredCourses,
+    isLoading,
+    error: loadError,
+  } = coursePaging;
 
   const openEditCourse = (course: Course) => {
     setEditingCourse(course);
@@ -422,31 +425,41 @@ export default function CoursesPage() {
     setOpenMenu(null);
     try {
       await courseApi.remove(String(course.id));
-      setCourses((currentCourses) => currentCourses.filter((item) => item.id !== course.id));
+      coursePaging.refresh();
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Không thể xóa khóa học.");
+      window.alert(
+        error instanceof Error ? error.message : "Không thể xóa khóa học.",
+      );
     }
   };
 
-  const handleUpdateCourse = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleUpdateCourse = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
     if (!editingCourse) return;
     if (editName.trim().length < 3 || !editSlug.trim()) {
-      setEditError("Tên khóa học phải có ít nhất 3 ký tự và cần có đường dẫn định danh.");
+      setEditError(
+        "Tên khóa học phải có ít nhất 3 ký tự và cần có đường dẫn định danh.",
+      );
       return;
     }
     setIsSaving(true);
     try {
-      const updatedCourse = await courseApi.update(String(editingCourse.id), {
+      await courseApi.update(String(editingCourse.id), {
         title: editName.trim(),
         slug: editSlug.trim(),
         description: editDescription.trim(),
         level: editLevel,
       });
-      setCourses((currentCourses) => currentCourses.map((course) => course.id === editingCourse.id ? { ...course, ...updatedCourse, level: editLevel, status: course.status } : course));
+      coursePaging.refresh();
       setEditingCourse(null);
     } catch (error) {
-      setEditError(error instanceof ApiClientError ? error.message : "Không thể cập nhật khóa học.");
+      setEditError(
+        error instanceof ApiClientError
+          ? error.message
+          : "Không thể cập nhật khóa học.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -460,7 +473,8 @@ export default function CoursesPage() {
             Khóa học
           </h1>
           <p className="mt-1 text-sm text-[#637981]">
-            Các lộ trình C# từ chương trình đầu tiên đến những nội dung bất đồng bộ nâng cao.
+            Các lộ trình C# từ chương trình đầu tiên đến những nội dung bất đồng
+            bộ nâng cao.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -515,11 +529,7 @@ export default function CoursesPage() {
         <FilterSelect
           label="Trạng thái"
           value={status}
-          options={[
-            "Tất cả trạng thái",
-            "Published",
-            "Draft",
-          ]}
+          options={["Tất cả trạng thái", "Published", "Draft"]}
           onChange={setStatus}
         />
         <FilterSelect
@@ -539,7 +549,7 @@ export default function CoursesPage() {
         </p>
       ) : view === "grid" ? (
         <CourseGrid
-          items={filteredCourses}
+          items={coursePaging.pageItems}
           openMenu={openMenu}
           setOpenMenu={setOpenMenu}
           onEdit={openEditCourse}
@@ -547,30 +557,140 @@ export default function CoursesPage() {
         />
       ) : (
         <CourseList
-          items={filteredCourses}
+          items={coursePaging.pageItems}
           openMenu={openMenu}
           setOpenMenu={setOpenMenu}
           onEdit={openEditCourse}
           onDelete={handleDeleteCourse}
         />
       )}
-      {filteredCourses.length === 0 && (
+      {!isLoading && !loadError && (
+        <Pagination
+          page={coursePaging.page}
+          pageSize={coursePaging.pageSize}
+          totalItems={coursePaging.totalItems}
+          onPageChange={(nextPage) => {
+            setOpenMenu(null);
+            coursePaging.setPage(nextPage);
+          }}
+        />
+      )}
+      {!isLoading && !loadError && filteredCourses.length === 0 && (
         <p className="rounded-2xl border border-dashed border-[#dfe6df] px-5 py-14 text-center text-sm text-[#637981]">
           Không có khóa học phù hợp với bộ lọc.
         </p>
       )}
       {editingCourse && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-[#00151d]/75 px-4 py-8" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSaving) setEditingCourse(null); }}>
-          <form onSubmit={handleUpdateCourse} className="max-h-full w-full max-w-[640px] overflow-y-auto rounded-2xl border border-[#dfe6df] bg-[#fffefb] p-6 shadow-2xl sm:p-8">
-            <div className="flex items-start justify-between gap-4"><div><h2 className="text-2xl font-semibold text-[#002C3E]">Chỉnh sửa khóa học</h2><p className="mt-1 text-sm text-[#637981]">Cập nhật thông tin khóa học.</p></div><button type="button" onClick={() => setEditingCourse(null)} disabled={isSaving} aria-label="Đóng chỉnh sửa khóa học"><X className="h-5 w-5 text-[#526f78]" /></button></div>
-            <div className="mt-6 space-y-4">
-              <label className="block text-sm font-medium text-[#002C3E]">Tên khóa học<input value={editName} onChange={(event) => { setEditName(event.target.value); setEditSlug(event.target.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")); }} className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none focus:border-[#78BCC4]" /></label>
-              <label className="block text-sm font-medium text-[#002C3E]">Đường dẫn định danh<input value={editSlug} onChange={(event) => setEditSlug(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 font-mono text-sm outline-none focus:border-[#78BCC4]" /></label>
-              <label className="block text-sm font-medium text-[#002C3E]">Mô tả<textarea value={editDescription} onChange={(event) => setEditDescription(event.target.value)} rows={4} className="mt-2 w-full rounded-xl border border-[#dfe6df] px-3 py-2 text-sm outline-none focus:border-[#78BCC4]" /></label>
-              <label className="block text-sm font-medium text-[#002C3E]">Trình độ<select value={editLevel} onChange={(event) => setEditLevel(event.target.value as CourseLevel)} className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none">{([{ value: "Beginner", label: "Cơ bản" }, { value: "Intermediate", label: "Trung cấp" }, { value: "Advanced", label: "Nâng cao" }] as const).map((level) => <option key={level.value} value={level.value}>{level.label}</option>)}</select></label>
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-[#00151d]/75 px-4 py-8"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isSaving)
+              setEditingCourse(null);
+          }}
+        >
+          <form
+            onSubmit={handleUpdateCourse}
+            className="max-h-full w-full max-w-[640px] overflow-y-auto rounded-2xl border border-[#dfe6df] bg-[#fffefb] p-6 shadow-2xl sm:p-8"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-[#002C3E]">
+                  Chỉnh sửa khóa học
+                </h2>
+                <p className="mt-1 text-sm text-[#637981]">
+                  Cập nhật thông tin khóa học.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingCourse(null)}
+                disabled={isSaving}
+                aria-label="Đóng chỉnh sửa khóa học"
+              >
+                <X className="h-5 w-5 text-[#526f78]" />
+              </button>
             </div>
-            {editError && <p className="mt-3 text-sm text-[#F7444E]" role="alert">{editError}</p>}
-            <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setEditingCourse(null)} disabled={isSaving} className="h-11 rounded-xl border border-[#dfe6df] px-5 text-sm font-semibold text-[#002C3E]">Hủy</button><button type="submit" disabled={isSaving} className="h-11 rounded-xl bg-[#F7444E] px-5 text-sm font-semibold text-white disabled:opacity-60">{isSaving ? "Đang lưu..." : "Lưu thay đổi"}</button></div>
+            <div className="mt-6 space-y-4">
+              <label className="block text-sm font-medium text-[#002C3E]">
+                Tên khóa học
+                <input
+                  value={editName}
+                  onChange={(event) => {
+                    setEditName(event.target.value);
+                    setEditSlug(
+                      event.target.value
+                        .trim()
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, "-")
+                        .replace(/^-+|-+$/g, ""),
+                    );
+                  }}
+                  className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none focus:border-[#78BCC4]"
+                />
+              </label>
+              <label className="block text-sm font-medium text-[#002C3E]">
+                Đường dẫn định danh
+                <input
+                  value={editSlug}
+                  onChange={(event) => setEditSlug(event.target.value)}
+                  className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 font-mono text-sm outline-none focus:border-[#78BCC4]"
+                />
+              </label>
+              <label className="block text-sm font-medium text-[#002C3E]">
+                Mô tả
+                <textarea
+                  value={editDescription}
+                  onChange={(event) => setEditDescription(event.target.value)}
+                  rows={4}
+                  className="mt-2 w-full rounded-xl border border-[#dfe6df] px-3 py-2 text-sm outline-none focus:border-[#78BCC4]"
+                />
+              </label>
+              <label className="block text-sm font-medium text-[#002C3E]">
+                Trình độ
+                <select
+                  value={editLevel}
+                  onChange={(event) =>
+                    setEditLevel(event.target.value as CourseLevel)
+                  }
+                  className="mt-2 h-11 w-full rounded-xl border border-[#dfe6df] px-3 text-sm outline-none"
+                >
+                  {(
+                    [
+                      { value: "Beginner", label: "Cơ bản" },
+                      { value: "Intermediate", label: "Trung cấp" },
+                      { value: "Advanced", label: "Nâng cao" },
+                    ] as const
+                  ).map((level) => (
+                    <option key={level.value} value={level.value}>
+                      {level.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {editError && (
+              <p className="mt-3 text-sm text-[#F7444E]" role="alert">
+                {editError}
+              </p>
+            )}
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setEditingCourse(null)}
+                disabled={isSaving}
+                className="h-11 rounded-xl border border-[#dfe6df] px-5 text-sm font-semibold text-[#002C3E]"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="h-11 rounded-xl bg-[#F7444E] px-5 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
+              </button>
+            </div>
           </form>
         </div>
       )}

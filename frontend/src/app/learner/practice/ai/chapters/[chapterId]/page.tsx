@@ -13,8 +13,9 @@ import {
   Sparkles,
 } from "lucide-react";
 import { practiceApi } from "@/lib/api";
-import type { AiPracticeSet } from "@/types/practice";
 import { useTutorContext } from "@/contexts/tutor-context";
+import { Pagination } from "@/components/ui/pagination";
+import { useServerPagination } from "@/hooks/use-server-pagination";
 
 const ERROR_LABELS: Record<string, string> = {
   AI_GENERATION_INTERRUPTED: "Quá trình tạo đã bị gián đoạn.",
@@ -48,49 +49,27 @@ export default function ChapterAiPracticeSetsPage() {
     };
   }, [chapterId, setTutorContext]);
 
-  const [sets, setSets] = useState<AiPracticeSet[]>([]);
   const [chapterTitle, setChapterTitle] = useState("Chương hiện tại");
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retryingId, setRetryingId] = useState<string | null>(null);
 
-  const loadSets = useCallback(
-    async (silent = false) => {
-      if (!chapterId) return;
-      if (!silent) setLoading(true);
-      try {
-        const response = await practiceApi.aiSets(chapterId);
-        setSets(response.sets);
-        setError("");
-      } catch (requestError) {
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : "Không thể tải các bộ luyện tập AI.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
+  const loadPage = useCallback(
+    (page: number, page_size: number) =>
+      practiceApi.aiSetsPaged(chapterId ?? "", page, page_size),
     [chapterId],
   );
+  const aiSetPaging = useServerPagination(loadPage, {
+    pageSize: 9,
+    resetKey: chapterId ?? "",
+    keepPreviousData: true,
+  });
+  const sets = aiSetPaging.pageItems;
+  const loading = aiSetPaging.isLoading;
+  const loadSets = aiSetPaging.refresh;
 
   useEffect(() => {
     if (!chapterId) return;
     let active = true;
-    void practiceApi
-      .aiSets(chapterId)
-      .then((response) => {
-        if (!active) return;
-        setSets(response.sets);
-        setError("");
-      })
-      .catch((requestError: Error) => {
-        if (active) setError(requestError.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
     void practiceApi
       .overview()
       .then((overview) => {
@@ -112,7 +91,7 @@ export default function ChapterAiPracticeSetsPage() {
   useEffect(() => {
     if (!hasGeneratingSet) return;
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void loadSets(true);
+      if (document.visibilityState === "visible") void loadSets();
     }, 2500);
     return () => window.clearInterval(timer);
   }, [hasGeneratingSet, loadSets]);
@@ -123,7 +102,7 @@ export default function ChapterAiPracticeSetsPage() {
     setError("");
     try {
       await practiceApi.retryAiSet(setId);
-      await loadSets(true);
+      await loadSets();
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -163,10 +142,10 @@ export default function ChapterAiPracticeSetsPage() {
         </div>
       </header>
 
-      {error && (
+      {(error || aiSetPaging.error) && (
         <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          {error}
+          {error || aiSetPaging.error}
         </div>
       )}
 
@@ -188,7 +167,7 @@ export default function ChapterAiPracticeSetsPage() {
         </section>
       ) : (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {sets.map((practiceSet) => {
+          {aiSetPaging.pageItems.map((practiceSet) => {
             const generating = practiceSet.status === "generating";
             const ready = practiceSet.status === "ready";
             const failed = practiceSet.status === "failed";
@@ -293,6 +272,15 @@ export default function ChapterAiPracticeSetsPage() {
             );
           })}
         </div>
+      )}
+
+      {!loading && !error && (
+        <Pagination
+          page={aiSetPaging.page}
+          pageSize={aiSetPaging.pageSize}
+          totalItems={aiSetPaging.totalItems}
+          onPageChange={aiSetPaging.setPage}
+        />
       )}
     </div>
   );

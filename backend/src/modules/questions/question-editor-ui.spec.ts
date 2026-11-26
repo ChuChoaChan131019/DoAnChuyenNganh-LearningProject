@@ -12,14 +12,21 @@ vi.mock('../../../../frontend/src/lib/api', () => ({
 }));
 import QuestionEditorPage from '../../../../frontend/src/app/content-manager/questions/editor/page';
 
-describe('question editor review entry point', () => {
-  it('allows an already saved AI draft to be submitted for review', () => {
+function publishButton(html: string) {
+  return html.match(/<button\b[^>]*>[\s\S]*?<\/button>/g)
+    ?.find((button) => button.includes('<span>Công bố</span>'));
+}
+
+describe('question editor two-state publication entry point', () => {
+  it('renders publication while keeping a saved draft disabled until it finishes loading', () => {
     navigation.id = 'saved-ai-question';
     const html = renderToStaticMarkup(createElement(QuestionEditorPage));
-    expect(html.includes('Gửi duyệt</span>')).toBe(true);
+    expect(publishButton(html)).toContain('disabled=""');
+    expect(html).not.toContain('<span>Gửi duyệt</span>');
   });
-  it('keeps submission available when composing a new question', () => {
+  it('renders publication but blocks a new question until its required fields are valid', () => {
     navigation.id = null;
-    expect(renderToStaticMarkup(createElement(QuestionEditorPage))).toContain('Gửi duyệt');
+    const html = renderToStaticMarkup(createElement(QuestionEditorPage));
+    expect(publishButton(html)).toContain('disabled=""');
   });
 });

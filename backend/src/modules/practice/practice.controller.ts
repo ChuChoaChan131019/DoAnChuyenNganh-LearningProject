@@ -63,7 +63,8 @@ export class PracticeController {
     @Req() request: any,
     @Query() query: ListAiPracticeSetsQueryDto,
   ) {
-    return this.practiceService.listAiPracticeSets(request.user.id, query.chapter_id);
+    return this.practiceService.listAiPracticeSets(request.user.id, query.chapter_id,
+      query.page !== undefined || query.page_size !== undefined ? { page: query.page ?? 1, pageSize: query.page_size ?? 9 } : undefined);
   }
 
   @Get('ai-sets/:setId/questions')

@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Copy, FilePenLine, Plus, Trash2 } from "lucide-react";
 
-import { authorCodeExerciseApi } from "@/lib/api";
+import { authorCodeExerciseApi, catalogApi } from "@/lib/api";
 import type { CodeExerciseListItem } from "@/types/code-exercise-authoring";
+import { Pagination } from "@/components/ui/pagination";
+import { useServerPagination } from "@/hooks/use-server-pagination";
 
 const difficultyLabels = {
   easy: "Dễ",
@@ -17,57 +19,29 @@ const difficultyLabels = {
 export default function CodeExercisesPage() {
   const router = useRouter();
 
-  const [items, setItems] = useState<CodeExerciseListItem[]>([]);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  const load = useCallback(async (keyword = "") => {
-    setLoading(true);
-    setError("");
+  const [appliedSearch, setAppliedSearch] = useState("");
 
-    try {
-      const data = await authorCodeExerciseApi.list(keyword);
-      setItems(data);
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Không thể tải danh sách bài thực hành.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    // loading đã là true lúc khởi tạo; chỉ cập nhật state khi API trả về.
-    void authorCodeExerciseApi.list().then(
-      (data) => {
-        if (active) {
-          setItems(data);
-          setLoading(false);
-        }
-      },
-      (e: unknown) => {
-        if (active) {
-          setError(
-            e instanceof Error
-              ? e.message
-              : "Không thể tải danh sách bài thực hành.",
-          );
-          setLoading(false);
-        }
-      },
-    );
-
-    return () => {
-      active = false;
-    };
-  }, []);
+  const loadPage = useCallback(
+    (page: number, page_size: number) =>
+      catalogApi.page<CodeExerciseListItem>("code", {
+        page,
+        page_size,
+        search: appliedSearch,
+      }),
+    [appliedSearch],
+  );
+  const exercisePaging = useServerPagination(loadPage, {
+    resetKey: appliedSearch,
+  });
+  const { pageItems: items, isLoading: loading } = exercisePaging;
+  const load = (keyword = "") => {
+    setAppliedSearch(keyword);
+    exercisePaging.refresh();
+  };
 
   const copyExercise = async (id: string) => {
     setBusyId(id);
@@ -143,12 +117,12 @@ export default function CodeExercisesPage() {
         </button>
       </form>
 
-      {error && (
+      {(error || exercisePaging.error) && (
         <p
           role="alert"
           className="rounded-xl bg-rose-50 p-4 text-sm text-rose-700"
         >
-          {error}
+          {error || exercisePaging.error}
         </p>
       )}
 
@@ -162,7 +136,7 @@ export default function CodeExercisesPage() {
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
-          {items.map((item) => (
+          {exercisePaging.pageItems.map((item) => (
             <article
               key={item.id}
               className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
@@ -200,32 +174,50 @@ export default function CodeExercisesPage() {
                   className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700"
                 >
                   <FilePenLine className="h-4 w-4" />
-                  {item.can_edit ? item.has_draft ? "Sửa nháp" : "Xem / sửa" : "Xem / xuất bản"}
+                  {item.can_edit
+                    ? item.has_draft
+                      ? "Sửa nháp"
+                      : "Xem / sửa"
+                    : "Xem / xuất bản"}
                 </Link>
 
-                {item.can_edit && <button
-                  type="button"
-                  disabled={busyId !== null}
-                  onClick={() => void copyExercise(item.id)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50"
-                >
-                  <Copy className="h-4 w-4" />
-                  Sao chép
-                </button>}
+                {item.can_edit && (
+                  <button
+                    type="button"
+                    disabled={busyId !== null}
+                    onClick={() => void copyExercise(item.id)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50"
+                  >
+                    <Copy className="h-4 w-4" />
+                    Sao chép
+                  </button>
+                )}
 
-                {item.can_edit && <button
-                  type="button"
-                  disabled={busyId !== null}
-                  onClick={() => void archiveExercise(item.id)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600 disabled:opacity-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Lưu trữ
-                </button>}
+                {item.can_edit && (
+                  <button
+                    type="button"
+                    disabled={busyId !== null}
+                    onClick={() => void archiveExercise(item.id)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Lưu trữ
+                  </button>
+                )}
               </div>
             </article>
           ))}
         </div>
+      )}
+
+      {/* Phân trang danh sách bài thực hành C# */}
+      {!loading && !error && (
+        <Pagination
+          page={exercisePaging.page}
+          pageSize={exercisePaging.pageSize}
+          totalItems={exercisePaging.totalItems}
+          onPageChange={exercisePaging.setPage}
+        />
       )}
     </div>
   );
