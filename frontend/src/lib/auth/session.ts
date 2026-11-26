@@ -227,7 +227,17 @@ export function clearSession(): void {
       localStorage.removeItem(AUTH_ROLE_KEY);
       localStorage.removeItem(AUTH_USER_KEY);
     } catch {
-      // Bỏ qua lỗi truy cập storage
+      // Bỏ qua lỗi truy cập localStorage
+    }
+    try {
+      // Câu trả lời nháp thuộc tài khoản vừa đăng xuất, không để tài khoản
+      // đăng nhập tiếp theo trên cùng trình duyệt đọc lại chúng.
+      for (let index = sessionStorage.length - 1; index >= 0; index--) {
+        const key = sessionStorage.key(index);
+        if (key?.startsWith('quiz_draft_')) sessionStorage.removeItem(key);
+      }
+    } catch {
+      // Bỏ qua lỗi truy cập sessionStorage
     }
   }
 

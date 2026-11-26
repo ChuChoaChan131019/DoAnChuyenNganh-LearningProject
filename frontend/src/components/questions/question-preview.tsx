@@ -62,7 +62,11 @@ export default function QuestionPreview() {
     }
   }, [id]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => { if (active) void load(); });
+    return () => { active = false; };
+  }, [load]);
 
   const revokeApproval = async () => {
     if (!question || question.status !== 'approved' || !requestReason.trim() || requesting) return;

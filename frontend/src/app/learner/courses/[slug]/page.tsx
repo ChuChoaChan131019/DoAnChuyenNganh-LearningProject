@@ -17,7 +17,22 @@ import { ApiClientError, courseApi, quizApi, learnerOverviewApi, userNotificatio
 
 import type { LearnerCourseOverview } from "@/types/learner-overview";
 
-const COURSE_MAP: Record<string, any> = {
+type CourseLessonPreview = { id: string; title: string; duration: string; completed: boolean };
+type CourseChapterPreview = { id?: string; title: string; description: string; completed?: boolean; lessons: CourseLessonPreview[] };
+type CourseTestPreview = {
+  id: string; title: string; description?: string | null; duration?: string;
+  difficulty?: string; questions?: number; total_questions?: number | null;
+  duration_minutes?: number | null; quiz_type?: string;
+};
+type CoursePreview = {
+  id: string | number; slug: string; title: string; level: string; description: string;
+  lastUpdated: string; lessons: number; questions: number; hours: number;
+  gradient?: string; chapters: CourseChapterPreview[]; tests: CourseTestPreview[];
+  instructor: string; instructorRole: string;
+  resources: Array<{ name: string; type: string; isVideo?: boolean }>;
+};
+
+const COURSE_MAP: Record<string, CoursePreview> = {
   "csharp-fundamentals": {
     id: 1,
     slug: "csharp-fundamentals",
@@ -319,9 +334,15 @@ export default function LearnerCourseDetailPage() {
     title: string;
     description?: string | null;
     duration_minutes: number | null;
-    total_questions: number;
+    total_questions: number | null;
     quiz_type: string;
   }> | null>(null);
+  const [courseRequest, setCourseRequest] = useState<{
+    slug: string;
+    status: "ready" | "error" | "not_found";
+  } | null>(null);
+  const [quizLoadError, setQuizLoadError] = useState(false);
+  const [quizReloadKey, setQuizReloadKey] = useState(0);
   const [following, setFollowing] = useState(false);
   const [followSaving, setFollowSaving] = useState(false);
   const [followMessage, setFollowMessage] = useState('');
@@ -377,33 +398,44 @@ export default function LearnerCourseDetailPage() {
 
   useEffect(() => {
     if (!slug) return;
-
+    let active = true;
     courseApi
       .learnerLessons(slug)
       .then(async (response) => {
+        if (!active) return;
         setDatabaseCourse(response.course);
         setDatabaseChapters(response.chapters);
+        setDatabaseQuizzes(null);
+        setQuizLoadError(false);
+        setCourseRequest({ slug, status: "ready" });
 
         // Lấy danh sách quiz đã xuất bản của khóa học
-        const quizzes = await quizApi
-          .list({ course_id: response.course.id, status: "published" })
-          .catch(() => []);
+        let quizzes;
+        try {
+          quizzes = await quizApi.list({ course_id: response.course.id, status: "published" });
+        } catch {
+          if (active) {
+            setDatabaseQuizzes(null);
+            setQuizLoadError(true);
+          }
+          return;
+        }
 
         // Lấy chính xác số câu hỏi cho từng bài test
         const quizzesWithQuestions = await Promise.all(
           (quizzes || []).map(async (quiz) => {
-            let count = 0;
+            let count: number | null = null;
             try {
               const qList = await quizApi.getQuestions(quiz.id);
               count = Array.isArray(qList) ? qList.length : 0;
             } catch {
-              count = 0;
+              count = null;
             }
 
             return {
               id: quiz.id,
               title: quiz.title,
-              description: (quiz as any).description,
+              description: quiz.description,
               duration_minutes: quiz.duration_minutes,
               total_questions: count,
               quiz_type: quiz.quiz_type,
@@ -411,18 +443,22 @@ export default function LearnerCourseDetailPage() {
           }),
         );
 
-        setDatabaseQuizzes(quizzesWithQuestions);
+        if (active) setDatabaseQuizzes(quizzesWithQuestions);
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        if (!active) return;
         setDatabaseCourse(null);
         setDatabaseChapters(null);
         setDatabaseQuizzes(null);
+        setCourseRequest({ slug, status: error instanceof ApiClientError && error.status === 404 ? "not_found" : "error" });
       });
-  }, [slug]);
+    return () => { active = false; };
+  }, [slug, quizReloadKey]);
 
-  const fallbackCourse = slug ? COURSE_MAP[slug] : null;
+  const requestStatus = courseRequest?.slug === slug ? courseRequest?.status ?? "loading" : "loading";
+  const fallbackCourse = requestStatus === "ready" && slug ? COURSE_MAP[slug] : null;
   const baseCourse =
-    fallbackCourse ??
+    requestStatus === "ready" ? (fallbackCourse ??
     (databaseCourse
       ? {
           id: databaseCourse.id,
@@ -440,7 +476,7 @@ export default function LearnerCourseDetailPage() {
           resources: [],
           tests: [],
         }
-      : null);
+      : null)) : null;
   const course =
     baseCourse && databaseChapters
       ? {
@@ -451,7 +487,7 @@ export default function LearnerCourseDetailPage() {
           ),
           chapters: databaseChapters.map((chapter) => {
             const fallbackChapter = baseCourse.chapters.find(
-              (item: any) => item.title === chapter.title,
+              (item) => item.title === chapter.title,
             );
 
             return {
@@ -471,18 +507,30 @@ export default function LearnerCourseDetailPage() {
           }),
         }
       : fallbackCourse;
-  const tests = databaseQuizzes ?? course?.tests ?? [];
+  const tests: CourseTestPreview[] = databaseCourse ? databaseQuizzes ?? [] : course?.tests ?? [];
+
+  if (requestStatus === "loading") {
+    return <div className="mx-auto max-w-3xl rounded-[24px] border border-slate-200 bg-white p-10 text-center text-slate-600">Đang tải khóa học...</div>;
+  }
 
   if (!course) {
     return (
       <div className="mx-auto max-w-3xl rounded-[24px] border border-slate-200 bg-white p-10 text-center shadow-sm">
         <h1 className="text-2xl font-bold text-slate-800">
-          Không tìm thấy khóa học
+          {requestStatus === "not_found" ? "Không tìm thấy khóa học" : "Không tải được khóa học"}
         </h1>
-        <p className="mt-2 text-slate-500">Lộ trình học này chưa tồn tại.</p>
+        <p className="mt-2 text-slate-500">
+          {requestStatus === "not_found" ? "Lộ trình học này chưa tồn tại." : "Vui lòng thử tải lại khóa học."}
+        </p>
+        {requestStatus === "error" && (
+          <button type="button" onClick={() => { setCourseRequest(null); setQuizReloadKey((key) => key + 1); }}
+            className="mt-6 inline-flex items-center rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white">
+            Thử lại
+          </button>
+        )}
         <Link
           href="/learner/courses"
-          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#F7444E] px-4 py-2 text-sm font-semibold text-white"
+          className="mt-6 ml-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
         >
           Quay lại danh sách khóa học
         </Link>
@@ -629,7 +677,7 @@ export default function LearnerCourseDetailPage() {
             </div>
 
             <div className="space-y-4">
-              {course.chapters.map((chapter: any, index: number) => (
+              {course.chapters.map((chapter, index: number) => (
                 <div
                   key={chapter.id ?? chapter.title}
                   className="overflow-hidden rounded-[16px] border border-slate-200 bg-[#fafafa]"
@@ -652,7 +700,7 @@ export default function LearnerCourseDetailPage() {
                     <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
                       <span className="text-[14px] text-slate-400">
                         {chapter.lessons?.reduce(
-                          (sum: number, lesson: any) =>
+                          (sum: number, lesson) =>
                             sum + Number.parseInt(lesson.duration, 10) || 0,
                           0,
                         ) || 0}{" "}
@@ -672,7 +720,7 @@ export default function LearnerCourseDetailPage() {
                   {/* DANH SÁCH BÀI HỌC — ĐỒNG BỘ ĐƯỜNG DẪN VỚI THƯ MỤC LESSON */}
                   <div className="border-t border-slate-200 bg-white">
                     {chapter.lessons?.map(
-                      (lesson: any, lessonIndex: number) => {
+                      (lesson, lessonIndex: number) => {
                         const lessonSlug =
                           lesson.id ||
                           lesson.title
@@ -741,12 +789,19 @@ export default function LearnerCourseDetailPage() {
                   Bài kiểm tra
                 </h3>
                 <span className="text-sm text-slate-500">
-                  {tests.length} available
+                  {quizLoadError ? "Chưa tải được" : databaseQuizzes === null ? "Đang tải..." : `${tests.length} available`}
                 </span>
               </div>
 
               <div className="space-y-3">
-                {tests.map((test: any) => (
+                {quizLoadError && (
+                  <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    <p>Không tải được bài kiểm tra.</p>
+                    <button type="button" onClick={() => { setQuizLoadError(false); setQuizReloadKey((key) => key + 1); }}
+                      className="mt-2 font-semibold underline underline-offset-2">Thử lại</button>
+                  </div>
+                )}
+                {tests.map((test) => (
                   <div
                     key={test.id}
                     className="rounded-[12px] border border-slate-200 bg-[#f8f7f5] p-3"
@@ -755,7 +810,7 @@ export default function LearnerCourseDetailPage() {
                       {test.title}
                     </div>
                     <div className="mt-1 text-[13px] text-slate-500">
-                      {test.description || `${test.total_questions} questions`}{" "}
+                      {test.description || (test.total_questions == null ? "Chưa tải được số câu hỏi" : `${test.total_questions} questions`)}{" "}
                       •{" "}
                       {test.duration ||
                         (test.duration_minutes === null
@@ -763,6 +818,9 @@ export default function LearnerCourseDetailPage() {
                           : `${test.duration_minutes} minutes`)}
                       {test.difficulty ? ` • ${test.difficulty}` : ""}
                     </div>
+                    {test.total_questions === null && test.description && (
+                      <p className="mt-1 text-xs text-amber-700">Chưa tải được số câu hỏi.</p>
+                    )}
                     <Link
                       href={`/learner/courses/${slug}/tests/${test.id}`}
                       className="mt-3 inline-flex w-full items-center justify-center rounded-[10px] bg-[#F7444E] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#e33b3b]"

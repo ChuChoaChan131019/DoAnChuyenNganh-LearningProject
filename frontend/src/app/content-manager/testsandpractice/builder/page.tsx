@@ -72,6 +72,7 @@ function DifficultyBadge({ level }: { level: DifficultyLevel }) {
 
 interface QuestionDisplayItem {
   id: string;
+  course_id: string;
   title: string;
   type: QuestionType;
   lesson: string;
@@ -96,6 +97,9 @@ function TestBuilderContent() {
   >([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoadingQuiz, setIsLoadingQuiz] = useState(Boolean(quizId));
+  const [loadVersion, setLoadVersion] = useState(0);
 
   // 1. Tải danh sách khóa học và nạp câu hỏi đã chọn nếu có quizId
   useEffect(() => {
@@ -103,7 +107,7 @@ function TestBuilderContent() {
 
     async function loadInitialData() {
       try {
-        const rawCourses = await courseApi.list().catch(() => []);
+        const rawCourses = await courseApi.list();
         if (!isMounted) return;
 
         const mappedCourses: CourseItem[] = (rawCourses || []).map((c) => ({
@@ -114,13 +118,14 @@ function TestBuilderContent() {
 
         if (quizId) {
           const [quizData, quizQuestionsData] = await Promise.all([
-            quizApi.getById(quizId).catch(() => null),
-            quizApi.getQuestions(quizId).catch(() => []),
+            quizApi.getById(quizId),
+            quizApi.getQuestions(quizId),
           ]);
 
           if (!isMounted) return;
 
-          if (quizData?.course_id) {
+          if (!quizData) throw new Error('Không tải được bài kiểm tra.');
+          if (quizData.course_id) {
             setSelectedCourseId(String(quizData.course_id));
           }
 
@@ -130,15 +135,14 @@ function TestBuilderContent() {
           ) {
             const mappedSelected: QuestionDisplayItem[] = quizQuestionsData.map(
               (item) => {
-                const q = item.questions || item;
+                const q = Array.isArray(item.questions) ? item.questions[0] : item.questions;
                 return {
-                  id: String(item.question_id || q.id),
-                  title: q.content || q.title || "Untitled question",
-                  type: (q.question_type ||
-                    q.type ||
-                    "single_choice") as QuestionType,
-                  lesson: q.lesson?.title || q.lesson || "General",
-                  difficulty: (q.difficulty || "medium") as DifficultyLevel,
+                  id: String(item.question_id || q?.id),
+                  course_id: String(q?.course_id ?? quizData.course_id),
+                  title: q?.content || "Untitled question",
+                  type: (q?.question_type || "single_choice") as QuestionType,
+                  lesson: q?.lesson?.title || "General",
+                  difficulty: (q?.difficulty || "medium") as DifficultyLevel,
                   score_weight: Number(item.score_weight) || 1.0,
                 };
               },
@@ -147,7 +151,9 @@ function TestBuilderContent() {
           }
         }
       } catch (error) {
-        console.error("Error loading initial data:", error);
+        if (isMounted) setLoadError(error instanceof Error ? error.message : 'Không tải được bài kiểm tra.');
+      } finally {
+        if (isMounted) setIsLoadingQuiz(false);
       }
     }
 
@@ -156,7 +162,7 @@ function TestBuilderContent() {
     return () => {
       isMounted = false;
     };
-  }, [quizId]);
+  }, [quizId, loadVersion]);
 
   const excludedIds = selectedQuestions
     .map((question) => question.id)
@@ -176,6 +182,7 @@ function TestBuilderContent() {
         ...result,
         items: result.items.map((question): QuestionDisplayItem => ({
           id: question.id,
+          course_id: String(question.course_id),
           title: question.content,
           type: question.question_type,
           lesson: question.lesson?.title ?? "General",
@@ -204,6 +211,7 @@ function TestBuilderContent() {
 
   // 4. Lưu câu hỏi vào quiz_questions và chuyển tiếp sang trang quizzes/[id]/builder
   const handleSaveQuestions = async () => {
+    if (isLoadingQuiz || loadError) return;
     if (selectedQuestions.length === 0) {
       alert("Vui lòng chọn ít nhất 1 câu hỏi vào bài kiểm tra.");
       return;
@@ -212,10 +220,16 @@ function TestBuilderContent() {
     try {
       setIsSaving(true);
       let targetQuizId = quizId;
+      const questionCourseId = selectedQuestions[0]?.course_id;
+      if (!questionCourseId || selectedQuestions.some((question) => question.course_id !== questionCourseId)) {
+        throw new Error('Các câu hỏi trong một bài kiểm tra phải thuộc cùng một khóa học.');
+      }
 
       if (!targetQuizId) {
-        const defaultCourseId =
-          selectedCourseId || (courses.length > 0 ? courses[0].id : "");
+        const defaultCourseId = selectedCourseId || questionCourseId;
+        if (defaultCourseId !== questionCourseId) {
+          throw new Error('Câu hỏi đã chọn không thuộc khóa học đang chọn.');
+        }
         if (!defaultCourseId) {
           alert("Vui lòng tạo hoặc chọn một khóa học trước khi lưu.");
           return;
@@ -232,6 +246,8 @@ function TestBuilderContent() {
           shuffle_options: true,
         });
         targetQuizId = createdQuiz.id;
+      } else if (selectedCourseId !== questionCourseId) {
+        throw new Error('Câu hỏi đã chọn không thuộc khóa học của bài kiểm tra.');
       }
 
       await quizApi.configureQuestions(
@@ -253,6 +269,14 @@ function TestBuilderContent() {
 
   return (
     <div className={STYLES.pageContainer}>
+      {loadError && (
+        <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+          Không tải được bài kiểm tra: {loadError}
+          <button type="button" className="ml-3 font-semibold underline" onClick={() => { setLoadError(null); setIsLoadingQuiz(true); setLoadVersion((value) => value + 1); }}>
+            Thử lại
+          </button>
+        </div>
+      )}
       {/* Header Action Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -291,7 +315,7 @@ function TestBuilderContent() {
           </button>
           <button
             type="button"
-            disabled={isSaving}
+            disabled={isSaving || isLoadingQuiz || Boolean(loadError)}
             onClick={handleSaveQuestions}
             className={STYLES.primaryBtn}
           >

@@ -237,25 +237,31 @@ function CourseTestResultsContent() {
           </div>
 
           {/* Điểm theo trọng số | Đúng | Sai */}
-          <div className="grid flex-1 grid-cols-3 gap-3">
+          <div className={`grid flex-1 gap-3 ${isExpired ? 'grid-cols-1' : 'grid-cols-3'}`}>
             <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/60 bg-slate-50/80 p-4 shadow-sm">
               <span className="text-2xl font-black text-slate-700">
                 {formatPercentage(review.score)}/{formatPercentage(review.max_score)}
               </span>
               <span className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">Điểm</span>
             </div>
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-emerald-100/80 bg-emerald-50/50 p-4 shadow-sm">
-              <span className="text-2xl font-black text-emerald-600">{correctCount}/{totalQuestions}</span>
-              <span className="mt-1 text-xs font-bold uppercase tracking-wider text-emerald-700">Câu đúng</span>
-            </div>
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-rose-100/80 bg-rose-50/50 p-4 shadow-sm">
-              <span className="text-2xl font-black text-rose-600">{incorrectCount}</span>
-              <span className="mt-1 text-xs font-bold uppercase tracking-wider text-rose-700">Câu sai</span>
-            </div>
+            {!isExpired && (
+              <>
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-emerald-100/80 bg-emerald-50/50 p-4 shadow-sm">
+                  <span className="text-2xl font-black text-emerald-600">{correctCount}/{totalQuestions}</span>
+                  <span className="mt-1 text-xs font-bold uppercase tracking-wider text-emerald-700">Câu đúng</span>
+                </div>
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-rose-100/80 bg-rose-50/50 p-4 shadow-sm">
+                  <span className="text-2xl font-black text-rose-600">{incorrectCount}</span>
+                  <span className="mt-1 text-xs font-bold uppercase tracking-wider text-rose-700">Câu sai</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
         <p className="-mt-3 mb-5 text-xs text-slate-400">
-          Điểm và kết quả đạt/chưa đạt tính theo trọng số từng câu; số câu đúng chỉ để tham khảo.
+          {isExpired
+            ? 'Lượt làm hết hạn chưa được nộp nên không có phần xem lại đáp án.'
+            : 'Điểm và kết quả đạt/chưa đạt tính theo trọng số từng câu; số câu đúng chỉ để tham khảo.'}
         </p>
 
         {/* Nút điều hướng */}
@@ -284,7 +290,7 @@ function CourseTestResultsContent() {
       </div>
 
       {/* Review Section */}
-      {totalQuestions > 0 && (
+      {!isExpired && totalQuestions > 0 && (
         <div className="space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-3">
             <div className="flex items-center gap-2">

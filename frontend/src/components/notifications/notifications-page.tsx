@@ -22,7 +22,11 @@ export function NotificationsPage() {
     finally { setLoading(false); }
   }, [offset, unreadOnly]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => { if (active) void load(); });
+    return () => { active = false; };
+  }, [load]);
 
   async function open(item: NonNullable<PageData>['items'][number]) {
     if (busyId) return;

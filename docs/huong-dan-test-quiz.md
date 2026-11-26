@@ -4,16 +4,16 @@
 
 ## 0. Hiện trạng kiểm thử
 
-| Phần | Cách kiểm | Kết quả |
-| --- | --- | --- |
+| Phần                    | Cách kiểm                                                                                     | Kết quả            |
+| ------------------------ | ----------------------------------------------------------------------------------------------- | -------------------- |
 | Backend (API + database) | Unit test, test PostgreSQL (PGlite) và script E2E gọi backend đang chạy với Supabase thật | 49/49 bài E2E đạt |
-| Giao diện | Làm tay theo mục 3 của tài liệu này | Cần người test |
+| Giao diện               | Làm tay theo mục 3 của tài liệu này                                                       | Cần người test    |
 
 Những gì đã được kiểm qua API (không cần làm lại, chỉ làm nếu muốn đối chiếu): mục 2.
 
 ## 1. Chuẩn bị
 
-1. Migration `database/migrations/20261125090000_quiz_attempt_integrity.sql` đã chạy trên Supabase.
+1. Áp dụng các migration quiz theo thứ tự tên tệp đến `20261126120000_quiz_attempt_start_snapshot.sql` trên Supabase. Ba migration ngày 26/11 (lúc 10:00, 11:00 và 12:00) phải chạy trước khi kiểm tra các sửa đổi mới.
 2. Chạy `npm run dev` (frontend cổng 3000, backend cổng 3001).
 3. Mở hai trình duyệt (hoặc một cửa sổ thường và một cửa sổ ẩn danh): một đăng nhập **học viên**, một đăng nhập **content manager**.
 4. Chuẩn bị một đề test:
@@ -43,6 +43,7 @@ Những gì đã được kiểm qua API (không cần làm lại, chỉ làm n�
    ```sql
    select count(*) from quiz_attempt_details where attempt_id = '<attemptId>';
    ```
+
    - **Mong đợi:** bằng số câu của đề (2), không phải 4.
 
 ### 2.3 Vấn đề 3 – Điểm theo trọng số
@@ -82,6 +83,7 @@ Những gì đã được kiểm qua API (không cần làm lại, chỉ làm n�
    ```sql
    select action from question_history where question_id = '<id>' order by version;
    ```
+
    - **Mong đợi:** có `deleted` và `restored`.
 
 ## 3. Phần giao diện cần test tay
@@ -113,12 +115,12 @@ Những gì đã được kiểm qua API (không cần làm lại, chỉ làm n�
 
 ### 3.4 Tự nộp khi hết giờ (Vấn đề 4)
 
-1. Chọn 1 đáp án rồi không bấm gì, đợi đồng hồ về **00:00**.
+1. Chọn 1 đáp án rồi không bấm gì, đợi đồng hồ còn khoảng **00:03**.
    - **Mong đợi:**
-     - hiện khung vàng "Hết giờ — đang nộp các câu đã trả lời...";
+     - hiện khung vàng "Sắp hết giờ — đang nộp các câu đã trả lời...";
      - tự chuyển sang trang kết quả; câu đã chọn được chấm, câu bỏ trống ghi "Chưa trả lời".
-2. (Tùy chọn) Làm lại, chọn 1 câu rồi **đóng tab**. Đợi khoảng 2 phút (1 phút làm bài + 30 giây ân hạn) rồi mở trang kết quả của đề.
-   - **Mong đợi:** khung vàng "Hết giờ — bài chưa được nộp…", 0%, Chưa đạt.
+2. (Tùy chọn) Làm lại, chọn 1 câu rồi **đóng tab**. Đợi qua hạn nộp rồi mở trang kết quả của đề.
+   - **Mong đợi:** khung vàng "Hết giờ — bài chưa được nộp…", 0%, Chưa đạt; không hiện câu hỏi, đáp án hay lời giải.
 3. Mở lại trang làm bài.
    - **Mong đợi:** lượt mới, đồng hồ đầy 01:00.
 
@@ -130,17 +132,42 @@ Những gì đã được kiểm qua API (không cần làm lại, chỉ làm n�
 ### 3.6 Danh sách bài kiểm tra khi tải lỗi (lỗi nhỏ 3)
 
 **a) Lỗi tải cả danh sách**
+
 1. Tắt backend → tải lại trang **Bài kiểm tra** (`/content-manager/testsandpractice/tests`).
    - **Mong đợi:** "Không tải được bài kiểm tra" + nút **Thử lại**, **không** phải "Chưa có bài test nào".
 2. Bật lại backend → **Thử lại**.
    - **Mong đợi:** danh sách hiện ra.
 
 **b) Lỗi tải số câu hỏi của một bài**
-1. F12 → **Network**, gõ `questions` vào ô lọc, tải lại trang.
-2. Chuột phải một request `…/quizzes/<id>/questions` → **Block request URL** → tải lại trang.
-   - **Mong đợi:** riêng bài đó hiện **"Chưa tải được"** ở cột Câu hỏi; bài khác vẫn hiện số.
-3. Chuột phải request đó → **Unblock** → tải lại.
-   - **Mong đợi:** bài đó hiện lại số câu. Đề thật sự không có câu nào hiện **0**.
+
+1. Mở trang **Bài kiểm tra** và kiểm tra cột Câu hỏi lấy số đếm từ API danh mục có phân trang.
+2. Chặn request danh mục trong Network rồi tải lại trang.
+   - **Mong đợi:** trang hiện lỗi tải danh sách và nút **Thử lại**, không tự hiện **0 câu** hoặc danh sách rỗng.
+3. Bỏ chặn rồi bấm **Thử lại**.
+   - **Mong đợi:** số câu hiện lại; đề thật sự không có câu nào mới hiện **0**.
+
+### 3.7 Giữ nguyên đề và lượt làm khi quản lý sửa quiz
+
+1. Học viên mở đề và chọn đáp án, ghi lại nội dung câu cùng thời gian còn lại.
+2. Content manager sửa trọng số hoặc thay câu hỏi rồi lưu; quiz chuyển về nháp.
+3. Học viên tải lại trang làm bài: vẫn thấy câu cũ, đáp án đã chọn và hạn nộp cũ.
+4. Nộp bài trước hạn: điểm và phần xem lại dùng nội dung, đáp án, trọng số của đề khi lượt làm bắt đầu.
+5. Tài khoản chưa có lượt làm không được bắt đầu quiz đang ở nháp.
+
+### 3.8 Trang khóa học khi tải danh sách quiz lỗi
+
+1. Mở trang khóa học của học viên và chặn request danh sách quiz trong Network.
+2. Trang hiện "Không tải được bài kiểm tra" và nút **Thử lại**, không báo 0 bài.
+3. Bỏ chặn rồi bấm **Thử lại**; danh sách và số câu hỏi hiện theo dữ liệu máy chủ trả về.
+
+### 3.9 Quay lại bài làm và đổi tài khoản
+
+1. Vào làm quiz, chọn đáp án rồi quay lại khóa học. Chờ vài phút và vào lại bài trong cùng tab.
+   - **Mong đợi:** máy chủ trả lại lượt cũ; đồng hồ tiếp tục từ hạn nộp cũ, không cộng thêm thời gian.
+2. Đăng xuất khi vẫn có câu trả lời nháp, đăng nhập bằng tài khoản khác trong cùng tab và mở quiz.
+   - **Mong đợi:** chỉ thấy lượt làm của tài khoản mới; không thấy câu trả lời nháp của tài khoản trước.
+3. Chặn request tải khóa học rồi mở trang khóa học.
+   - **Mong đợi:** thông báo "Không tải được khóa học" và nút **Thử lại**; không hiện bài kiểm tra mẫu.
 
 ## 4. Sau khi test
 
@@ -150,12 +177,12 @@ Những gì đã được kiểm qua API (không cần làm lại, chỉ làm n�
 
 ## 5. Ghi nhận kết quả
 
-| Mục | Đạt / Không đạt | Ghi chú (ảnh chụp, lỗi Console) |
-| --- | --- | --- |
-| 3.1 Thử nộp lại khi mất mạng | | |
-| 3.2 Không tạo được lượt làm | | |
-| 3.3 Đồng hồ sau F5 | | |
-| 3.4 Tự nộp khi hết giờ | | |
-| 3.5 Nút Tạo bằng AI | | |
-| 3.6a Lỗi tải danh sách | | |
-| 3.6b Lỗi tải số câu hỏi | | |
+| Mục                                | Đạt / Không đạt | Ghi chú (ảnh chụp, lỗi Console) |
+| ----------------------------------- | -------------------- | ----------------------------------- |
+| 3.1 Thử nộp lại khi mất mạng   |                      |                                     |
+| 3.2 Không tạo được lượt làm |                      |                                     |
+| 3.3 Đồng hồ sau F5               |                      |                                     |
+| 3.4 Tự nộp khi hết giờ          |                      |                                     |
+| 3.5 Nút Tạo bằng AI              |                      |                                     |
+| 3.6a Lỗi tải danh sách           |                      |                                     |
+| 3.6b Lỗi tải số câu hỏi        |                      |                                     |

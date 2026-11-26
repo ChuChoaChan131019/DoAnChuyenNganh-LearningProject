@@ -67,9 +67,6 @@ function secondsUntil(deadlineMs: number | null, clockOffsetMs: number) {
   return Math.max(0, Math.ceil((deadlineMs - (Date.now() + clockOffsetMs)) / 1000));
 }
 
-// Dùng chung một yêu cầu bắt đầu khi React mount hai lần (strict mode).
-const attemptPromises: Record<string, Promise<StartedAttempt>> = {};
-
 export default function CourseTestTakePage() {
   const params = useParams<{ slug: string; testId: string }>();
   const slug = String(params?.slug ?? "");
@@ -137,11 +134,9 @@ export default function CourseTestTakePage() {
     async function initializeQuiz() {
       try {
         const quizData = await quizApi.getById(testId).catch(() => null);
-        if (!attemptPromises[testId]) {
-          attemptPromises[testId] = quizApi.startAttempt(testId);
-        }
         const requestedAt = Date.now();
-        const startedAttempt = await attemptPromises[testId];
+        // Máy chủ trả lại lượt đang mở, nên mỗi lần vào trang cần lấy server_now mới.
+        const startedAttempt = await quizApi.startAttempt(testId);
         const receivedAt = Date.now();
         if (!isMounted) return;
 
@@ -157,7 +152,6 @@ export default function CourseTestTakePage() {
         setDeadline({ deadlineMs, offsetMs });
         setTimeLeft(secondsUntil(deadlineMs, offsetMs));
       } catch (err: unknown) {
-        delete attemptPromises[testId];
         if (isMounted) {
           setLoadError(errorMessage(err, "Không thể bắt đầu bài kiểm tra."));
         }
@@ -202,7 +196,6 @@ export default function CourseTestTakePage() {
         answers: Object.values(answersRef.current),
       });
       clearDraft(attempt.attempt_id);
-      delete attemptPromises[testId];
       router.replace(
         `/learner/courses/${slug}/tests/${testId}/results?attemptId=${encodeURIComponent(result.attempt_id)}`,
       );
@@ -211,7 +204,6 @@ export default function CourseTestTakePage() {
       setIsSubmitting(false);
       if (err instanceof ApiClientError && err.code === "QUIZ_ATTEMPT_EXPIRED") {
         clearDraft(attempt.attempt_id);
-        delete attemptPromises[testId];
         setIsExpired(true);
         return;
       }
@@ -221,13 +213,14 @@ export default function CourseTestTakePage() {
     }
   };
 
-  // Hết giờ thì tự nộp các câu đã trả lời một lần; nếu lỗi, người học bấm Thử nộp lại.
+  // Gửi trước hạn vài giây để yêu cầu đến máy chủ khi lượt làm còn hiệu lực.
+  // Máy chủ không chấp nhận yêu cầu nhận được sau expires_at.
   const submitRef = useRef(handleSubmitQuiz);
   useEffect(() => {
     submitRef.current = handleSubmitQuiz;
   });
   useEffect(() => {
-    if (timeLeft === 0 && !autoSubmitted.current) {
+    if (timeLeft !== null && timeLeft <= 3 && !autoSubmitted.current) {
       autoSubmitted.current = true;
       void submitRef.current();
     }
@@ -260,6 +253,14 @@ export default function CourseTestTakePage() {
         },
       };
     });
+  };
+
+  const handleTextAnswer = (questionId: string, answer: string) => {
+    if (timeLeft === 0 || isSubmitting) return;
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: { question_id: questionId, answer },
+    }));
   };
 
   if (isLoading) {
@@ -380,7 +381,9 @@ export default function CourseTestTakePage() {
 
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
           <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[#F7444E]" />
-          Answered: {Object.keys(answers).length} / {attempt.questions.length}{" "}
+          Answered: {attempt.questions.filter((question) =>
+            Boolean(answers[question.question_id]?.answer?.trim())
+            || Boolean(answers[question.question_id]?.selected_option_ids?.length)).length} / {attempt.questions.length}{" "}
           questions
         </div>
       </div>
@@ -404,9 +407,9 @@ export default function CourseTestTakePage() {
         </div>
       )}
 
-      {timeLeft === 0 && !submitError && (
+      {timeLeft !== null && timeLeft <= 3 && isSubmitting && !submitError && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
-          Hết giờ — đang nộp các câu đã trả lời...
+          Sắp hết giờ — đang nộp các câu đã trả lời...
         </div>
       )}
 
@@ -442,7 +445,17 @@ export default function CourseTestTakePage() {
 
           {/* Options */}
           <div className="space-y-3">
-            {currentQ.options.map((option, oIndex) => {
+            {currentQ.question_type === "fill_in_blank" ? (
+              <input
+                type="text"
+                aria-label="Câu trả lời điền khuyết"
+                value={answers[currentQ.question_id]?.answer ?? ""}
+                onChange={(event) => handleTextAnswer(currentQ.question_id, event.target.value)}
+                disabled={timeLeft === 0 || isSubmitting}
+                placeholder="Nhập câu trả lời của bạn"
+                className="w-full rounded-2xl border border-gray-200 bg-white p-3.5 text-sm text-slate-900 outline-none focus:border-[#F7444E] disabled:opacity-60"
+              />
+            ) : currentQ.options.map((option, oIndex) => {
               const isPicked = currentSelected.includes(option.id);
 
               return (
@@ -521,8 +534,8 @@ export default function CourseTestTakePage() {
       <div className="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-center gap-2">
           {attempt.questions.map((q, idx) => {
-            const hasAnswered =
-              (answers[q.question_id]?.selected_option_ids?.length ?? 0) > 0;
+            const hasAnswered = Boolean(answers[q.question_id]?.answer?.trim())
+              || (answers[q.question_id]?.selected_option_ids?.length ?? 0) > 0;
             const isCurrent = idx === currentIndex;
 
             return (
